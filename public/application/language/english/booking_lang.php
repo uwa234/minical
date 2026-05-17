@@ -10,8 +10,12 @@ $lang['to'] = 'To';
 $lang['new_reservation'] = 'New Reservation';
 $lang['new_walk_in'] = 'New Walk-in';
 $lang['new_out_of_order'] = 'New Out Of Order';
+$lang['block_for_maintenance'] = 'Block for maintenance (out of order)';
+$lang['maintenance'] = 'Maintenance';
+$lang['remove_maintenance'] = 'Remove maintenance';
 
 //Calendar
+$lang['view_by_room_type'] = 'View';
 $lang['create_new_booking'] = 'Create New Booking';
 $lang['today'] = 'Today';
 $lang['filters'] = 'Filters';
@@ -241,6 +245,56 @@ $lang['and'] = 'and';
 $lang['charging_with'] = 'charging with';
 $lang['with_rate'] = 'with rate';
 $lang['book'] = 'Book';
+
+$lang['guest_room_move'] = 'Change room (room move)';
+$lang['room_exchange'] = 'Room exchange';
+$lang['unassign_room'] = 'Unassign room';
+$lang['room_exchange_inhouse_only'] = 'Room exchange is only available for checked-in guests.';
+$lang['room_exchange_requires_assigned_rooms'] = 'Both guests must have a room assigned to exchange.';
+$lang['room_exchange_same_room'] = 'Both guests are already in the same room.';
+$lang['room_exchange_success'] = 'Rooms exchanged successfully.';
+$lang['room_exchange_log'] = 'Room exchanged with booking';
+$lang['room_exchange_with'] = 'Exchange room with';
+$lang['select_room_for_move'] = 'Select new room';
+$lang['select_rate_plan_for_move'] = 'Rate plan (if room type changes)';
+$lang['update_folio_rates'] = 'Update folio rates for remaining nights';
+$lang['unassign_room_success'] = 'Room unassigned successfully.';
+$lang['unassign_room_already'] = 'This stay has no room assigned.';
+$lang['unassign_room_log'] = 'Room unassigned:';
+$lang['unassign_room_confirm'] = 'Remove the room assignment for this guest? The stay will appear on the unassigned row.';
+$lang['room_move_success'] = 'Guest moved to the new room successfully.';
+
+$lang['Payment'] = 'Payment';
+$lang['Choose how you would like to pay for your stay'] = 'Choose how you would like to pay for your stay';
+$lang['Pay now with Paystack'] = 'Pay now with Paystack';
+$lang['Pay at hotel'] = 'Pay at hotel';
+$lang['Payment method'] = 'Payment method';
+$lang['Please select a valid payment option.'] = 'Please select a valid payment option.';
+$lang['Invalid payment callback.'] = 'Invalid payment callback.';
+$lang['Paystack is not configured for this property.'] = 'Paystack is not configured for this property.';
+$lang['Payment could not be verified.'] = 'Payment could not be verified.';
+$lang['Invalid payment reference.'] = 'Invalid payment reference.';
+$lang['Online booking payment options'] = 'Online booking payment options';
+$lang['When Paystack is your payment gateway, choose which options guests see at checkout.'] = 'When Paystack is your payment gateway, choose which options guests see at checkout.';
+$lang['Paystack and pay at hotel'] = 'Paystack and pay at hotel';
+$lang['Paystack only'] = 'Paystack only';
+$lang['Pay at hotel only'] = 'Pay at hotel only';
+$lang['You will be redirected to Paystack to complete payment.'] = 'You will be redirected to Paystack to complete payment.';
+$lang['Payment will be collected at the hotel during your stay.'] = 'Payment will be collected at the hotel during your stay.';
+$lang['Payment received'] = 'Payment received';
+$lang['Your reservation is confirmed and your payment was successful.'] = 'Your reservation is confirmed and your payment was successful.';
+$lang['Reservation confirmed'] = 'Reservation confirmed';
+$lang['Reservation requested'] = 'Reservation requested';
+$lang['Complete your PayPal deposit below to secure your reservation.'] = 'Complete your PayPal deposit below to secure your reservation.';
+$lang['Amount paid'] = 'Amount paid';
+$lang['Booking details'] = 'Booking details';
+$lang['Booking reference'] = 'Booking reference';
+$lang['Property'] = 'Property';
+$lang['Guest'] = 'Guest';
+$lang['Secure your reservation'] = 'Secure your reservation';
+$lang['Pay with PayPal'] = 'Pay with PayPal';
+$lang['Return to property website'] = 'Return to property website';
+$lang['Confirmation'] = 'Confirmation';
 
 /* End of file booking_lang.php */
 /* Location: ./application/language/english/booking_lang.php */

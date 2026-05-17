@@ -5969,6 +5969,7 @@ class Migration_create_base extends CI_Migration {
 				'type' => 'VARCHAR',
 				'constraint' => 255,
 				'null' => FALSE,
+				'default' => '',
 
 			),
 			'show_on_partners_page' => array(

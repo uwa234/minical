@@ -30,8 +30,6 @@
 		</p>
 	</div>
 
-	<?php if(check_active_extensions('automated_night_audit', $this->company_id)): ?>
-
 		<div class="form-group position-relative ml-3 mb-5">
 			<h5 class="card-title"><?php echo l('automatic_night_audit'); ?></h5>						
 			<div class="form-group position-relative form-inline">
@@ -73,6 +71,10 @@
 				
 				<p class="help-block">
 				<?=l("*This option should be disabled if you are manipulating the selling date");?></p>
+				<p class="help-block">
+					* Schedule server cron every 15 minutes:
+					<code>curl -H "X-Cron-Auth: …" …/cron/run_automated_night_audit/…</code>
+				</p>
 			</div>
 	        
 			<div class="form-group position-relative form-inline">
@@ -165,8 +167,6 @@
 		<div class="col-sm-12">
 			<input type="submit" class="btn btn-primary" value="<?php echo l('Update', true); ?>" />
 		</div>
-
-	<?php endif; ?>
 
 </form>
 

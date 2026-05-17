@@ -55,6 +55,20 @@ class Night_audit_model extends CI_Model {
 			return null;
 		}
 	}
+
+	function has_logged_for_selling_date($company_id, $selling_date)
+	{
+		$this->db->where('company_id', $company_id);
+		$this->db->where('selling_date', $selling_date);
+		$this->db->limit(1);
+		$query = $this->db->get('night_audit_log');
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		return $query->num_rows() > 0;
+	}
 	
 	
 }

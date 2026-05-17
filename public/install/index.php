@@ -1,24 +1,29 @@
 <?php
 $check = true;
-$file = '../../vendor/autoload.php';
-if (file_exists($file)) {
-    include_once $file;
+$projectRoot = realpath(__DIR__ . '/../../');
+$envfile = $projectRoot . '/.env';
+$composerAutoload = $projectRoot . '/vendor/autoload.php';
+
+$dbHost = $dbUser = $dbPass = $dbName = '';
+$projectUrl = $apiUrl = $environment = $migrationSecret = '';
+
+if (is_file($composerAutoload)) {
+    require_once $projectRoot . '/bootstrap/env.php';
+    minical_load_dotenv($projectRoot);
+
+    $dbHost = minical_env('DATABASE_HOST');
+    $dbUser = minical_env('DATABASE_USER');
+    $dbPass = minical_env('DATABASE_PASS');
+    $dbName = minical_env('DATABASE_NAME');
+    $projectUrl = minical_env('PROJECT_URL');
+    $apiUrl = minical_env('API_URL');
+    $environment = minical_env('ENVIRONMENT');
+    $migrationSecret = minical_env('MIGRATION_SECRET');
 }
-$envfile = '../../.env';
-if (file_exists($envfile)) {
 
-    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../../')->load();
-
-    $dbHost = getenv("DATABASE_HOST");
-    $dbUser = getenv("DATABASE_USER");
-    $dbPass = getenv("DATABASE_PASS");
-    $dbName = getenv("DATABASE_NAME");
-    $projectUrl = getenv("PROJECT_URL");
-    $apiUrl = getenv("API_URL");
-    $environment = getenv("ENVIRONMENT");
-}
-
-$mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName");
+$mysqli_connection = $dbHost
+    ? @mysqli_connect($dbHost, $dbUser, $dbPass, $dbName)
+    : false;
 
 ?>
 <!DOCTYPE html>
@@ -59,13 +64,13 @@ $mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName")
                         <tr>
                             <td>PHP version</td>
                             <td><?php echo phpversion(); ?></td>
-                            <td>7.3.0 or 7.4.27</td>
+                            <td>8.2.x (7.4+ supported)</td>
                             <td>
                                 <?php
                                 if (phpversion() == null) {
                                     $check = false;
                                     echo '<p class="error">Required PHP version in not installed</p>';
-                                } elseif (phpversion() < '7.2') {
+                                } elseif (version_compare(phpversion(), '7.4.0', '<')) {
                                     $check = false;
                                     echo '<p class="error">Not compatible with this installed PHP version</p>';
                                 } else {
@@ -109,13 +114,13 @@ $mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName")
                         </tr> -->
                         <tr>
                             <td>Composer</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <td><?php echo is_file($composerAutoload) ? 'vendor/autoload.php found' : 'Not installed'; ?></td>
+                            <td>vendor/autoload.php</td>
                             <td>
                                 <?php
-                                if (!file_exists($file)) {
+                                if (!is_file($composerAutoload)) {
                                     $check = false;
-                                    echo '<p class="error">composer is not installed</p>';
+                                    echo '<p class="error">Run <code>composer install</code> in the project root (or start Docker so the composer service runs).</p>';
                                 } else {
                                     echo '<i class="fa fa-check-circle" style="font-size:24px;color:green"></i>';
                                 }
@@ -511,6 +516,7 @@ $mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName")
 
     var ajax_interval;
     var proUrl = "<?php echo $projectUrl ?? '';?>";
+    var migrationSecret = "<?php echo isset($migrationSecret) ? addslashes($migrationSecret) : '';?>";
     var connectionFlag = "<?php echo $connectionFlag ?? false;?>";
     var mysqlCompatible = "<?php echo $mysqli_compatible ?? false;?>";
 
@@ -559,7 +565,7 @@ $mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName")
 
             $.ajax({
                 type: "POST",
-                url: proUrl + "/migrate?MIGRATION_REQUEST=1",
+                url: proUrl + "/migrate?MIGRATION_REQUEST=1" + (migrationSecret ? "&migration_secret=" + encodeURIComponent(migrationSecret) : ""),
                 data: {},
                 success: function (data) {
                     setTimeout(function () {
@@ -598,6 +604,14 @@ $mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName")
                                 $(".db_seeding_status").show();
                                 $(".db_seeding").html('Database seeding done successfully');
                                 db_validation();
+                            } else if (resp.in_progress) {
+                                $(".db_seeding_pending").html(
+                                    'Seeding in progress… ' + resp.file_position + ' / ' + resp.file_size + ' bytes'
+                                );
+                            } else if (resp.message) {
+                                stopinterval();
+                                $(".db_seeding_error").show();
+                                $(".db_seeding").html(resp.message);
                             }
                         },
                         error: function (error) {

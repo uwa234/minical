@@ -1301,8 +1301,10 @@ class Tokenex {
         
         $url = $api_url.$method_name;
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        if (!function_exists('apply_curl_ssl_options')) {
+            require_once __DIR__ . '/../helpers/curl_helper.php';
+        }
+        apply_curl_ssl_options($ch);
 
         if($request_method == 'put'){
             curl_setopt($ch, CURLOPT_PUT, 1);

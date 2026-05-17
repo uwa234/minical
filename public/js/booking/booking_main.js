@@ -60,7 +60,83 @@ innGrid.createNewBooking = function(startDate, endDate, room){
 	}
 };
 
+/**
+ * Open booking modal pre-set to Out of Order (maintenance block on a specific room).
+ */
+innGrid.createMaintenanceBlock = function(startDate, endDate, room) {
+	if (typeof $.fn.openBookingModal !== 'undefined' && $.isFunction($.fn.openBookingModal)) {
+		$("body").openBookingModal({
+			checkInDate: startDate,
+			checkOutDate: endDate,
+			roomID: room && room.room_id ? room.room_id : '',
+			roomTypeID: room && room.room_type_id ? room.room_type_id : room,
+			initialState: 3
+		});
+	}
+};
+
+innGrid._pendingCalendarSelection = null;
+
+/**
+ * After dragging a date range on a room row, show reservation vs maintenance choices.
+ */
+innGrid.showCalendarRangeActions = function(startDate, endDate, room, position) {
+	var roomId = room && (room.room_id || room.id) ? String(room.room_id || room.id) : '';
+	if (!roomId || roomId.indexOf('unassigned') === 0) {
+		innGrid.createNewBooking(startDate, endDate, room);
+		return;
+	}
+
+	innGrid._pendingCalendarSelection = {
+		startDate: startDate,
+		endDate: endDate,
+		room: room
+	};
+
+	var roomLabel = room.room_name || room.name || roomId;
+	var $box = $('#notification-drag-box');
+	$box.find('.from').text(innGrid._getLocalFormattedDate ? innGrid._getLocalFormattedDate(startDate) : startDate);
+	$box.find('.to').text(innGrid._getLocalFormattedDate ? innGrid._getLocalFormattedDate(endDate) : endDate);
+	$box.find('.room').text(roomLabel);
+
+	var left = 120;
+	var top = 120;
+	if (position) {
+		left = position.left || position.x || left;
+		top = position.top || position.y || top;
+	}
+	$box.css({ left: left, top: top }).show();
+};
+
+innGrid.hideCalendarRangeActions = function() {
+	$('#notification-drag-box').hide();
+	innGrid._pendingCalendarSelection = null;
+};
+
 $(function() {
+	$('#calendar-action-new-booking').on('click', function() {
+		var sel = innGrid._pendingCalendarSelection;
+		innGrid.hideCalendarRangeActions();
+		if (sel) {
+			innGrid.createNewBooking(sel.startDate, sel.endDate, sel.room);
+		}
+	});
+
+	$('#calendar-action-maintenance').on('click', function() {
+		var sel = innGrid._pendingCalendarSelection;
+		innGrid.hideCalendarRangeActions();
+		if (sel) {
+			innGrid.createMaintenanceBlock(sel.startDate, sel.endDate, sel.room);
+		}
+	});
+
+	$(document).on('mousedown', function(e) {
+		if ($('#notification-drag-box').is(':visible') &&
+			!$(e.target).closest('#notification-drag-box').length) {
+			innGrid.hideCalendarRangeActions();
+		}
+	});
+
 	mixpanel.people.set({
 		"$company_name": $(".navbar-brand").html(),
 		"$user_email": $("#user_email").html(),

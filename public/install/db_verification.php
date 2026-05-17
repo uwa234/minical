@@ -1,16 +1,13 @@
 <?php
 
-$file = '../../vendor/autoload.php';
-if (file_exists($file)) {
-    include_once $file;
-}
+$projectRoot = realpath(__DIR__ . '/../../');
+require_once $projectRoot . '/bootstrap/env.php';
+minical_load_dotenv($projectRoot);
 
-$dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../../')->load();
-
-$dbHost = getenv("DATABASE_HOST");
-$dbUser = getenv("DATABASE_USER");
-$dbPass = getenv("DATABASE_PASS");
-$dbName = getenv("DATABASE_NAME");
+$dbHost = minical_env('DATABASE_HOST');
+$dbUser = minical_env('DATABASE_USER');
+$dbPass = minical_env('DATABASE_PASS');
+$dbName = minical_env('DATABASE_NAME');
 
 $mysqli_connection = @mysqli_connect("$dbHost", "$dbUser", "$dbPass", "$dbName");
 if (!$mysqli_connection) {

@@ -17,9 +17,9 @@ class Template {
 
 	function load($template = '', $name ='', $view = '' , $view_data = array(), $return = FALSE)
 	{
-		// $this->set($name , $this->CI->load->view($view, $view_data, TRUE));
-	   
-		$this->CI->load->view('includes/'.$template, $this->CI->load->view($view, $view_data, TRUE), $this->template_data);
+		$view_data['main_content'] = $view;
+
+		return $this->CI->load->view('includes/'.$template, $view_data, $return);
 	}
                                
 }

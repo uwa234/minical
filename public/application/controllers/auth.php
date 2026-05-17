@@ -60,7 +60,7 @@ class Auth extends MY_Controller
     function run_query($query_index)
     {
         if (!$this->tank_auth->is_logged_in() || $this->session->userdata('user_role') != "is_admin") {
-            redirect('/booking/');
+            redirect('/dashboard/');
         }
 
         $this->load->helper('file');
@@ -79,7 +79,7 @@ class Auth extends MY_Controller
     function migrate()
     {
         if (!$this->tank_auth->is_logged_in() || $this->session->userdata('user_role') != "is_admin") {
-            redirect('/booking/');
+            redirect('/dashboard/');
         }
         //$this->output->enable_profiler(TRUE);
 
@@ -200,7 +200,7 @@ class Auth extends MY_Controller
                 if(
                     $is_db_name != 'minical-prod'
                 ){
-                    redirect('/booking');
+                    redirect('/dashboard');
                 } 
 
                 $admin_user_ids = $this->Whitelabel_partner_model->get_whitelabel_admin_ids($this->session->userdata('user_id'));
@@ -306,7 +306,7 @@ class Auth extends MY_Controller
         $this->session->set_flashdata('message', $message);
         $this->session->set_flashdata('flash_type', $type);
         if ($this->tank_auth->is_logged_in()) { // if user is already logged in
-            redirect('/booking');
+            redirect('/dashboard');
         }
         else
         {
@@ -537,7 +537,7 @@ class Auth extends MY_Controller
 
                         if(!empty($this->input->post("minical_homepage")) && $this->input->post("minical_homepage") == 'minical_homepage')
                         {
-                            redirect('booking');
+                            redirect('dashboard');
                         }
                         else
                         {
@@ -571,7 +571,7 @@ class Auth extends MY_Controller
     {
         if ($this->tank_auth->is_logged_in()) {
             // logged in
-            redirect('/booking');           
+            redirect('/dashboard');           
 
         }
 
@@ -2129,7 +2129,10 @@ class Auth extends MY_Controller
         curl_setopt($ch, CURLOPT_URL, "https://www.google.com/recaptcha/api/siteverify");
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        if (!function_exists('apply_curl_ssl_options')) {
+            $this->load->helper('curl');
+        }
+        apply_curl_ssl_options($ch);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
         $response = json_decode($response, true);

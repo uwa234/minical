@@ -531,6 +531,19 @@ class Accounting extends MY_Controller
 		$this->load->view('includes/bootstrapped_template', $data);
 		
 	}
+
+	function payment_gateways()
+	{
+		$data = array(
+			'js_files' => array(
+				base_url() . auto_version('js/hotel-settings/payment-gateway-settings.js'),
+			),
+			'selected_sidebar_link' => 'Payment Gateways',
+			'main_content' => 'hotel_settings/accounting_settings/payment_gateway_settings',
+		);
+
+		$this->load->view('includes/bootstrapped_template', $data);
+	}
 	
 	function create_payment_type() {
 		$this->load->model('Payment_model');
@@ -609,5 +622,69 @@ class Accounting extends MY_Controller
         );
         $data = array_merge($data, $enable_card_tokenization,$is_cc_visualization_enabled);
         echo json_encode($data);
+    }
+
+    public function get_payment_gateway_settings()
+    {
+        $settings = $this->Payment_gateway_model->get_payment_gateway_settings($this->company_id);
+        $credentials = $this->paymentgateway->getGatewayCredentials();
+
+        echo json_encode($credentials);
+    }
+
+    public function update_payment_gateway_settings()
+    {
+        $selected = sqli_clean($this->security->xss_clean($this->input->post('selected_payment_gateway', true)));
+        $data = array(
+            'company_id' => $this->company_id,
+            'selected_payment_gateway' => $selected,
+        );
+
+        if ($selected === 'stripe') {
+            $data['stripe_publishable_key'] = sqli_clean($this->security->xss_clean($this->input->post('stripe_publishable_key', true)));
+            $data['stripe_secret_key'] = sqli_clean($this->security->xss_clean($this->input->post('stripe_secret_key', true)));
+        } elseif ($selected === 'paystack') {
+            $data['paystack_public_key'] = sqli_clean($this->security->xss_clean($this->input->post('paystack_public_key', true)));
+            $data['paystack_secret_key'] = sqli_clean($this->security->xss_clean($this->input->post('paystack_secret_key', true)));
+        } elseif ($selected === 'CieloGateway') {
+            $meta = array(
+                'gateway_merchant_id' => sqli_clean($this->security->xss_clean($this->input->post('gateway_merchant_id', true))),
+                'gateway_merchant_key' => sqli_clean($this->security->xss_clean($this->input->post('gateway_merchant_key', true))),
+            );
+            $data['gateway_meta_data'] = json_encode($meta);
+        } elseif ($selected === 'ChaseNetConnectGateway') {
+            $data['gateway_login'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_login', true)));
+            $data['gateway_password'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_password', true)));
+            $meta = array(
+                'gateway_mid' => sqli_clean($this->security->xss_clean($this->input->post('gateway_mid', true))),
+                'gateway_tid' => sqli_clean($this->security->xss_clean($this->input->post('gateway_tid', true))),
+                'gateway_cid' => sqli_clean($this->security->xss_clean($this->input->post('gateway_cid', true))),
+            );
+            $data['gateway_meta_data'] = json_encode($meta);
+        } elseif ($selected === 'PayuGateway') {
+            $data['gateway_login'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_login', true)));
+            $data['gateway_password'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_password', true)));
+            $meta = array(
+                'gateway_app_id' => sqli_clean($this->security->xss_clean($this->input->post('gateway_app_id', true))),
+                'gateway_private_key' => sqli_clean($this->security->xss_clean($this->input->post('gateway_private_key', true))),
+                'gateway_public_key' => sqli_clean($this->security->xss_clean($this->input->post('gateway_public_key', true))),
+            );
+            $data['gateway_meta_data'] = json_encode($meta);
+        } elseif ($selected === 'ElavonGateway') {
+            $data['gateway_login'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_login', true)));
+            $data['gateway_password'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_password', true)));
+            $meta = array(
+                'gateway_user' => sqli_clean($this->security->xss_clean($this->input->post('gateway_user', true))),
+            );
+            $data['gateway_meta_data'] = json_encode($meta);
+        } elseif (in_array($selected, array('PayflowGateway', 'FirstdataE4Gateway', 'AuthorizeNetGateway', 'MonerisGateway'), true)) {
+            $data['gateway_login'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_login', true)));
+            $data['gateway_password'] = sqli_clean($this->security->xss_clean($this->input->post('gateway_password', true)));
+        }
+
+        $this->Payment_gateway_model->update_payment_gateway_settings($data);
+        $this->_create_accounting_log('Updated payment gateway settings (' . $selected . ')');
+
+        echo json_encode(array('success' => true));
     }
 }

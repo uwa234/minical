@@ -1,5 +1,7 @@
 # Using Docker to run a Minical demo server
 
+The Docker image uses **PHP 8.2**, matching the version documented in the main README.
+
 You need to have [docker and docker-compose](https://docs.docker.com/desktop/) installed on your system.
 
 Once installed, you can simply run:

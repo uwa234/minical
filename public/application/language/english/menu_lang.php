@@ -91,6 +91,7 @@ $lang['customer_fields'] = 'Customer Fields';
 $lang['unconfirmed_reservations'] = 'Unconfirmed Reservations';
 
 $lang['online_booking_engine'] = 'Online Booking Engine';
+$lang['channels'] = 'Channels';
 $lang['minical_channel_manager'] = 'Minical Channel Manager';
 $lang['myallocator'] = 'Myallocator';
 
@@ -118,6 +119,7 @@ $lang['reports'] = 'Reports';
 
 $lang['booking_history'] = 'Booking History';
 $lang['statements'] = 'Statements';
+$lang['groups'] = 'Groups & Blocks';
 
 /* End of file booking_lang.php */
 /* Location: ./application/language/english/menu_lang.php */

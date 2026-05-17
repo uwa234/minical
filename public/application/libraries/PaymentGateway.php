@@ -102,6 +102,8 @@ class PaymentGateway
                 $this->stripe_public_key  = $this->company_gateway_settings['stripe_publishable_key'];
                 \Stripe\Stripe::setApiKey($this->stripe_private_key);
                 break;
+            case 'paystack':
+                break;
         }
     }
 
@@ -130,7 +132,8 @@ class PaymentGateway
     public static function getGatewayNames()
     {
         return array(
-            'stripe' => 'Stripe'
+            'stripe' => 'Stripe',
+            'paystack' => 'Paystack',
         );
     }
 
@@ -463,10 +466,23 @@ class PaymentGateway
      */
     public function areGatewayCredentialsFilled()
     {
+        if ($this->selected_gateway === 'paystack') {
+            return !empty($this->company_gateway_settings['paystack_public_key'])
+                && !empty($this->company_gateway_settings['paystack_secret_key']);
+        }
+
         $filled                       = true;
         $selected_gateway_credentials = $this->getSelectedGatewayCredentials();
 
         foreach ($selected_gateway_credentials as $credential) {
+            if (is_array($credential)) {
+                foreach ($credential as $nested) {
+                    if (empty($nested)) {
+                        $filled = false;
+                    }
+                }
+                continue;
+            }
             if (empty($credential)) {
                 $filled = false;
             }
@@ -496,9 +512,11 @@ class PaymentGateway
         $credentials                                     = array();
         $credentials['selected_payment_gateway']         = $this->selected_gateway; // itodo legacy
         $credentials['stripe']['stripe_publishable_key'] = isset($this->company_gateway_settings['stripe_publishable_key']) ? $this->company_gateway_settings['stripe_publishable_key'] : null;
+        $credentials['paystack']['paystack_public_key'] = isset($this->company_gateway_settings['paystack_public_key']) ? $this->company_gateway_settings['paystack_public_key'] : null;
 
         if (!$publicOnly) {
             $credentials['stripe']['stripe_secret_key'] = isset($this->company_gateway_settings['stripe_secret_key']) ? $this->company_gateway_settings['stripe_secret_key'] : null;
+            $credentials['paystack']['paystack_secret_key'] = isset($this->company_gateway_settings['paystack_secret_key']) ? $this->company_gateway_settings['paystack_secret_key'] : null;
         }
         
         if(isset($this->company_gateway_settings) && $this->company_gateway_settings && json_decode($this->company_gateway_settings['gateway_meta_data'], true)){

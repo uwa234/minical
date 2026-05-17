@@ -20,19 +20,13 @@
  */
 
 
-$file = '../../vendor/autoload.php';
-if (file_exists($file)) {
-    include_once $file;
-} else {
-    die('Composer not installed!');
-}
-
 $file = '../../.env';
 if (!file_exists($file)) {
     die('.env file not found!');
 }
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__. '/../../')->load();
+require_once __DIR__ . '/../../bootstrap/env.php';
+minical_load_dotenv(__DIR__ . '/../../');
 
 
 

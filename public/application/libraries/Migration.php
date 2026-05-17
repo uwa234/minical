@@ -169,7 +169,7 @@ class CI_Migration {
 				}
 
 				include $f[0];
-				$class = 'Migration_' . ucfirst($match[1]);
+				$class = 'Migration_' . $match[1];
 
 				if ( ! class_exists($class))
 				{
@@ -177,7 +177,7 @@ class CI_Migration {
 					return FALSE;
 				}
 
-				if ( ! is_callable(array($class, $method)))
+				if ( ! method_exists($class, $method))
 				{
 					$this->_error_string = sprintf($this->lang->line('migration_missing_'.$method.'_method'), $class);
 					return FALSE;
@@ -208,7 +208,7 @@ class CI_Migration {
 		foreach ($migrations AS $migration)
 		{
 			// Run the migration class
-			$class = 'Migration_' . ucfirst(strtolower($migration));
+			$class = 'Migration_' . $migration;
 			call_user_func(array(new $class, $method));
 
 			$current_version += $step;

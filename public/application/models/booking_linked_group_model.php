@@ -6,8 +6,11 @@ class Booking_linked_group_model extends CI_Model {
         parent::__construct();
     }
     
-    function create_booking_linked_group($group_name){
-        $this->db->insert('booking_linked_group', array('name' => $group_name));
+    function create_booking_linked_group($group_name, $billing_mode = 'room'){
+        $this->db->insert('booking_linked_group', array(
+            'name' => $group_name,
+            'billing_mode' => $billing_mode ? $billing_mode : 'room',
+        ));
         $insert_id = $this->db->insert_id();
         if(isset($insert_id))
             return $insert_id;
@@ -126,5 +129,77 @@ class Booking_linked_group_model extends CI_Model {
         if(isset($insert_id))
             return $insert_id;
         return null ;
-    }  
+    }
+
+    function update_group_settings($group_id, $company_id, $data)
+    {
+        $allowed = array('name', 'billing_mode', 'master_customer_id');
+        $update = array();
+        foreach ($allowed as $key) {
+            if (array_key_exists($key, $data)) {
+                $update[$key] = $data[$key];
+            }
+        }
+        if (empty($update)) {
+            return false;
+        }
+
+        $group = $this->get_group_by_id($group_id, $company_id);
+        if (!$group) {
+            return false;
+        }
+
+        $this->db->where('id', (int) $group_id);
+        return $this->db->update('booking_linked_group', $update);
+    }
+
+    function get_group_by_id($group_id, $company_id)
+    {
+        $sql = "
+            SELECT blg.*
+            FROM booking_linked_group blg
+            INNER JOIN booking_x_booking_linked_group bxblg ON bxblg.booking_group_id = blg.id
+            INNER JOIN booking b ON b.booking_id = bxblg.booking_id
+            WHERE blg.id = ? AND b.company_id = ? AND b.is_deleted = 0
+            LIMIT 1
+        ";
+        $query = $this->db->query($sql, array((int) $group_id, (int) $company_id));
+
+        if ($query->num_rows() < 1) {
+            return null;
+        }
+
+        return $query->row_array();
+    }
+
+    function get_group_summary($group_id, $company_id)
+    {
+        $group = $this->get_group_by_id($group_id, $company_id);
+        if (!$group) {
+            return null;
+        }
+
+        $bookings = $this->get_group_booking_ids($group_id);
+        $booking_count = is_array($bookings) ? count($bookings) : 0;
+
+        $sql = "
+            SELECT
+                MIN(brh.check_in_date) as check_in_date,
+                MAX(brh.check_out_date) as check_out_date,
+                SUM(b.balance) as total_balance
+            FROM booking_x_booking_linked_group bxblg
+            INNER JOIN booking b ON b.booking_id = bxblg.booking_id
+            LEFT JOIN booking_block brh ON brh.booking_id = b.booking_id
+            WHERE bxblg.booking_group_id = ? AND b.company_id = ? AND b.is_deleted = 0
+        ";
+        $query = $this->db->query($sql, array((int) $group_id, (int) $company_id));
+        $dates = $query->row_array();
+
+        return array_merge($group, array(
+            'booking_count' => $booking_count,
+            'check_in_date' => isset($dates['check_in_date']) ? $dates['check_in_date'] : null,
+            'check_out_date' => isset($dates['check_out_date']) ? $dates['check_out_date'] : null,
+            'total_balance' => isset($dates['total_balance']) ? $dates['total_balance'] : 0,
+        ));
+    }
 }

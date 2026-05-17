@@ -1,0 +1,31 @@
+DROP TABLE IF EXISTS `booking`;
+
+CREATE TABLE `booking` (
+  `booking_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `rate` float DEFAULT NULL,
+  `adult_count` tinyint DEFAULT NULL,
+  `children_count` tinyint NOT NULL DEFAULT '0',
+  `state` int NOT NULL DEFAULT '0',
+  `booking_notes` text,
+  `company_id` bigint unsigned DEFAULT NULL,
+  `booking_customer_id` bigint unsigned DEFAULT NULL,
+  `booked_by` bigint DEFAULT NULL,
+  `balance` float DEFAULT '0',
+  `balance_without_forecast` float NOT NULL DEFAULT '0',
+  `invoice_hash` char(32) DEFAULT NULL,
+  `use_rate_plan` tinyint NOT NULL DEFAULT '0',
+  `rate_plan_id` bigint unsigned DEFAULT NULL,
+  `color` varchar(11) NOT NULL DEFAULT 'transparent',
+  `housekeeping_notes` mediumtext,
+  `charge_type_id` bigint unsigned DEFAULT NULL,
+  `guest_review` decimal(2,1) DEFAULT NULL,
+  `is_deleted` tinyint NOT NULL DEFAULT '0',
+  `source` int NOT NULL DEFAULT '0',
+  `is_ota_booking` tinyint NOT NULL DEFAULT '0',
+  `pay_period` tinyint NOT NULL DEFAULT '0',
+  `revenue` float DEFAULT '0',
+  `add_daily_charge` tinyint NOT NULL DEFAULT '1',
+  `residual_rate` int DEFAULT NULL,
+  `is_invoice_auto_sent` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`booking_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

@@ -7,5 +7,9 @@ composer.phar
 /my_models.php
 /*.sql
 .env
+.phpunit.result.cache
 /nbproject/private/
-/public/application/extensions/
+# Third-party extensions are installed locally; Channex CM is bundled with the repo.
+/public/application/extensions/*
+!/public/application/extensions/channex-integration
+!/public/application/extensions/channex-integration/**

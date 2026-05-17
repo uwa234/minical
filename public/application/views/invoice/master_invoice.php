@@ -394,6 +394,19 @@
                 <input type="hidden" id="group_id" value="<?php if(isset($booking_group_detail)) { echo $booking_group_detail['id'];}?>">
 			    <br/>
 			    <?php echo l('group').' '.l('name'); ?>: <?php if(isset($booking_group_detail)){echo $booking_group_detail['name'];} ?><br/>
+			    <?php if($is_group_invoice && !$read_only && isset($group_billing)): ?>
+			    <div class="group-billing-settings" style="margin-top:8px;text-align:left;">
+			        <label><strong><?php echo l('billing_mode', true); ?></strong></label><br/>
+			        <select id="group-billing-mode" class="form-control input-sm" style="max-width:200px;display:inline-block;">
+			            <option value="room" <?php echo (empty($group_billing['billing_mode']) || $group_billing['billing_mode'] === 'room') ? 'selected' : ''; ?>><?php echo l('bill_per_room', true); ?></option>
+			            <option value="master" <?php echo (!empty($group_billing['billing_mode']) && $group_billing['billing_mode'] === 'master') ? 'selected' : ''; ?>><?php echo l('bill_to_master_folio', true); ?></option>
+			        </select>
+			        <br/>
+			        <a class="btn btn-link btn-sm" href="<?php echo base_url('groups/view/'.$group_id); ?>" style="padding-left:0;"><?php echo l('manage_group_rooming_list', true); ?></a>
+			    </div>
+			    <?php elseif($is_group_invoice && isset($group_billing) && !empty($group_billing['billing_mode']) && $group_billing['billing_mode'] === 'master'): ?>
+			    <br/><em><?php echo l('master_folio_billing', true); ?></em>
+			    <?php endif; ?>
 			    <span id="booking-field">
                 <?php
 

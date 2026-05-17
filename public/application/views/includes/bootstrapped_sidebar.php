@@ -82,6 +82,24 @@
     </div>
         <div class="app-sidebar__inner">
             <ul class="vertical-nav-menu metismenu">
+                <li class="<?php if ($first_segment == 'dashboard') echo 'mm-active'; ?>">
+                    <a class="<?php if ($first_segment == 'dashboard') echo 'mm-active'; ?>" href="<?php echo base_url('dashboard'); ?>">
+                        <i class="metismenu-icon pe-7s-display1"></i>
+                        <?php echo ucwords(l('dashboard', true)); ?>
+                    </a>
+                </li>
+                <li class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>">
+                    <a class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>" href="<?php echo base_url('channels'); ?>">
+                        <i class="metismenu-icon pe-7s-share"></i>
+                        <?php echo ucwords(l('channels', true)); ?>
+                    </a>
+                </li>
+                <li class="<?php if ($first_segment == 'groups') echo 'mm-active'; ?>">
+                    <a class="<?php if ($first_segment == 'groups') echo 'mm-active'; ?>" href="<?php echo base_url('groups'); ?>">
+                        <i class="metismenu-icon pe-7s-users"></i>
+                        <?php echo ucwords(l('groups', true)); ?>
+                    </a>
+                </li>
                 <?php foreach($primary_menus as $m_menu){ ?>
 
                     <?php  

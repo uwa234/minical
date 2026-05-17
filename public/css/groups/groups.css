@@ -1,0 +1,61 @@
+.groups-page {
+    padding: 20px 24px 40px;
+    max-width: 1400px;
+}
+
+.groups-header {
+    margin-bottom: 20px;
+}
+
+.groups-title {
+    margin: 0 0 6px;
+    font-size: 26px;
+    font-weight: 600;
+    color: #1a2b4a;
+}
+
+.groups-subtitle {
+    margin: 0;
+    color: #6b7c93;
+}
+
+.groups-tabs {
+    margin-bottom: 16px;
+}
+
+.groups-filters {
+    margin-bottom: 16px;
+}
+
+.groups-filters .form-control {
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+.groups-table th {
+    white-space: nowrap;
+}
+
+.groups-block-form .block-line {
+    margin-bottom: 8px;
+}
+
+#block-detail-panel {
+    margin-top: 16px;
+}
+
+.groups-detail .rooming-row--unassigned {
+    background: #fffbf0;
+}
+
+.rooming-toolbar {
+    margin-top: -4px;
+}
+
+.rooming-guest {
+    min-width: 160px;
+}
+
+.group-billing-settings select {
+    margin-bottom: 6px;
+}

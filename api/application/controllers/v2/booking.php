@@ -47,7 +47,7 @@ class Booking extends MY_Controller
         $this->load->model("Image_model");
         $this->load->model("Tax_model");
             
-        $this->load->helper('timezone');
+        $this->load->helper(array('timezone', 'curl'));
 
 
         
@@ -126,8 +126,7 @@ class Booking extends MY_Controller
                     $url = $cm_url."/sync/save_booking";
 
                     $ch = curl_init($url);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    apply_curl_ssl_options($ch);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
                     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($booking));
@@ -198,8 +197,7 @@ class Booking extends MY_Controller
                     $url = $cm_url."/sync/save_booking";
 
                     $ch = curl_init($url);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                    apply_curl_ssl_options($ch);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
                     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($booking));
@@ -284,8 +282,7 @@ class Booking extends MY_Controller
             $url = $cm_url."/sync/save_booking";
 
             $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+            apply_curl_ssl_options($ch);
             curl_setopt($ch, CURLOPT_POST, 1);
             curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($booking));
@@ -2215,8 +2212,7 @@ class Booking extends MY_Controller
                
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+        apply_curl_ssl_options($curl);
         $response = curl_exec($curl);
         
         curl_close($curl);

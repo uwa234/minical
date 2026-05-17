@@ -1,4 +1,10 @@
- 
+.booking-page-body {
+    padding: 1rem 1.15rem 1.25rem;
+}
+
+#calendar.tab_btn_calendar {
+    min-height: 200px;
+}
 
 .floatingHeader {
   position: fixed;

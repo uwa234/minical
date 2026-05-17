@@ -241,7 +241,10 @@ class Xero
             {
                 curl_setopt($ch, CURLOPT_HTTPHEADER, array("Accept: application/".$acceptHeader));
             }
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            if (!function_exists('apply_curl_ssl_options')) {
+                require_once __DIR__ . '/../helpers/curl_helper.php';
+            }
+            apply_curl_ssl_options($ch);
             curl_setopt($ch, CURLOPT_URL, $req->to_url());
             if (isset($modified_after) && $modified_after != false)
             {
@@ -302,7 +305,10 @@ class Xero
                 $req        = OAuthRequest::from_consumer_and_token($this->consumer, $this->token, 'POST', $xero_url, array('xml'=>$post_body));
                 $req->sign_request($this->signature_method, $this->consumer, $this->token);
                 $ch         = curl_init();
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                if (!function_exists('apply_curl_ssl_options')) {
+                require_once __DIR__ . '/../helpers/curl_helper.php';
+            }
+            apply_curl_ssl_options($ch);
                 curl_setopt($ch, CURLOPT_URL, $xero_url);
                 curl_setopt($ch, CURLOPT_POST, true);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $req->to_postdata());
@@ -318,7 +324,10 @@ class Xero
                 fwrite($fh, $xml);
                 rewind($fh);
                 $ch         = curl_init($req->to_url());
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                if (!function_exists('apply_curl_ssl_options')) {
+                require_once __DIR__ . '/../helpers/curl_helper.php';
+            }
+            apply_curl_ssl_options($ch);
                 curl_setopt($ch, CURLOPT_PUT, true);
                 curl_setopt($ch, CURLOPT_INFILE, $fh);
                 curl_setopt($ch, CURLOPT_INFILESIZE, strlen($xml));

@@ -1,12 +1,24 @@
 <?php
+
+require_once APPPATH . 'traits/Booking_room_operations_trait.php';
+
 class Calendar extends MY_Controller
 {
+	use Booking_room_operations_trait;
+
 	function __construct()
 	{
 		parent::__construct();
 		
-		$this->load->model('Booking_room_history_model');
-        $this->load->model('Booking_model');
+		$this->load->model(array(
+			'Booking_room_history_model',
+			'Booking_model',
+			'Rate_plan_model',
+			'Rate_model',
+			'Date_range_model',
+			'Room_model',
+			'Room_type_model',
+		));
 		
 		$global_data['js_files'] = array( 
 			base_url() . auto_version('js/channel_manager/channel_manager.js'),
@@ -163,12 +175,6 @@ class Calendar extends MY_Controller
 		return;
 	}
 	
-	// If there are continuous bloking blocks that are split, then combine them.
-	function _combine_booking_blocks($booking_id)
-	{
-		$this->Booking_room_history_model->check_and_combine_booking_blocks($booking_id);
-	}
-
 	function _generate_log_of_differences_between_new_booking_data_and_database($booking_id, $new_data) 
 	{
 		// Load existing_data from database
@@ -221,70 +227,5 @@ class Calendar extends MY_Controller
 		
 		$this->load->model('Booking_log_model');
 		$this->Booking_log_model->insert_log($log_data);
-	}
-
-	function _update_booking_rate_plan($booking_id, $data, $prev_checkout_date = null)
-	{
-		$booking = $this->Booking_model->get_booking($booking_id);
-
-		if(isset($booking['use_rate_plan']) && $booking['use_rate_plan'] == 1) {
-
-			$rate_plan_id = $booking['rate_plan_id'];
-			
-			$this->load->model('Rate_plan_model');
-	        $rate_plan = $this->Rate_plan_model->get_rate_plan($rate_plan_id);
-	        $parent_rate_plan_id = $rate_plan['parent_rate_plan_id'];
-
-	        if ($rate_plan_id == $parent_rate_plan_id) {
-                return;
-            }
-
-	        $date_start = $data['check_in_date'];
-	        $date_end = $data['check_out_date'];
-	        $adult_count = $booking['adult_count'];
-	        $children_count = $booking['children_count'];
-
-	        if($prev_checkout_date) {
-				$date_start = $prev_checkout_date;
-			}
-
-	        $this->load->library('rate');
-	        $rate_array = $this->rate->get_rate_array($parent_rate_plan_id, $date_start, $date_end, $adult_count, $children_count);
-
-	        $this->load->model(array('Rate_model','Date_range_model'));
-	        foreach ($rate_array as $rate)
-	        {
-	            $rate_id = $this->Rate_model->create_rate(
-	                Array(
-	                    'rate_plan_id' => $rate_plan_id,
-	                    'base_rate' => $rate['base_rate'],
-	                    'adult_1_rate' => $rate['adult_1_rate'] ? $rate['adult_1_rate'] : 0,
-	                    'adult_2_rate' => $rate['adult_2_rate'] ? $rate['adult_2_rate'] : 0,
-	                    'adult_3_rate' => $rate['adult_3_rate'] ? $rate['adult_3_rate'] : 0,
-	                    'adult_4_rate' => $rate['adult_4_rate'] ? $rate['adult_4_rate'] : 0,
-	                    'additional_adult_rate' => $rate['additional_adult_rate'] ? $rate['additional_adult_rate'] : 0,
-	                    'additional_child_rate' => $rate['additional_child_rate'] ? $rate['additional_child_rate'] : 0,
-	                    'minimum_length_of_stay' => $rate['minimum_length_of_stay'] ? $rate['minimum_length_of_stay'] : 0,
-	                    'maximum_length_of_stay' => $rate['maximum_length_of_stay'] ? $rate['maximum_length_of_stay'] : 0,
-	                    'minimum_length_of_stay_arrival' => $rate['minimum_length_of_stay_arrival'] ? $rate['minimum_length_of_stay_arrival'] : 0,
-	                    'maximum_length_of_stay_arrival' => $rate['maximum_length_of_stay_arrival'] ? $rate['maximum_length_of_stay_arrival'] : 0
-	                )
-	            );
-
-	            $date_range_id = $this->Date_range_model->create_date_range(
-	                Array(
-	                    'date_start' => $rate['date'],
-	                    'date_end' => $rate['date']
-	                )
-	            );
-
-	            $this->Date_range_model->create_date_range_x_rate(
-	                Array(
-	                    'rate_id' => $rate_id,
-	                    'date_range_id' => $date_range_id
-	                )
-	            );
-	        }
-	    }
 	}
 }

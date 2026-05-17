@@ -1,6 +1,6 @@
 
 <div class="main-card mb-3 card">
-    <div class="card-body" style="padding: 1.2rem 1.2rem 1.2rem 1.2rem;">
+    <div class="card-body booking-page-body">
 <?php 
     $flag = 1;
     $permissions = $this->session->userdata('permissions');
@@ -15,7 +15,7 @@
 
 
 
-<div id="filter-booking" style="padding-top: 0px; padding-bottom:10px;display: none;">
+<div id="filter-booking" class="booking-calendar-filters" style="display: none;">
     <div class="pull-left h4">
         <strong><?php echo l('filters'); ?></strong>
     </div>
@@ -82,12 +82,47 @@
     <button class="btn btn-light" style="padding: 6px 8px;margin-left: 4px;" onclick="$(this).openSearchGroupModel();"><?php echo l('Search Groups', true); ?></button>
 </div>    
 <!--<input name="create_new_booking" type="hidden" value="<?php //echo l('create_new_booking'); ?>" />-->
+<?php if (!empty($room_types) && count($room_types) > 1): ?>
+<div class="booking-room-type-chips" id="booking-room-type-chips" role="tablist" aria-label="<?php echo l('all_room_types', true); ?>">
+    <span class="booking-room-type-chips__label"><?php echo l('view_by_room_type', true); ?></span>
+    <div class="booking-room-type-chips__scroll">
+        <button type="button" class="booking-room-type-chip is-active" data-room-type-id="" role="tab" aria-selected="true"><?php echo l('all_room_types'); ?></button>
+        <?php foreach ($room_types as $room_type): ?>
+        <button type="button" class="booking-room-type-chip" data-room-type-id="<?php echo (int) $room_type['id']; ?>" role="tab" aria-selected="false"><?php echo htmlspecialchars($room_type['name'], ENT_QUOTES, 'UTF-8'); ?></button>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+<div class="booking-calendar-shell booking-calendar-shell--scrollable">
 <div id="calendar" class="tab_btn_calendar"><?php echo l('Loading', true); ?>...</div>
 <div id="overview_calendar" class="tab_btn_calendar"></div>
+</div>
+<div class="booking-calendar-legend" id="booking-calendar-legend" aria-label="<?php echo l('legend', true); ?>">
+    <button type="button" class="booking-calendar-legend__toggle btn btn-link btn-sm" id="booking-calendar-legend-toggle" aria-expanded="false" aria-controls="booking-calendar-legend-items">
+        <span class="booking-calendar-legend__toggle-label"><?php echo l('legend', true); ?></span>
+        <span class="caret"></span>
+    </button>
+    <div class="booking-calendar-legend__items" id="booking-calendar-legend-items">
+        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#3b82f6;"></span><?php echo l('reservation', true); ?></span>
+        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#16a34a;"></span><?php echo l('checked_in', true); ?></span>
+        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#ea580c;"></span><?php echo l('checked_out', true); ?></span>
+        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--outline"></span><?php echo l('unconfirmed_reservation', true); ?></span>
+        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#dc2626;"></span><?php echo l('no_show', true); ?></span>
+        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#374151;"></span><?php echo l('maintenance', true); ?></span>
+    </div>
+</div>
 <div id="notification-drag-box">
     <p><?php echo l('from'); ?>: <span class="from"></span></p>
 	<p><?php echo l('to'); ?>: <span class="to"></span></p>
 	<p><?php echo l('room'); ?>: <span class="room"></span></p>
+    <div class="calendar-range-actions" style="margin-top:8px;">
+        <button type="button" class="btn btn-primary btn-sm btn-block" id="calendar-action-new-booking">
+            <?php echo l('create_new_booking', true); ?>
+        </button>
+        <button type="button" class="btn btn-default btn-sm btn-block" id="calendar-action-maintenance" style="margin-top:6px;">
+            <?php echo l('block_for_maintenance', true); ?>
+        </button>
+    </div>
 </div>
 
 

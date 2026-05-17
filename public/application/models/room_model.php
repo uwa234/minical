@@ -463,7 +463,20 @@ class Room_model extends CI_Model {
 		if ($this->db->_error_message()) // error checking
 			show_error($this->db->_error_message());
 
-        return $q->result_array();
+        $rooms = $q->result_array();
+
+        if ($room_type_id && $check_in_date && $check_out_date) {
+            $this->load->helper('group_block');
+            $rooms = group_block_reduce_available_rooms(
+                $rooms,
+                $company_id,
+                $room_type_id,
+                $check_in_date,
+                $check_out_date
+            );
+        }
+
+        return $rooms;
 
     }
     

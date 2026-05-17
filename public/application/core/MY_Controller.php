@@ -60,24 +60,23 @@ class MY_Controller extends CI_Controller {
 
         // $extensions = $this->session->userdata('all_active_modules');
         
+        $this->load->helper('module');
         foreach($modules as $module)
         {
-            if($module === '.' || $module === '..') continue;
-            if(is_dir($modules_path) . '/' . $module)
+            if(!is_module_directory($modules_path, $module)) continue;
+
+            $config = array();
+            $module_config = $modules_path . $module . '/config/config.php';
+            if(file_exists($module_config))
             {
-                $config = array();
-                $module_config = $modules_path . $module . '/config/config.php';
-                if(file_exists($module_config))
-                {
-                    require($module_config);
-                    $config['extension_folder_name'] = $module;
-                    $all_active_modules[$module] = $config;
+                require($module_config);
+                $config['extension_folder_name'] = $module;
+                $all_active_modules[$module] = $config;
 
-                    if(isset($config['gateway_key']) && isset($this->selected_payment_gateway) && $config['gateway_key'] == $this->selected_payment_gateway ){
-                        $this->current_payment_gateway = $module;
-                    }
-
+                if(isset($config['gateway_key']) && isset($this->selected_payment_gateway) && $config['gateway_key'] == $this->selected_payment_gateway ){
+                    $this->current_payment_gateway = $module;
                 }
+
             }
         }
 
@@ -113,11 +112,9 @@ class MY_Controller extends CI_Controller {
 
         foreach($modules as $module)
         {
-            if($module === '.' || $module === '..') continue;
-            if(is_dir($modules_path) . '/' . $module)
-            {
-                $all_modules[] = $module;
-            }
+            if(!is_module_directory($modules_path, $module)) continue;
+
+            $all_modules[] = $module;
         }
 
         if($all_modules){
@@ -134,6 +131,9 @@ class MY_Controller extends CI_Controller {
         $this->review_management_settings = false;
         $this->is_cardknox_enabled = false;
         $this->is_nestpay_enabled = false;
+        $this->is_nestpaymkd_enabled = false;
+        $this->is_square_enabled = false;
+        $this->is_stripe_enabled = false;
         $this->is_oevai_enabled = false;
 
         if($get_active_modules){
@@ -246,27 +246,24 @@ class MY_Controller extends CI_Controller {
             foreach($active_modules as $module)
             {
                 $extension_helper = array();
-                if($module === '.' || $module === '..') continue;
-                if(is_dir($modules_path) . '/' . $module)
+                if(!is_module_directory($modules_path, $module)) continue;
+
+                if(file_exists('application/extensions/'.$module . '/hooks/actions.php')) {
+                    $autoload_packages[$module.'-actions'] = '../extensions/'.$module . '/hooks/actions';
+                }
+                if(file_exists('application/extensions/'.$module . '/hooks/filters.php')) {
+                    $autoload_packages[$module.'-filters'] = '../extensions/'.$module . '/hooks/filters';
+                }
+
+                $helpers_path = $modules_path . $module . '/config/autoload.php';
+                if(file_exists($helpers_path))
                 {
+                    require($helpers_path);
 
-                    if(file_exists('application/extensions/'.$module . '/hooks/actions.php')) {
-                        $autoload_packages[$module.'-actions'] = '../extensions/'.$module . '/hooks/actions';
-                    }
-                    if(file_exists('application/extensions/'.$module . '/hooks/filters.php')) {
-                        $autoload_packages[$module.'-filters'] = '../extensions/'.$module . '/hooks/filters';
-                    }
-
-                    $helpers_path = $modules_path . $module . '/config/autoload.php';
-                    if(file_exists($helpers_path))
-                    {
-                        require($helpers_path);
-
-                        if($extension_helper && is_array($extension_helper)){
-                            foreach($extension_helper as $key => $extension_helper_item) {
-                                if ($extension_helper_item) {
-                                    $autoload_helpers[$extension_helper_item] = '../extensions/'.$module . '/helpers/' . $extension_helper_item;
-                                }
+                    if($extension_helper && is_array($extension_helper)){
+                        foreach($extension_helper as $key => $extension_helper_item) {
+                            if ($extension_helper_item) {
+                                $autoload_helpers[$extension_helper_item] = '../extensions/'.$module . '/helpers/' . $extension_helper_item;
                             }
                         }
                     }

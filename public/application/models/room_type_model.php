@@ -80,8 +80,10 @@ class Room_type_model extends CI_Model {
                
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+        if (!function_exists('apply_curl_ssl_options')) {
+            require_once APPPATH . 'helpers/curl_helper.php';
+        }
+        apply_curl_ssl_options($curl);
         $response = curl_exec($curl);
         
         curl_close($curl);

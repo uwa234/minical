@@ -277,9 +277,18 @@ innGrid.buildCalendar = function(){
 			checkOutDate = formatDate(addDays(endDate, 1),"yyyy-MM-dd");
 
             var clicked = Math.abs(mouseCoord.down.x - mouseCoord.up.x) <= 2; // tolerance
+            var room = rooms[view.lastSelectedRow];
 
-            if (!clicked) {
-                innGrid.createNewBooking(checkInDate, checkOutDate, rooms[view.lastSelectedRow]);
+            if (!clicked && room && room.room_id && typeof innGrid.showCalendarRangeActions === 'function') {
+                innGrid.showCalendarRangeActions(checkInDate, checkOutDate, {
+                    room_id: room.room_id || room.id,
+                    room_type_id: room.room_type_id,
+                    room_name: room.name
+                }, { left: mouseCoord.up.x + 12, top: mouseCoord.up.y + 12 });
+            } else if (!clicked) {
+                innGrid.createNewBooking(checkInDate, checkOutDate, room);
+            } else {
+                innGrid.createNewBooking(checkInDate, checkOutDate, room);
             }
 
 		    $('#notification-drag-box').hide();
@@ -888,8 +897,8 @@ function getCalendarBookings(start, end, callback){
                         if(value.is_group_booking != null) {
                             bookingsArray[index].group_booking = 'group-booking';
                         }
-						if (value.state == 3) {// if the booking is Out of Order
-							bookingsArray[index].customer_name = l('OUT OF ORDER');
+						if (value.state == 3) {
+							bookingsArray[index].customer_name = (typeof l === 'function' ? l('maintenance', true) : null) || 'Maintenance';
 						}
 						// if there is more than one "staying" customer
 						else if (numberOfStayingGuests > 1 )

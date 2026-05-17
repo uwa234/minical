@@ -93,8 +93,9 @@
 .fc-event3,
 .fc-agenda .holiday .fc-event-time,
 .fc-event3 a {
-    background-color: #ddd; /* background color */
-    color: black;           /* text color */
+    background-color: #000000 !important;
+    border-color: #000000 !important;
+    color: #ffffff !important;
     }
 	
 /*

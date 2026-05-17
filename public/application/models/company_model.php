@@ -26,6 +26,29 @@ class Company_model extends CI_Model {
 		}
 	}
     
+    /**
+     * Properties with automated night audit enabled (no subscription filter).
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    function get_companies_with_auto_night_audit()
+    {
+        $this->db->select(
+            'c.company_id, c.name, c.selling_date, c.time_zone, c.night_audit_auto_run_is_enabled, c.night_audit_auto_run_time'
+        );
+        $this->db->from('company as c');
+        $this->db->where('c.is_deleted', 0);
+        $this->db->where('c.night_audit_auto_run_is_enabled', 1);
+
+        $query = $this->db->get();
+
+        if ($query->num_rows() >= 1) {
+            return $query->result_array();
+        }
+
+        return null;
+    }
+
     function get_all_companies($is_ota_connected = false, $ota_key = null)
 	{
 		$subscription_state = array('trialing','active');

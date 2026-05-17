@@ -1773,7 +1773,7 @@ $(function() {
                         if (data.success) {
                             window.location.reload();
                         } else if (data.expire) {
-                            window.location.href = getBaseURL() + 'settings/integrations/payment_gateways';
+                            window.location.href = getBaseURL() + 'settings/accounting/payment_gateways';
                         } else {
                             var error_html = "";
                             // console.log(jQuery.isArray( data.message ));

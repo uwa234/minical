@@ -250,6 +250,41 @@ class Extension_model extends CI_Model {
         }
 	}
 
+	/**
+	 * Register filesystem extensions marked is_default_active in config.php.
+	 */
+	function ensure_default_extensions_registered($modules, $company_id, $vendor_id = 0)
+	{
+		if (!$modules || !$company_id) {
+			return;
+		}
+
+		foreach ($modules as $module) {
+			if (empty($module['is_default_active'])) {
+				continue;
+			}
+
+			$extension_name = $module['extension_folder_name'];
+
+			$existing = $this->get_extensions(array($extension_name), $company_id);
+			if (!$existing) {
+				$this->update_extension(array(
+					'extension_name' => $extension_name,
+					'company_id' => $company_id,
+					'is_active' => 1,
+				));
+			}
+
+			if (!$this->get_vendor_extension_status($extension_name, 1, $vendor_id)) {
+				$this->db->insert('extensions_x_vendor', array(
+					'extension_name' => $extension_name,
+					'vendor_id' => $vendor_id,
+					'is_installed' => 1,
+				));
+			}
+		}
+	}
+
 	function get_vendor_extension_status($extension,$status,$vendor_id){
 		$this->db->select('*');
 		$this->db->from('extensions_x_vendor');

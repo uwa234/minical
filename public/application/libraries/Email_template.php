@@ -1351,9 +1351,11 @@ class Email_template {
             $email_data['confirmation_email_header'] = $company['booking_confirmation_email_header'];
         }
 
-        if ($email_data['customer_email'] == null || strlen($email_data['customer_email']) <= 1) {
-            echo "ERROR: Customer Making Reservation does not have email entered";
-            return;
+        if ($email_data['customer_email'] == null || strlen(trim($email_data['customer_email'])) <= 1) {
+            return array(
+                "success" => false,
+                "message" => "ERROR: Customer Making Reservation does not have email entered"
+            );
         }
 
         $email_list = $company['email'];
@@ -1379,7 +1381,10 @@ class Email_template {
 
         $this->reset_language($company['default_language']);
 
-        return "Email successfully sent to ".$email_list;
+        return array(
+            "success" => true,
+            "message" => "Email successfully sent to ".$email_list
+        );
     }
 
     function send_booking_cancellation_email($booking_id)

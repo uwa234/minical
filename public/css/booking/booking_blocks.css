@@ -38,12 +38,14 @@
 	background-color:#FFD166;
 }
 
-/* Out of Order */
+/* Out of Order / Maintenance */
 .state3 {
-	background-color:#eeeeee; 
+	background-color:#000000;
+	color:#ffffff;
 }
 #booking_table3 {
-	background-color:#dddddd;
+	background-color:#000000;
+	color:#ffffff;
 }
 
 /* Unconfirmed Booking */
@@ -57,9 +59,8 @@
 .fc-event2 a:hover,
 .booking_tr:hover
 {
-	background-color: yellow; 
+	filter: brightness(1.08);
 	cursor: pointer;
-	
 }
 
 

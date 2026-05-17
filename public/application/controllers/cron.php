@@ -5,10 +5,58 @@ class Cron extends CI_Controller
 	function __construct()
 	{
 		parent::__construct();
-        // Load Language Translation Helper
-        $this->load->helper('language_translation');
+        $this->load->helper(array('language_translation', 'curl', 'module'));
         $this->load->model('Channex_model');
+        $this->_enforce_cron_auth();
 	}
+
+    private function _enforce_cron_auth()
+    {
+        if ($this->input->is_cli_request()) {
+            return;
+        }
+
+        $secret = getenv('CRON_AUTH_SECRET');
+        $environment = getenv('ENVIRONMENT') ?: 'development';
+
+        if ($environment === 'production' && !$secret) {
+            show_error('CRON_AUTH_SECRET must be configured in production.', 503);
+        }
+
+        if (!$secret) {
+            return;
+        }
+
+        $provided = $this->input->get_request_header('X-Cron-Auth');
+        if (!$provided) {
+            $provided = $this->input->get('auth');
+        }
+        if (!$provided && $this->uri->segment(3) && hash_equals($secret, $this->uri->segment(3))) {
+            $provided = $this->uri->segment(3);
+        }
+
+        if (!$provided || !hash_equals($secret, $provided)) {
+            show_error('Not authorized', 403);
+        }
+    }
+
+    private function _init_cron_curl($url)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, false);
+        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        apply_curl_ssl_options($ch);
+
+        $headers = cron_auth_curl_headers();
+        if ($headers) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
+
+        return $ch;
+    }
 	
 	function ota_booking_retrieval($authorization_code = null)
 	{	
@@ -21,6 +69,86 @@ class Cron extends CI_Controller
     	
     	$this->get_channex_bookings($authorization_code);
 	}
+
+    /**
+     * Run automated night audit for all properties with night_audit_auto_run_is_enabled.
+     * Schedule every 15 minutes, e.g.:
+     *   curl -H "X-Cron-Auth: $CRON_AUTH_SECRET" https://your-pms/cron/run_automated_night_audit/$CRON_AUTH_SECRET
+     */
+    function run_automated_night_audit($authorization_code = null)
+    {
+        if (getenv('CRON_AUTH_SECRET')) {
+            if (!$authorization_code || $authorization_code !== getenv('CRON_AUTH_SECRET')) {
+                echo 'Not authorized';
+                return;
+            }
+        }
+
+        $this->load->library('automated_night_audit');
+        $results = $this->automated_night_audit->process_all();
+
+        header('Content-Type: application/json');
+        echo json_encode(array('night_audit' => $results));
+    }
+
+    /**
+     * Release inventory blocks whose release_date has passed.
+     * Schedule: curl -H "X-Cron-Auth: $CRON_AUTH_SECRET" https://your-pms/cron/release_inventory_blocks/$CRON_AUTH_SECRET
+     */
+    function release_inventory_blocks($authorization_code = null)
+    {
+        if (getenv('CRON_AUTH_SECRET')) {
+            if (!$authorization_code || $authorization_code !== getenv('CRON_AUTH_SECRET')) {
+                echo 'Not authorized';
+                return;
+            }
+        }
+
+        if (!$this->db->table_exists('inventory_block')) {
+            echo 'inventory_block table missing. Run migration 003.';
+            return;
+        }
+
+        $this->load->model('Inventory_block_model');
+        $released = $this->Inventory_block_model->process_auto_releases();
+
+        header('Content-Type: application/json');
+        echo json_encode(array('released' => $released));
+    }
+
+    /**
+     * Pull Booking.com iCal feeds for all properties (availability blocks only).
+     * Schedule: curl -H "X-Cron-Auth: $CRON_AUTH_SECRET" https://your-pms/cron/import_booking_com_ical/$CRON_AUTH_SECRET
+     */
+    function import_booking_com_ical($authorization_code = null)
+    {
+        if (getenv('CRON_AUTH_SECRET')) {
+            if (!$authorization_code || $authorization_code !== getenv('CRON_AUTH_SECRET')) {
+                echo 'Not authorized';
+                return;
+            }
+        }
+
+        $this->load->model('Channel_ical_model');
+        $this->load->model('Company_model');
+
+        if (!$this->db->table_exists('channel_ical_mapping')) {
+            echo 'channel_ical_mapping table missing. Run migration 002.';
+            return;
+        }
+
+        $companies = $this->Company_model->get_all_companies();
+        $summary = array();
+
+        foreach ($companies as $company) {
+            $results = $this->Channel_ical_model->import_all_for_company($company['company_id']);
+            if (!empty($results)) {
+                $summary[$company['company_id']] = $results;
+            }
+        }
+
+        echo json_encode(array('imported' => $summary));
+    }
 
 	function get_channex_bookings($authorization_code)
 	{
@@ -45,14 +173,7 @@ class Cron extends CI_Controller
 
 			    $url = base_url()."cron/channex_get_bookings/".$company_id;
 			    
-			    $ch = curl_init();
-			    curl_setopt($ch, CURLOPT_URL, $url);
-			    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-			    curl_setopt($ch, CURLOPT_AUTOREFERER, false);
-			    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-			    curl_setopt($ch, CURLOPT_HEADER, 0);
-			    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-			    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+			    $ch = $this->_init_cron_curl($url);
 			    $result = curl_exec($ch);
 			    curl_close($ch);
 
@@ -171,8 +292,7 @@ class Cron extends CI_Controller
 	           
 	    curl_setopt($curl, CURLOPT_URL, $url);
 	    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-	    curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
-	    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+	    apply_curl_ssl_options($curl);
 	    $response = curl_exec($curl);
 
 	    $response = json_decode($response, true);
@@ -236,14 +356,7 @@ class Cron extends CI_Controller
             $protocol = $this->config->item('server_protocol');
 		    $url = base_url()."cron/full_sync_cron/".$company_id;
 
-		    $ch = curl_init();
-		    curl_setopt($ch, CURLOPT_URL, $url);
-		    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		    curl_setopt($ch, CURLOPT_AUTOREFERER, false);
-		    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-		    curl_setopt($ch, CURLOPT_HEADER, 0);
-		    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-		    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+		    $ch = $this->_init_cron_curl($url);
 		    $result = curl_exec($ch);
 		    curl_close($ch);
 
@@ -281,7 +394,7 @@ class Cron extends CI_Controller
             {
                 $extension_helper = array();
                 if($module === '.' || $module === '..') continue;
-                if(is_dir($modules_path) . '/' . $module)
+                if(is_module_directory($modules_path, $module))
                 {
 
                     if(file_exists('application/extensions/'.$module . '/hooks/actions.php')) {
@@ -368,7 +481,7 @@ class Cron extends CI_Controller
 	            {
 	                $extension_helper = array();
 	                if($module === '.' || $module === '..') continue;
-	                if(is_dir($modules_path) . '/' . $module)
+	                if(is_module_directory($modules_path, $module))
 	                {
 
 	                    if(file_exists('application/extensions/'.$module . '/hooks/actions.php')) {
@@ -421,7 +534,7 @@ class Cron extends CI_Controller
         foreach($modules as $module)
         {
             if($module === '.' || $module === '..') continue;
-            if(is_dir($modules_path) . '/' . $module)
+	                if(is_module_directory($modules_path, $module))
             {
                 $config = array();
                 $module_config = $modules_path . $module . '/config/config.php';
@@ -458,14 +571,7 @@ class Cron extends CI_Controller
 
 		    $url = base_url()."cron/send_payment_reminder_cron/".$company_id;
 		    
-		    $ch = curl_init();
-		    curl_setopt($ch, CURLOPT_URL, $url);
-		    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		    curl_setopt($ch, CURLOPT_AUTOREFERER, false);
-		    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-		    curl_setopt($ch, CURLOPT_HEADER, 0);
-		    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-		    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+		    $ch = $this->_init_cron_curl($url);
 		    $result = curl_exec($ch);
 		    curl_close($ch);
 
@@ -606,14 +712,7 @@ class Cron extends CI_Controller
 
 			    $url = base_url()."cron/siteminder_get_bookings/".$company_id;
 			    
-			    $ch = curl_init();
-			    curl_setopt($ch, CURLOPT_URL, $url);
-			    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-			    curl_setopt($ch, CURLOPT_AUTOREFERER, false);
-			    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-			    curl_setopt($ch, CURLOPT_HEADER, 0);
-			    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-			    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+			    $ch = $this->_init_cron_curl($url);
 			    $result = curl_exec($ch);
 			    curl_close($ch);
 

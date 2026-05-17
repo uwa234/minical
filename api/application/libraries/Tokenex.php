@@ -49,8 +49,10 @@ class Tokenex {
         
         $url = $api_url.$method_name;
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        if (!function_exists('apply_curl_ssl_options')) {
+            require_once dirname(__DIR__, 3) . '/public/application/helpers/curl_helper.php';
+        }
+        apply_curl_ssl_options($ch);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', "Content-Length:$content_length"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);

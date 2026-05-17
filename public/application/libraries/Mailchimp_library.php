@@ -63,6 +63,10 @@ class Mailchimp_library
 		$url = $this->api_endpoint.'/'.$method.'.json';
 
 		$ch = curl_init();
+		if (!function_exists('apply_curl_ssl_options')) {
+			require_once __DIR__ . '/../helpers/curl_helper.php';
+		}
+		apply_curl_ssl_options($ch);
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

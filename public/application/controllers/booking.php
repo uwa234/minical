@@ -1,6 +1,16 @@
 <?php
+
+require_once APPPATH . 'traits/Booking_logs_trait.php';
+require_once APPPATH . 'traits/Booking_availability_trait.php';
+require_once APPPATH . 'traits/Booking_payment_trait.php';
+require_once APPPATH . 'traits/Booking_room_operations_trait.php';
+
 class Booking extends MY_Controller
 {
+    use Booking_logs_trait;
+    use Booking_availability_trait;
+    use Booking_payment_trait;
+    use Booking_room_operations_trait;
     function __construct()
     {
         parent::__construct();
@@ -324,387 +334,6 @@ class Booking extends MY_Controller
         $this->load->view('includes/bootstrapped_template', $data + $filters);
     }
 
-
-    /**
-     * finds difference between booking information existing in the database (old)
-     * and the booking information gathered from post data (new_data)
-     */
-
-    function _generate_logs($new_data, $old_data)
-    {
-        $new_array = isset($new_data['customers']) && isset($new_data['customers']['staying_customers']) ? $new_data['customers']['staying_customers'] : array();
-        $old_array = isset($old_data['customers']) && isset($old_data['customers']['staying_customers']) ?$old_data['customers']['staying_customers'] : array();
-        $flag = 2;
-        $added_arr = $delete_arr = array();
-        foreach($new_array as $value){
-
-            $flag = 2;
-            foreach($old_array as $v2){
-
-                if($value['customer_name'] == $v2['customer_name'] && !empty($value['customer_name'])){
-                    $flag = 1;
-
-                }
-
-            }
-            if($flag != 1)
-            {
-                $added_arr[] = $value['customer_name'];  // added guest
-            }
-
-
-        }
-
-        foreach($old_array as $value){
-
-            $deleteflag = 2;
-            foreach($new_array as $v2){
-
-                if($value['customer_id'] == $v2['customer_id']){
-                    $deleteflag = 1;
-                }
-
-            }
-
-            if($deleteflag != 1)
-            {
-                if(in_array($value['customer_name'], $added_arr)){
-
-                }else{
-                    $delete_arr[] = $value['customer_name'];  // deleted guest
-                }
-
-            }
-
-        }
-
-        // Load existing_data from database
-        $fields = array(
-            'booking' => Array(
-                'state' => 5,
-                'charge_type_id' => 6,
-                'adult_count' => 7,
-                'children_count' => 8,
-                'rate' => 9,
-                'use_rate_plan' => 10,
-                'rate_plan_id' => 11,
-                'booking_notes' => 12,
-                'color' => 13,
-                'is_deleted' => 14,
-                'pay_period' => 20,
-                'booking_customer_name' => 18,
-                'source' => 23
-            ),
-            'booking_block' => Array(
-                'check_in_date' => 15,
-                'check_out_date' => 16,
-                'room_id' => 17,
-            ),
-            'customers' => Array(
-                //'paying_customer' => 18,
-                'staying_customers' => 19
-            )
-        );
-        $new_data = array(
-            'booking' => Array(
-                'state' => isset($new_data['booking']['state']) ? $new_data['booking']['state'] : null,
-                'charge_type_id' => isset($new_data['rooms'][0]['charge_type_id']) ? $new_data['rooms'][0]['charge_type_id'] : null,
-                'adult_count' => isset($new_data['booking']['adult_count']) ? $new_data['booking']['adult_count'] : null,
-                'children_count' => isset($new_data['booking']['children_count']) ? $new_data['booking']['children_count'] : null,
-                'rate' => isset($new_data['rooms'][0]['rate']) ? $new_data['rooms'][0]['rate'] : null,
-                'use_rate_plan' => isset($new_data['rooms'][0]['use_rate_plan']) ? $new_data['rooms'][0]['use_rate_plan'] : null,
-                'rate_plan_id' => null,
-                'booking_notes' => isset($new_data['booking']['booking_notes']) ? $new_data['booking']['booking_notes'] : null,
-                'color' => isset($new_data['booking']['color']) ? $new_data['booking']['color'] : null,
-                'is_deleted' => null,
-                'pay_period' => isset($new_data['rooms'][0]['pay_period']) ? $new_data['rooms'][0]['pay_period'] : null,
-                'booking_customer_name' => isset($new_data['customers']['paying_customer']['customer_name']) ? $new_data['customers']['paying_customer']['customer_name'] : null,
-                'source'=> isset($new_data['booking']['source']) ? $new_data['booking']['source'] : null
-            ),
-            'booking_block' => Array(
-                'check_in_date' => isset($new_data['rooms'][0]['check_in_date']) ? $new_data['rooms'][0]['check_in_date'] : null,
-                'check_out_date' => isset($new_data['rooms'][0]['check_out_date']) ? $new_data['rooms'][0]['check_out_date'] : null,
-                'room_id' => (isset($new_data['rooms'][0]['room_id']) && $new_data['rooms'][0]['room_id']) ? $new_data['rooms'][0]['room_id'] : 0,
-            ),
-            'customers' => Array(
-                //'paying_customer' => $new_data['customers']['paying_customer']['customer_name'],
-                'staying_customers' => isset($new_data['customers']['staying_customers']) ? $new_data['customers']['staying_customers'] : array()
-            )
-        );
-
-        $logs = array();
-
-        $date_time = gmdate('Y-m-d H:i:s');
-
-        // Find the differences between existing data and new data.
-        foreach ($fields as $category => $sub_fields)
-        {
-            foreach ($sub_fields as $index => $log_type){
-                if (isset($old_data[$category]) && isset($new_data[$category]) && isset($old_data[$category][$index]) && isset($new_data[$category][$index]) && $old_data[$category][$index] != $new_data[$category][$index])
-                {
-                    if($log_type == '19'){
-
-                        if (!empty($added_arr)) { // guest added
-                            $added_guest_string = implode(',', $added_arr);
-                            $added_guest = "A guest named " . $added_guest_string ." was added";
-                        }
-                        if (!empty($delete_arr)) { // guest deleted
-                            if((!empty($new_data['booking']['booking_customer_name']) && !empty($old_data['booking']['booking_customer_name'])) && ($new_data['booking']['booking_customer_name'] != $old_data['booking']['booking_customer_name'])){
-
-                            }else{
-                                $deleted_guest_string = implode(',', $delete_arr);
-                                $deleted_guest = "A guest named " . $deleted_guest_string ." was deleted";
-                            }
-
-                        }
-                        if(!empty($added_guest) && !empty($deleted_guest)){
-                            $guest_log = $added_guest." and ".$deleted_guest;
-                        }elseif (!empty($added_guest)) {
-                            $guest_log = $added_guest;
-                        }elseif (!empty($deleted_guest)) {
-                            $guest_log = $deleted_guest;
-                        }
-
-                        if(!empty($guest_log)){
-                            $log_type = 19;
-                            $logs[] = Array(
-                                "booking_id" => $old_data['booking']['booking_id'],
-                                "date_time" => $date_time,
-                                "log_type" => $log_type,
-                                "log" => $guest_log,
-                                "user_id" => $this->user_id,
-                                "selling_date" => $this->selling_date
-                            );
-                        }
-                    }else{
-
-                        $log_data = $new_data[$category][$index];
-                        if($log_type == 18){
-                            if(!empty($new_data[$category][$index]) && empty($old_data[$category][$index])){
-                                $log_data = 'A paying customer named '.$new_data[$category][$index].' was added';
-                            }elseif(!empty($new_data[$category][$index]) && !empty($old_data[$category][$index])){
-                                $log_data = 'A paying customer named '.$old_data[$category][$index].' was deleted and a paying customer named '.$new_data[$category][$index].' (who was a guest) updated';
-                            }else{
-                                $log_data = 'A paying customer named '.$old_data[$category][$index].' was deleted';
-                            }
-                        }
-                        if($log_type == 12){
-                            if(!empty($new_data[$category][$index]) && empty($old_data[$category][$index])){
-                                $log_data = 'Added booking notes is '.$new_data[$category][$index];
-                            }elseif(!empty($new_data[$category][$index]) && !empty($old_data[$category][$index])){
-                                $log_data = 'Changed booking notes to '.$new_data[$category][$index];
-                            }elseif(empty($new_data[$category][$index]) && !empty($old_data[$category][$index])){
-                                $log_data = 'Deleted booking notes is '.$old_data[$category][$index];
-                            }
-                        }
-
-                        if(isset($log_data)){
-                            $logs[] = Array(
-                                "booking_id" => $old_data['booking']['booking_id'],
-                                "date_time" => $date_time,
-                                "log_type" => $log_type,
-                                "log" => $log_data,
-                                "user_id" => $this->user_id,
-                                "selling_date" => $this->selling_date
-                            );
-                        }
-                    }
-                }
-            }
-        }
-
-        if (empty($logs))
-            return;
-
-        $this->Booking_log_model->insert_logs($logs);
-    }
-
-    function get_available_room_types_in_JSON($check_in_date = null, $check_out_date = null, $isAJAX = true)
-    {
-        if(!$check_in_date && !$check_out_date)
-        {
-            $check_in_date = $this->input->post('check_in_date');
-            $check_out_date =  $this->input->post('check_out_date');
-            $isAJAX = $this->input->post('isAJAX');
-
-            $check_in_date = urldecode($check_in_date);
-            $check_out_date = urldecode($check_out_date);
-        }
-
-        $check_in_date = date('Y-m-d H:i:s', strtotime($check_in_date));
-        $check_out_date = date('Y-m-d H:i:s', strtotime($check_out_date));
-        //If current selling date is between check-in and check-out date
-        //use current selling date as the check in date for checking available rooms
-        if ($check_in_date <= $this->selling_date && $this->selling_date <= $check_out_date) {
-            $check_in_date = $this->selling_date;
-        }
-        $company_data = $this->company_data; //$this->Company_model->get_company($this->company_id);
-        $force_room_selection = $company_data['force_room_selection'];
-
-        $room_types_array = $this->Room_type_model->get_room_types_and_availabilities(
-            $this->company_id,
-            $check_in_date,
-            $check_out_date
-        );
-        $available_room_types = $room_types_array['available_room_types'];
-        $occupancies = $room_types_array['occupancies'];
-
-        if(!$force_room_selection)
-        {
-            // unassigned rooms allowed
-            $room_types = array();
-            $filters = array(
-                'start_date' => $check_in_date,
-                'end_date' => $check_out_date,
-                'unassigned_bookings' => true,
-                'state' => 'active'
-            );
-            $bookings = $this->Booking_model->get_bookings($filters, null, null ,true);
-            foreach ($bookings as $booking) {
-                if($booking['room_id'] && $booking['check_out_date'] > $check_in_date && $check_out_date > $booking['check_in_date'])
-                {
-                    $_room_type_id = $booking['r_room_type_id'] ? $booking['r_room_type_id'] : $booking['brh_room_type_id'];
-                    if(!isset($room_types[$_room_type_id])) {
-                        $room_types[$_room_type_id] = array();
-                    }
-                    if(!isset($room_types[$_room_type_id][$booking['room_id']])) {
-                        $room_types[$_room_type_id][$booking['room_id']] = array();
-                    }
-                    $room_types[$_room_type_id][$booking['room_id']][] = $booking;
-                }
-            }
-            foreach ($bookings as $booking) {
-                if(!$booking['room_id'] && $booking['check_out_date'] > $check_in_date && $check_out_date > $booking['check_in_date'])
-                {
-                    if (isset($room_types[$booking['brh_room_type_id']]) && $room_types[$booking['brh_room_type_id']]) {
-                        $overlapping_with_other_bookings = false;
-                        foreach ($room_types[$booking['brh_room_type_id']] as $key => $room_bookings) {
-
-                            //check if room_booking.start-date and room_booking.end-date overlaps with new booking-start-date and new booking-end-adte;
-                            foreach ($room_bookings as $room_booking)
-                            {
-                                if ($booking['check_out_date'] > $room_booking['check_in_date'] && $booking['check_in_date'] < $room_booking['check_out_date']) { // overlapping
-
-                                    // assign this booking to same room as not overlapping
-                                    $overlapping_with_other_bookings = true;
-                                }
-                            }
-                        }
-
-                        if($overlapping_with_other_bookings) {
-                            // assign this booking to new room
-                            $room_types[$booking['brh_room_type_id']][] = array($booking);
-                        } else {
-                            $room_types[$booking['brh_room_type_id']][$key][] = $booking;
-                        }
-
-                    } else {
-                        $room_types[$booking['brh_room_type_id']][] = array($booking);
-                    }
-                }
-            }
-
-            foreach ($available_room_types as $key => $room_type) {
-                // update the availability of the available room type
-                $availability = $room_type['availability'];
-
-                $unassigned_occupancy = isset($room_types[$room_type['id']]) ? count($room_types[$room_type['id']]) : 0;
-                $availability = $availability - $unassigned_occupancy;
-
-                $available_room_types[$key]['id']           = $room_type['id'];
-                $available_room_types[$key]['availability'] = $availability > 0 ? $availability : 0;
-            }
-        }
-        else
-        {
-            foreach ($available_room_types as $key => $room_type) {
-                // update the availability of the available room type
-                $availability = $room_type['availability'];
-                foreach ($occupancies as $occupancy) {
-                    if ($room_type['id'] == $occupancy['id']) {
-                        $availability = $room_type['availability'] - $occupancy['occupancy'];
-                    }
-                }
-
-                $available_room_types[$key]['id']           = $room_type['id'];
-                $available_room_types[$key]['availability'] = $availability > 0 ? $availability : 0;
-            }
-        }
-        if ($isAJAX) {
-            echo json_encode($available_room_types);
-            return;
-        } else {
-            return $available_room_types;
-        }
-    }
-
-    function get_available_rooms_in_AJAX($check_in_date = null, $check_out_date = null, $room_type_id = null, $booking_id = null, $room_id = null, $isAJAX = true)
-    {
-        $check_in_date = $check_in_date ? $check_in_date : sqli_clean($this->security->xss_clean($this->input->post('check_in_date', TRUE)));
-        $check_out_date = $check_out_date ? $check_out_date : sqli_clean($this->security->xss_clean($this->input->post('check_out_date', TRUE)));
-        $room_type_id = $room_type_id ? $room_type_id : sqli_clean($this->security->xss_clean($this->input->post('room_type_id', TRUE)));
-        $booking_id = $booking_id ? $booking_id : sqli_clean($this->security->xss_clean($this->input->post('booking_id', TRUE)));
-        $room_id = $room_id ? $room_id : sqli_clean($this->security->xss_clean($this->input->post('room_id', TRUE)));
-
-        $check_in_date = date('Y-m-d H:i:s', strtotime($check_in_date));
-        $check_out_date = date('Y-m-d H:i:s', strtotime($check_out_date));
-
-        if ($check_in_date <= $this->selling_date." 00:00:00" && $this->selling_date." 00:00:00" <= $check_out_date) {
-            $check_in_date = $this->selling_date." 00:00:00";
-        }
-
-        $available_rooms = $this->Room_model->get_available_rooms(
-            $check_in_date,
-            $check_out_date,
-            $room_type_id,
-            $booking_id,
-            null,
-            0,
-            null,
-            null,
-            $room_id
-        );
-
-        if ($isAJAX) {
-            echo json_encode($available_rooms);
-            return;
-        } else {
-            return $available_rooms;
-        }
-    }
-
-    function get_rooms_available()
-    {
-        $check_in_date = sqli_clean($this->security->xss_clean($this->input->post('check_in_date')));
-        $check_out_date = sqli_clean($this->security->xss_clean($this->input->post('check_out_date')));
-
-        $booked_reservations = $this->Room_model->get_rooms_for_reservations(
-            $check_in_date,
-            $check_out_date,
-            $this->company_id
-        );
-
-        foreach($booked_reservations as $book)
-        {
-            $check_in_date = $book['check_in_date'];
-            $check_out_date = $book['check_out_date'];
-
-            $diff = abs(strtotime($check_out_date) - strtotime($check_in_date));
-
-            $years = floor($diff / (365*60*60*24));
-            $months = floor(($diff - $years * 365*60*60*24) / (30*60*60*24));
-            $days = floor(($diff - $years * 365*60*60*24 - $months*30*60*60*24)/ (60*60*24));
-
-            for($i = 0; $i <= $days ; $i++)
-            {
-                $dates[] = $check_in_date;
-                $check_in_date = date('Y-m-d',strtotime($check_in_date . "+1 days"));
-            }
-        }
-        //print_r($dates);
-        $json = json_encode($dates);
-        echo $json;
-    }
 
     function get_bookings_in_JSON_debug()
     {
@@ -1103,9 +732,75 @@ class Booking extends MY_Controller
         $this->load->view('includes/bootstrapped_template', $data);
     }
 
-    // If there are continuous bloking blocks that are split, then combine them.
-    function _combine_booking_blocks($booking_id) {
-        $this->Booking_room_history_model->check_and_combine_booking_blocks($booking_id);
+    /**
+     * Move guest to another room (in-house room change / room move).
+     */
+    function guest_room_move_AJAX()
+    {
+        $booking_id = sqli_clean($this->security->xss_clean($this->input->post('booking_id')));
+        $room_id = sqli_clean($this->security->xss_clean($this->input->post('room_id')));
+        $rate_plan_id = sqli_clean($this->security->xss_clean($this->input->post('rate_plan_id')));
+        $update_rates = $this->input->post('update_rates');
+        $update_rates = ($update_rates === null || $update_rates === '' || $update_rates === '1' || $update_rates === true);
+
+        $result = $this->_move_guest_room($booking_id, $room_id, array(
+            'rate_plan_id' => $rate_plan_id ? $rate_plan_id : null,
+            'update_rates' => $update_rates,
+        ));
+
+        echo json_encode($result);
+    }
+
+    /**
+     * Swap rooms between two in-house bookings.
+     */
+    function room_exchange_AJAX()
+    {
+        $booking_id_a = sqli_clean($this->security->xss_clean($this->input->post('booking_id')));
+        $booking_id_b = sqli_clean($this->security->xss_clean($this->input->post('exchange_booking_id')));
+
+        $result = $this->_exchange_guest_rooms($booking_id_a, $booking_id_b);
+        echo json_encode($result);
+    }
+
+    /**
+     * Clear room assignment on the active stay segment.
+     */
+    function unassign_room_AJAX()
+    {
+        $booking_id = sqli_clean($this->security->xss_clean($this->input->post('booking_id')));
+        $result = $this->_unassign_guest_room($booking_id);
+        echo json_encode($result);
+    }
+
+    /**
+     * List in-house guests (except current) for room exchange picker.
+     */
+    function get_room_exchange_candidates_AJAX()
+    {
+        $booking_id = sqli_clean($this->security->xss_clean($this->input->post('booking_id')));
+        $selling_date = $this->selling_date;
+
+        $sql = "
+            SELECT DISTINCT b.booking_id, c.customer_name, r.room_name, r.room_id
+            FROM booking AS b
+            INNER JOIN booking_block AS brh ON brh.booking_id = b.booking_id
+            LEFT JOIN customer AS c ON c.customer_id = b.booking_customer_id
+            LEFT JOIN room AS r ON r.room_id = brh.room_id AND r.is_deleted = '0'
+            WHERE
+                b.company_id = '{$this->company_id}'
+                AND b.booking_id != '{$booking_id}'
+                AND b.is_deleted != '1'
+                AND b.state = '" . INHOUSE . "'
+                AND DATE(brh.check_in_date) <= '{$selling_date}'
+                AND DATE(brh.check_out_date) > '{$selling_date}'
+                AND brh.room_id IS NOT NULL AND brh.room_id != 0
+            ORDER BY r.room_name ASC, c.customer_name ASC
+            LIMIT 100
+        ";
+
+        $rows = $this->db->query($sql)->result_array();
+        echo json_encode(array('success' => true, 'candidates' => $rows));
     }
 
     function get_rate_plans_JSON($room_type_id = null, $previous_rate_plan_id = null, $isAJAX = true) {
@@ -1213,39 +908,6 @@ class Booking extends MY_Controller
         }
     }
 
-    function _create_booking_log($booking_id, $log, $log_type = USER_LOG) {
-
-        $this->Booking_log_model->insert_log(
-            array(
-                "selling_date" => $this->selling_date,
-                "booking_id" => $booking_id,
-                "date_time" => gmdate('Y-m-d H:i:s'),
-                "log_type" => $log_type,
-                "log" => $log,
-                "user_id" => $this->user_id
-            )
-        );
-    }
-
-    function _create_booking_log_batch ($booking_ids, $log, $log_type = USER_LOG) {
-
-        $batch = array();
-
-        foreach ($booking_ids as $booking_id) {
-            $batch[] = array(
-                "selling_date" => $this->selling_date,
-                "booking_id" => $booking_id,
-                "date_time" => gmdate('Y-m-d H:i:s'),
-                "log_type" => $log_type,
-                "log" => $log,
-                "user_id" => $this->user_id
-            );
-        }
-
-        $this->Booking_log_model->insert_logs($batch);
-    }
-
-    
     /* New shit! 2015-03-09 Jaeyun */
 
     function get_booking_AJAX() {
@@ -1808,20 +1470,9 @@ class Booking extends MY_Controller
         $payment_details = $this->Payment_model->get_payments($booking_id);
         $booking_existing_data = $this->Booking_model->get_booking($booking_id);
 
-        $final_amount = 0;
-
-        if($new_state == 4 && $payment_details)
-        {
-            foreach($payment_details as $payment)
-            {
-                $final_amount += $payment['amount'];
-            }
-
-            if(isset($final_amount) && ($booking_existing_data['balance'] && $booking_existing_data['balance_without_forecast']) && !$this->booking_cancelled_with_balance)
-            {
-                echo json_encode(array('response' => 'failure', 'message' => l('A payment has been made to the room(s). Please refund or delete the payment record and then cancel the reservation', true)));
-                return;
-            }
+        if ($this->_cancellation_blocked_by_payments($booking_id, $new_state, $booking_existing_data)) {
+            $this->_respond_booking_payment_failure('A payment has been made to the room(s). Please refund or delete the payment record and then cancel the reservation');
+            return;
         }
 
         // convert forecast charges into custom charges for hourly bookings
@@ -1832,27 +1483,9 @@ class Booking extends MY_Controller
             $new_state == CHECKOUT
         )
         {
-
-            // check if payment is done or not
-            if(empty($payment_details))
-            {
-                if(($booking_existing_data['balance'] || $booking_existing_data['balance_without_forecast']) && $this->restrict_checkout_with_balance)
-                {
-                    echo json_encode(array('response' => 'failure', 'message' => l('You are unable to checkout with a balance on the invoice', true)));
-                    return;
-                }
-            } else {
-
-                $final_amount = 0;
-                foreach($payment_details as $payment)
-                {
-                    $final_amount += $payment['amount'];
-                }
-
-                if($booking_existing_data['rate'] != $final_amount){
-                    echo json_encode(array('response' => 'failure', 'message' => l('You are unable to checkout with a balance on the invoice', true)));
-                    return;
-                }
+            if ($this->_checkout_blocked_by_hourly_balance($payment_details, $booking_existing_data, $new_state, $new_data)) {
+                $this->_respond_booking_payment_failure('You are unable to checkout with a balance on the invoice');
+                return;
             }
 
             $charge_data = Array(
@@ -2469,6 +2102,16 @@ class Booking extends MY_Controller
 
                     $this->_combine_booking_blocks($booking_id); // combine booking blocks if plausible
 
+                    $this->_apply_folio_rates_after_room_change(
+                        $booking_id,
+                        $latest_block['room_id'],
+                        $new_room_id,
+                        $new_room_type_id,
+                        isset($room['rate_plan_id']) ? $room['rate_plan_id'] : null,
+                        $this->selling_date,
+                        date('Y-m-d', strtotime($block['check_out_date']))
+                    );
+
                 } else { // room has not been changed. Hence, just update check-in and check-out date
 
                     // only change check in date when editing reservation
@@ -2868,20 +2511,9 @@ class Booking extends MY_Controller
     function delete_booking_AJAX() {
         $booking_id = $this->input->post('booking_id');
 
-        $payment_details = $this->Payment_model->get_payments($booking_id);
-        $final_amount = 0;
-
-        if($payment_details)
-        {
-            foreach($payment_details as $payment)
-            {
-                $final_amount += $payment['amount'];
-            }
-            if($final_amount)
-            {
-                echo json_encode(array('response' => 'failure', 'message' => l('A payment has been made to the room(s). Please refund or delete the payment record and then cancel the reservation', true)));
-                die;
-            }
+        if ($this->_deletion_blocked_by_payments($booking_id)) {
+            $this->_respond_booking_payment_failure('A payment has been made to the room(s). Please refund or delete the payment record and then cancel the reservation');
+            die;
         }
         $this->Booking_model->delete_booking($booking_id);
 

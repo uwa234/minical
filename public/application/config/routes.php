@@ -1,4 +1,6 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+require_once APPPATH . 'helpers/module_helper.php';
 /*
 | -------------------------------------------------------------------------
 | URI ROUTING
@@ -53,17 +55,15 @@ $modules = scandir($modules_path);
 foreach($modules as $module)
 {
     $extension_route = array();
-    if($module === '.' || $module === '..') continue;
-    if(is_dir($modules_path) . '/' . $module)
+    if(!is_module_directory($modules_path, $module)) continue;
+
+    $routes_path = $modules_path . $module . '/config/route.php';
+    if(file_exists($routes_path))
     {
-        $routes_path = $modules_path . $module . '/config/route.php';
-        if(file_exists($routes_path))
-        {
-            require($routes_path);
-            foreach($extension_route as $key => $extension_route_item) {
-                $route[$key] = $module . '/' . $extension_route_item;
-                $module_permission[$key] = $module . '/' . $extension_route_item;
-            }
+        require($routes_path);
+        foreach($extension_route as $key => $extension_route_item) {
+            $route[$key] = $module . '/' . $extension_route_item;
+            $module_permission[$key] = $module . '/' . $extension_route_item;
         }
     }
 }

@@ -6,6 +6,15 @@ innGrid._getStripeForm = function() {
         .append(innGrid._getHorizontalInput("Publishable Key", "stripe_publishable_key", settings.stripe.stripe_publishable_key))
         .append(innGrid._getHorizontalInput("Secret Key", "stripe_secret_key", settings.stripe.stripe_secret_key));
 };
+
+innGrid._getPaystackForm = function() {
+    var publicKey = settings.paystack && settings.paystack.paystack_public_key ? settings.paystack.paystack_public_key : '';
+    var secretKey = settings.paystack && settings.paystack.paystack_secret_key ? settings.paystack.paystack_secret_key : '';
+    return $("<div/>", {})
+        .append(innGrid._getHorizontalInput("Public Key", "paystack_public_key", publicKey))
+        .append(innGrid._getHorizontalInput("Secret Key", "paystack_secret_key", secretKey));
+};
+
 innGrid._getPaymentGatewayForm = function() {
     return $("<div/>", {})
         .append(innGrid._getHorizontalInput("Login", "gateway_login", settings.payment_gateway.gateway_login))
@@ -72,7 +81,9 @@ innGrid._getHorizontalInput = function (label, name, value)
             name == 'gateway_private_key' || 
             name == 'gateway_public_key' || 
             name == 'stripe_publishable_key' || 
-            name == 'stripe_secret_key' || 
+            name == 'stripe_secret_key' ||
+            name == 'paystack_public_key' ||
+            name == 'paystack_secret_key' || 
             name == 'gateway_mid' || 
             name == 'gateway_tid' || 
             name == 'gateway_cid' || 
@@ -124,6 +135,10 @@ innGrid._updatePaymentGatewayForm = function(selected_payment_gateway) {
         $("#form-div").html(innGrid._getStripeForm());
         $("#update-button").text(l("Update", true));
     }
+    else if (selected_payment_gateway === 'paystack') {
+        $("#form-div").html(innGrid._getPaystackForm());
+        $("#update-button").text(l("Update", true));
+    }
     else if (selected_payment_gateway === 'PayflowGateway') {
         $("#form-div").html(innGrid._getPaymentGatewayForm());
         $("#update-button").text(l("Update", true));
@@ -167,6 +182,7 @@ $(function (){
     var gatewayTypes = {
         'None selected': '',
         'Stripe': 'stripe',
+        'Paystack': 'paystack',
         'PayPal Payflow Pro': 'PayflowGateway',
         'FirstData Gateway e4(Payeezy)': 'FirstdataE4Gateway',
         'Chase Payment Gateway': 'ChaseNetConnectGateway',
@@ -253,6 +269,13 @@ $(function (){
                 break;
             case 'stripe':
                 if (fields['stripe_publishable_key'] != '' && fields['stripe_secret_key'] != '') {
+                    valid = true;
+                } else {
+                    alert(l('Please fill all fields'));
+                }
+                break;
+            case 'paystack':
+                if (fields['paystack_public_key'] != '' && fields['paystack_secret_key'] != '') {
                     valid = true;
                 } else {
                     alert(l('Please fill all fields'));

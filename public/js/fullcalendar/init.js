@@ -16,7 +16,59 @@ $(function () {
     $(document).on('click', '#room_edit_save_and_proceed', function () {
         innGrid.saveRoom(selectedRoomID, true);
     });
+
+    $(document).on('click', '#booking-calendar-legend-toggle', function () {
+        var $legend = $('#booking-calendar-legend');
+        var expanded = $legend.toggleClass('is-expanded').hasClass('is-expanded');
+        $(this).attr('aria-expanded', expanded ? 'true' : 'false');
+    });
+
+    initBookingRoomTypeChips();
 });
+
+function initBookingRoomTypeChips() {
+    var $chips = $('#booking-room-type-chips');
+    if (!$chips.length) {
+        return;
+    }
+
+    $(document).on('click', '.booking-room-type-chip', function () {
+        var typeId = $(this).attr('data-room-type-id');
+        if (typeId === undefined || typeId === null) {
+            typeId = '';
+        }
+        $('.booking-room-type-chip').removeClass('is-active').attr('aria-selected', 'false');
+        $(this).addClass('is-active').attr('aria-selected', 'true');
+        $('[name=room-type]').val(typeId);
+        filter_data();
+    });
+
+    $('[name=room-type]').on('change.bookingChips', function () {
+        var val = $(this).val() || '';
+        $('.booking-room-type-chip').removeClass('is-active').attr('aria-selected', 'false');
+        if (val === '') {
+            $('.booking-room-type-chip[data-room-type-id=""]').addClass('is-active').attr('aria-selected', 'true');
+        } else {
+            $('.booking-room-type-chip[data-room-type-id="' + val + '"]').addClass('is-active').attr('aria-selected', 'true');
+        }
+    });
+
+    syncBookingRoomTypeChipsFromSelect();
+}
+
+function syncBookingRoomTypeChipsFromSelect() {
+    var $chips = $('#booking-room-type-chips');
+    if (!$chips.length) {
+        return;
+    }
+    var val = $('[name=room-type]').val() || '';
+    $('.booking-room-type-chip').removeClass('is-active').attr('aria-selected', 'false');
+    if (val === '') {
+        $('.booking-room-type-chip[data-room-type-id=""]').addClass('is-active').attr('aria-selected', 'true');
+    } else {
+        $('.booking-room-type-chip[data-room-type-id="' + val + '"]').addClass('is-active').attr('aria-selected', 'true');
+    }
+}
 
 function filter_data() {
     innGrid.reloadCalendar();
@@ -48,6 +100,7 @@ innGrid.getRooms = function (callback) {
 
             rooms[index].id = roomObject.room_id;
             rooms[index].room_type_id = roomObject.room_type_id;
+            rooms[index].room_type_name = roomObject.room_type_name || '';
 
             rooms[index].sort_order = roomObject.sort_order ? parseInt(roomObject.sort_order) : 0;
 
@@ -182,8 +235,8 @@ innGrid.buildCalendar = function (rooms) {
 
         resourceAreaWidth: calResourceAreaWidth ? calResourceAreaWidth + 'px' : '15%',
         scrollTime: '00:00',
-        aspectRatio: 1,
-        contentHeight: "auto",
+        height: 'auto',
+        contentHeight: 'auto',
 
         header: {
             left: (innGrid.enableHourlyBooking ? 'customCreateBooking, customDayView,customMonthView, prev,customToday,next, customStartDatePicker' : 'customCreateBooking, prev,customToday,next, customStartDatePicker'),
@@ -191,8 +244,8 @@ innGrid.buildCalendar = function (rooms) {
             center: null
         },
         buttonText: {
-            prev: ' ◄ ',
-            next: ' ► '
+            prev: '‹',
+            next: '›'
         },
 
         defaultView: 'customMonthView',
@@ -318,7 +371,7 @@ innGrid.buildCalendar = function (rooms) {
                     var date = moment(info.date).format('YYYY-MM-DD');
                     if (date >= innGrid.color[i]['start_date'] && date <= innGrid.color[i]['end_date']) {
                         if ($(info.el).hasClass("fc-today") && info.view.type === "customMonthView") {
-                            var gradiant_color = 'linear-gradient(to left, #FFFF00,#FFFF00 50%,' + innGrid.color[i]['color_code'] + ' 50%)';
+                            var gradiant_color = 'linear-gradient(to left, #dbeafe,#dbeafe 50%,' + innGrid.color[i]['color_code'] + ' 50%)';
                             info.el.style.background = gradiant_color;
                             $('.fc-time-area.fc-widget-header').find('tr:not(:first-child)').find('th.fc-widget-header[data-date="' + date + '"]').css("background", gradiant_color);
                         } else {
@@ -331,7 +384,13 @@ innGrid.buildCalendar = function (rooms) {
             }
         },
         resourceRender: function (renderInfo) {
-            renderInfo.el.style.backgroundColor = renderInfo.resource.extendedProps.status === "Dirty" ? "#f7e5e1" : (renderInfo.resource.extendedProps.status === "Inspected" ? "#24bb27" : "");
+            var status = renderInfo.resource.extendedProps.status;
+            renderInfo.el.classList.remove('room-status-dirty', 'room-status-inspected');
+            if (status === "Dirty") {
+                renderInfo.el.classList.add('room-status-dirty');
+            } else if (status === "Inspected") {
+                renderInfo.el.classList.add('room-status-inspected');
+            }
 
             var editIcon = (renderInfo.resource.id == '' || renderInfo.resource.id == 'unassigned' || renderInfo.resource.id == 'unassigned-' + renderInfo.resource.extendedProps.room_type_id) ? "" : "<div class='edit-icon'></div>";
 
@@ -400,7 +459,7 @@ innGrid.buildCalendar = function (rooms) {
             var staying_customers = info.event.extendedProps.data.staying_customers && info.event.extendedProps.data.staying_customers != 'null' ? info.event.extendedProps.data.staying_customers : '';
             sourceText = sourceText && sourceText != 'null' ? sourceText : "";
 
-            var resDetails = '<div class="tooltip-reservation" style="display:none;background-color: white;position:absolute;z-index:10001;padding:8px ; font-size: 12px; border: 2px solid rgba(0,0,0,0.5)">' +
+            var resDetails = '<div class="tooltip-reservation" style="display:none;position:absolute;z-index:10001;padding:10px 12px;font-size:12px;">' +
                 '<p><span>' + groupId + '</span> <span>' + groupName + '</span></p>' +
                 '<p style="margin-bottom:8px;text-transform: capitalize;"><strong>' + info.event.extendedProps.data.booking_customer + staying_customers + '</strong></p>' +
                 '<p><strong>' + l("Room", true) + ':</strong> ' + info.event.extendedProps.data.room_name + '</p>' +
@@ -441,12 +500,22 @@ innGrid.buildCalendar = function (rooms) {
 
     if (innGrid.hasBookingPermission == '1') {
         calendar_options.select = function (info) {
+            var roomId = info.resource ? String(info.resource.id) : '';
+            var room = {
+                room_id: roomId,
+                room_type_id: info.resource && info.resource.extendedProps ? info.resource.extendedProps.room_type_id : '',
+                room_name: info.resource ? info.resource.title : ''
+            };
+            var start = moment(info.start).format('YYYY-MM-DD HH:mm:ss');
+            var end = moment(info.end).format('YYYY-MM-DD HH:mm:ss');
+            var pos = info.jsEvent ? { left: info.jsEvent.pageX + 12, top: info.jsEvent.pageY + 12 } : null;
 
-            innGrid.createNewBooking(moment(info.start).format('YYYY-MM-DD HH:mm:ss'), moment(info.end).format('YYYY-MM-DD HH:mm:ss'), {
-                room_id: info.resource.id,
-                room_type_id: info.resource.extendedProps.room_type_id
-            });
-            this.unselect()
+            if (typeof innGrid.showCalendarRangeActions === 'function' && roomId && roomId.indexOf('unassigned') !== 0) {
+                innGrid.showCalendarRangeActions(start, end, room, pos);
+            } else {
+                innGrid.createNewBooking(start, end, room);
+            }
+            this.unselect();
         };
     }
 
@@ -455,6 +524,13 @@ innGrid.buildCalendar = function (rooms) {
     innGrid.calendar = new FullCalendar.Calendar(calendarEl, calendar_options);
 
     innGrid.calendar.render();
+
+    setTimeout(function () {
+        if (innGrid.calendar) {
+            innGrid.calendar.updateSize();
+        }
+        syncBookingRoomTypeChipsFromSelect();
+    }, 150);
 
     if (innGrid.hasBookingPermission == '0') {
         $('.fc-customCreateBooking-button').prop('disabled', true);
@@ -513,8 +589,8 @@ function getCalendarBookings(data, successCallback, failureCallback) {
                 if (value.is_group_booking != null) {
                     bookingsArray[index].group_booking = 'group-booking';
                 }
-                if (value.state == 3) {// if the booking is Out of Order
-                    bookingsArray[index].customer_name = l('OUT OF ORDER');
+                if (value.state == 3) {
+                    bookingsArray[index].customer_name = l('maintenance', true) || 'Maintenance';
                 }
                 // if there is more than one "staying" customer
                 else if (numberOfStayingGuests > 1) {
@@ -575,10 +651,18 @@ function convertToEvents(data) {
         bookings[i].resourceId = "" + data[i].room_id;
         bookings[i].start = moment(data[i].check_in_date).format("YYYY-MM-DD HH:mm:ss");
         bookings[i].end = moment(data[i].check_out_date).format("YYYY-MM-DD HH:mm:ss");
-        bookings[i].backgroundColor = (data[i].color && data[i].color != 'transparent') ? "#" + data[i].color : getdefaultStateBGColor(parseInt(data[i].state));
-        bookings[i].borderColor = bookings[i].backgroundColor;
-        bookings[i].textColor = getdefaultStateTextColor(parseInt(data[i].state));
-        bookings[i].classNames = [flag, data[i].group_booking, "border-" + data[i].border_color]; // For CSS and border color
+        if (parseInt(data[i].state, 10) === 3) {
+            bookings[i].title = l('maintenance', true) || 'Maintenance';
+            bookings[i].backgroundColor = '#000000';
+            bookings[i].borderColor = '#000000';
+            bookings[i].textColor = '#ffffff';
+            bookings[i].classNames = [flag, data[i].group_booking, 'maintenance-block'];
+        } else {
+            bookings[i].backgroundColor = (data[i].color && data[i].color != 'transparent') ? "#" + data[i].color : getdefaultStateBGColor(parseInt(data[i].state));
+            bookings[i].borderColor = bookings[i].backgroundColor;
+            bookings[i].textColor = getdefaultStateTextColor(parseInt(data[i].state));
+            bookings[i].classNames = [flag, data[i].group_booking, "border-" + data[i].border_color];
+        }
 
         bookings[i].data = new Object();
         bookings[i].data.booking_id = data[i].booking_id;
@@ -605,7 +689,6 @@ function convertToEvents(data) {
 
 //Occures when an booking is moved. Gets an event that represents the booking as parameter.
 function occupacyMoved(info) {
-
     var dateFrom1 = moment(info.oldEvent.start).format('YYYY-MM-DD HH:mm:ss');
     var dateTo1 = moment(info.oldEvent.end || info.oldEvent.start).format('YYYY-MM-DD HH:mm:ss');
     var dateFrom2 = moment(info.event.start).format('YYYY-MM-DD HH:mm:ss');
@@ -674,26 +757,27 @@ function occupacyMoved(info) {
 
 function getdefaultStateBGColor(state) {
     var defaultColors = {
-        "0": "#389af0", // reservation
-        "1": "#28a745", // in-house
-        "2": "#E67D21", // checked-out
-        "3": "#DDD", // out of order
-        "4": "#389af0", // cancelled
-        "5": "#e63600", // no show
-        "6": "#FFF", // deleted
-        "7": "#FFF" // unconfirmed reservation
+        "0": "#3b82f6", // reservation
+        "1": "#16a34a", // in-house
+        "2": "#ea580c", // checked-out
+        "3": "#374151", // maintenance / out of order
+        "4": "#94a3b8", // cancelled
+        "5": "#dc2626", // no show
+        "6": "#f3f4f6", // deleted
+        "7": "#ffffff" // unconfirmed reservation
     };
-    return defaultColors[state] ? defaultColors[state] : '#389af0';
+    return defaultColors[state] ? defaultColors[state] : '#3b82f6';
 }
 
 function getdefaultStateTextColor(state) {
     var defaultColors = {
-        "3": "#000", // out of order
-        "4": "#FFF", // cancelled
-        "6": "#000", // deleted
-        "7": "#000" // unconfirmed reservation
+        "3": "#ffffff",
+        "4": "#1f2937",
+        "5": "#ffffff",
+        "6": "#6b7280",
+        "7": "#1f2937"
     };
-    return defaultColors[state] ? defaultColors[state] : '#fff';
+    return defaultColors[state] ? defaultColors[state] : '#ffffff';
 }
 
 
@@ -987,19 +1071,22 @@ innGrid.saveRoom = function (roomID, proceedToNextRoom) {
 };
 
 function addCalendarHeaderFilters() {
-    // add header filters
-    $('.fc-toolbar.fc-header-toolbar')
+    var $toolbar = $('.fc-toolbar.fc-header-toolbar');
+    if (!$toolbar.length || $toolbar.find('#booking_search').length) {
+        return;
+    }
+
+    $toolbar
         .find('.fc-right')
         .append(
-            $('<div/>', { class: 'form-inline m-041' })
+            $('<div/>', { class: 'booking-calendar-toolbar-actions form-inline m-041' })
                 .append(
                     $("<form/>",
                         {
                             id: 'booking_search',
                             method: 'GET',
-                            class: "input-group hidden-xs",
-                            action: getBaseURL() + "booking/show_bookings/",
-                            style: 'margin-left:10px'
+                            class: "input-group booking-calendar-search",
+                            action: getBaseURL() + "booking/show_bookings/"
                         }
                     )
                         .append("<input class='form-control' placeholder='" + l('search_bookings') + "' name='search_query' type='text' value=''>")
@@ -1021,7 +1108,6 @@ function addCalendarHeaderFilters() {
                     $("<button/>", {
                         href: '#',
                         class: 'btn btn-light filter-booking m-040',
-                        style: 'margin-left:10px',
                         text: l('More Filters', true)
                     }).on('click', function () {
                         $('#filter-booking').slideToggle();

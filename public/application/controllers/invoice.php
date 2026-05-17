@@ -438,6 +438,11 @@ class Invoice extends MY_Controller {
         $booking_id = $booking_id ? $booking_id : $get_bookings_by_group_id[0]['booking_id'];
         $company_id             = $this->Company_model->get_company_id_by_booking_id($booking_id);
         $data['booking_group_detail'] = $this->Booking_linked_group_model->get_booking_linked_group($booking_id, $company_id);
+        if ($data['booking_group_detail'] && $group_id) {
+            $data['group_billing'] = $this->Booking_linked_group_model->get_group_by_id($group_id, $company_id);
+        } else {
+            $data['group_billing'] = null;
+        }
         $data['company']        = $this->Company_model->get_company($company_id);
         $data['booking_detail'] = $this->Booking_model->get_booking_detail($booking_id);
         $data['customer_id']    = $customer_id;
@@ -512,7 +517,11 @@ class Invoice extends MY_Controller {
         if(isset($payment_gateway_credentials['selected_payment_gateway'])){
             $data['selected_payment_gateway'] = $payment_gateway_credentials['selected_payment_gateway'];
         }
-        $charges  = $this->Charge_model->get_charges(implode(',',$all_booking_ids), $customer_id);
+        if ($is_group_invoice && $group_id) {
+            $charges = $this->Charge_model->get_group_charges(implode(',', $all_booking_ids), $group_id, $customer_id);
+        } else {
+            $charges = $this->Charge_model->get_charges(implode(',', $all_booking_ids), $customer_id);
+        }
         if(!$data['company']['hide_forecast_charges'])
         {
             if ($data['booking_detail']['booking_customer_id'] == $customer_id || $customer_id == false) {

@@ -54,6 +54,10 @@ class Beanstream
 		curl_setopt($req,CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($req,CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($req,CURLOPT_HEADER, 0);
+		if (!function_exists('apply_curl_ssl_options')) {
+			require_once __DIR__ . '/../helpers/curl_helper.php';
+		}
+		apply_curl_ssl_options($req);
 
 		$post = array(
 			'card' => array(
@@ -97,7 +101,10 @@ class Beanstream
 		curl_setopt($req,CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($req,CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($req,CURLOPT_FAILONERROR, true);
-		curl_setopt($req, CURLOPT_SSL_VERIFYPEER, false);
+		if (!function_exists('apply_curl_ssl_options')) {
+			require_once __DIR__ . '/../helpers/curl_helper.php';
+		}
+		apply_curl_ssl_options($req);
 
 		$post = array(
 			'merchant_id' => $merchantId,

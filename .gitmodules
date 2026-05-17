@@ -1,0 +1,3 @@
+[submodule "public/application/extensions/channex-integration"]
+	path = public/application/extensions/channex-integration
+	url = https://github.com/minical/channex-integration.git

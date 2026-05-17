@@ -3,81 +3,74 @@
     background-color: transparent;
 	border: none !important;
 }
-/*.theme-1 .fc-event,*/ 
+
 .theme-1 .fc-agenda .fc-event-time, 
 .theme-1 .fc-event a {
-	border-color: #389af0;
-    background-color: #389af0;
+	border-color: #3b82f6;
+    background-color: #3b82f6;
     color: white;
-    border-radius: 3px;
-    padding: 1px;
-	font-size: 15px;
+    border-radius: 6px;
+    padding: 2px 6px;
+	font-size: 0.8125rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    transition: box-shadow 0.15s ease, filter 0.15s ease;
 }
-/* 
-	In-house bookings 
-*/
-/*.theme-1 .fc-event1,*/
+
+.theme-1 .fc-event a:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+}
+
+/* In-house bookings */
 .theme-1 .fc-agenda .holiday .fc-event-time,
 .theme-1 .fc-event1 a {
-	background-color: #28a745;
-    border-color: #28a745;
+	background-color: #16a34a;
+    border-color: #16a34a;
     color: white;
-	border-radius: 3px;
+	border-radius: 6px;
 }
 
-/* 
-	Checked-out bookings
-*/
-/*.theme-1 .fc-event2,*/
+/* Checked-out bookings */
 .theme-1 .fc-agenda .holiday .fc-event-time,
 .theme-1 .fc-event2 a {
-	background-color: #E67D21;
-    border-color: #E67D21;
+	background-color: #ea580c;
+    border-color: #ea580c;
     color: white;
-	border-radius: 3px;
+	border-radius: 6px;
 }
 
-/*.theme-1 .fc-event3,*/
 .theme-1 .fc-agenda .holiday .fc-event-time,
 .theme-1 .fc-event3 a {
-	background-color: #ddd;
-    border-color: #ddd;
-    color: black;
-	border-radius: 3px;
+	background-color: #374151;
+    border-color: #374151;
+    color: #ffffff;
+	border-radius: 6px;
 }
 
-/*
-	Unconfirmed reservatoin bookings
-*/
-
-/*.theme-1 .fc-event7,*/
+/* Unconfirmed reservation bookings */
 .theme-1 .fc-agenda .fc-event-time,
 .theme-1 .fc-event7 a {
 	border-style: solid; 
-	background-color: white; /* default BACKGROUND color */
-	color: black;   
-	border-radius: 3px;
+	background-color: #ffffff;
+	color: #1f2937;
+    border-color: #d1d5db;
+	border-radius: 6px;
+    box-shadow: inset 0 0 0 1px #e5e7eb;
 }
 
-/*
-	Unconfirmed reservatoin bookings
-*/
-
-/*.theme-1 .fc-event5,*/
 .theme-1 .fc-agenda .fc-event-time,
 .theme-1 .fc-event5 a {
 	border-style: solid; 
-	background-color: #e63600; /* default BACKGROUND color */
-	color: black;            /* default TEXT color */
-	border-radius: 3px;
+	background-color: #fef2f2;
+	color: #991b1b;
+    border-color: #fca5a5;
+	border-radius: 6px;
 }
 
-/* Horizontal Events
-------------------------------------------------------------------------*/
-
+/* Horizontal Events */
 .theme-1 .fc-event-hori {
-	/*border-width: 1px 0;*/
-	margin-bottom: 1px;
+	margin-bottom: 2px;
 }
 .theme-1 .fc-content .fc-corner-left a {
 	border-left-width: 2px;
@@ -86,37 +79,38 @@
     border-right-width: 2px;
 }
 
-/* Located here to override fc-event-hori making border-width 1px 0*/
 .theme-1 .border-red a {
 	border-width: 2px;
-	border-color: red;
+	border-color: #ef4444;
 	border-style: solid;
 }
 
 .theme-1 .fc-event-hori a {
-	border-width: 2px;
+	border-width: 0;
 }
 .theme-1 .vip a:hover {
-    background-color: #DAA520;
+    background-color: #d97706;
+    border-color: #d97706;
 }
 
 .theme-1 .blacklist a:hover {
-    background-color: #FF0000;
+    background-color: #dc2626;
+    border-color: #dc2626;
 }
 
 .theme-1 .fc .fc-grid th {
-	line-height: 12px;
-    font-weight: 900;
-    font-size: 13px;
+	line-height: 1.25;
+    font-weight: 600;
+    font-size: 0.8125rem;
 }
 .theme-1 .fc .fc-grid th .month,
 .theme-1 .fc .fc-grid th .day {
-    font-size: 10px;
-	font-weight: normal;
-	line-height: 16px;
-	color: #4a4a4a;
+    font-size: 0.6875rem;
+	font-weight: 500;
+	line-height: 1.2;
+	color: #6b7280;
 }
 .theme-1 .fc-content [data-day="sat"], 
 .theme-1 .fc-content [data-day="sun"] {
-    background-color: #fff2f0;
+    background-color: #f8fafc;
 }

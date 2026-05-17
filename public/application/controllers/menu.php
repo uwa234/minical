@@ -71,7 +71,7 @@ class Menu extends MY_Controller
 		}
 	 	else 
 		{			
-            redirect('/booking/');
+            redirect('/dashboard/');
         }
 	}
 	

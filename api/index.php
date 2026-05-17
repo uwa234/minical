@@ -5,7 +5,8 @@ if (file_exists($file)) {
     include_once $file;
 }
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__. '/../')->load();
+require_once __DIR__ . '/../bootstrap/env.php';
+minical_load_dotenv(__DIR__ . '/../');
 
 /*
  *---------------------------------------------------------------
@@ -49,7 +50,7 @@ if (defined('ENVIRONMENT'))
 	switch (ENVIRONMENT)
 	{
 		case 'development':
-			error_reporting(E_ALL);
+			error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
             ini_set('display_errors', 1);
 		break;
 	

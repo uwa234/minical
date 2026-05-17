@@ -20,7 +20,7 @@
  * 3b) To migrate to specific version
  * Open console - php index.php migrate ver 1
  *
- * To execute in browser minical.io/migrate
+ * Web access is limited to the installer (MIGRATION_REQUEST=1) and requires MIGRATION_SECRET when set.
  *
  * @property CI_Migration migration
  */
@@ -31,22 +31,42 @@ class Migrate extends CI_Controller
     {
         parent::__construct();
 
-        // limit access to controller for CLI interface only, uncomment below:
-        /*
-        $this->input->is_cli_request()
-        or exit("Execute via command line: php index.php migrate");
-        */
+        $is_cli = $this->input->is_cli_request();
+        $is_install_request = isset($_GET['MIGRATION_REQUEST']) && $_GET['MIGRATION_REQUEST'];
+        $method = $this->router->fetch_method();
+
+        if (!$is_cli) {
+            if (!$is_install_request) {
+                show_error('Migrations can only be run from the command line or the installer.', 403);
+            }
+
+            if ($method !== 'index') {
+                show_error('This migration action is only available via CLI.', 403);
+            }
+
+            $migration_secret = getenv('MIGRATION_SECRET');
+            if ($migration_secret) {
+                $provided = isset($_GET['migration_secret']) ? $_GET['migration_secret'] : '';
+                if (!hash_equals($migration_secret, $provided)) {
+                    show_error('Invalid migration credentials.', 403);
+                }
+            }
+        }
+
         $this->load->library('migration');
     }
 
     public function index()
     {
         try {
-            $this->migration->latest();
+            $result = $this->migration->latest();
+            if ($result === false) {
+                $error = $this->migration->error_string();
+                show_error($error ? $error : 'Migration failed.', 500);
+            }
             printf("\n\n Migrated successfully \n\n");
-        } catch (Exception $e) {
-            print_r($e->getMessage());
-            print_r($this->migration->error_string());
+        } catch (Throwable $e) {
+            show_error($e->getMessage(), 500);
         }
 
     }
@@ -54,15 +74,19 @@ class Migrate extends CI_Controller
     public function ver($ver)
     {
         try {
-            $this->migration->version($ver);
+            $result = $this->migration->version($ver);
+            if ($result === false) {
+                $error = $this->migration->error_string();
+                show_error($error ? $error : 'Migration failed.', 500);
+            }
             printf("\n\n Migrated successfully \n\n");
-        } catch (Exception $e) {
-            print_r($e->getMessage());
-            print_r($this->migration->error_string());
+        } catch (Throwable $e) {
+            show_error($e->getMessage(), 500);
         }
     }
 
-    function generate_migrations() {
+    public function generate_migrations()
+    {
         $this->load->library('ci_migrations_generator/Sqltoci');
 
         $this->sqltoci->generate();

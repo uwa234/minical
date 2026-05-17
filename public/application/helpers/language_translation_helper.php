@@ -78,10 +78,12 @@ if ( ! function_exists('get_languages'))
        
         foreach($modules as $module)
         {
-            if($module === '.' || $module === '..') continue;
-            if(is_dir($modules_path) . $module)
-            {
-                $config = array();
+            if(!function_exists('is_module_directory')) {
+                require_once APPPATH . 'helpers/module_helper.php';
+            }
+            if(!is_module_directory($modules_path, $module)) continue;
+
+            $config = array();
                 $files_path = $modules_path . $module."/language/".$language_name."/index.php";
                 if(file_exists($files_path))
                 {
@@ -113,7 +115,6 @@ if ( ! function_exists('get_languages'))
                         }
                     }
                 }
-            }
         }
 
         $result = $CI->translation_model->get_all_phrases_by_language($language_id);

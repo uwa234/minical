@@ -41,6 +41,13 @@ class Extensions extends MY_Controller
             }
         }
 
+        $vendor_id = $this->vendor_id ? $this->vendor_id : 0;
+        $this->Extension_model->ensure_default_extensions_registered(
+            $all_active_modules,
+            $this->company_id,
+            $vendor_id
+        );
+
         $modules_name = array();
 
         $installed_extensions = $this->Extension_model->get_installed_extensions(null, $this->vendor_id);

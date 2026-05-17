@@ -27,6 +27,7 @@ class Permission_model extends CI_Model {
             ($controller_name === "test") ||
             ($controller_name === "help") ||
 			($controller_name === "channel_manager") ||
+            ($controller_name === "channels" && $function_name === 'ical_export') ||
             (
                 isset($this->session->userdata['customer_modify_booking']) && $this->session->userdata['customer_modify_booking'] &&
                 $this->session->userdata['customer_modify_booking']['allow'] &&
@@ -164,6 +165,10 @@ class Permission_model extends CI_Model {
                 ) ||
                 // channel manager update
                 $controller_name === "channel_manager"
+                ||
+                $controller_name === "channels"
+                ||
+                $controller_name === "dashboard"
                 ||
                 ($controller_name === "settings" &&
                     (

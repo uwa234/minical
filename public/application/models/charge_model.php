@@ -790,6 +790,63 @@ class Charge_model extends CI_Model {
 		return $result->result();	
 	}
 	// returns a booking's list of charges + taxes associated with it as a sub-array
+	function get_group_charges($booking_ids_csv, $group_id, $customer_id = false, $folio_id = null, $is_first_folio = false)
+    {
+        $group_id = (int) $group_id;
+        $booking_ids_csv = preg_replace('/[^0-9,]/', '', $booking_ids_csv);
+
+        $this->db->group_start();
+        $this->db->where("charge.booking_id IN ($booking_ids_csv)", null, false);
+        $this->db->or_where('charge.billed_to_group_id', $group_id);
+        $this->db->group_end();
+
+        if ($customer_id) {
+            $this->db->where('charge.customer_id', $customer_id);
+        }
+
+        if ($is_first_folio) {
+            $this->db->where("(folio_id = '$folio_id' OR folio_id IS NULL OR folio_id = 0)");
+        } elseif ($folio_id) {
+            $this->db->where('folio_id', $folio_id);
+        }
+
+        $this->db->where('charge.is_deleted', '0');
+        $this->db->join('charge_folio as cf', 'charge.charge_id = cf.charge_id', 'left');
+        $this->db->join('charge_type as ct', 'charge.charge_type_id = ct.id', 'left');
+        $this->db->join('customer as cu', 'charge.customer_id = cu.customer_id', 'left');
+        $this->db->join('user_profiles', 'charge.user_id = user_profiles.user_id', 'left');
+        $this->db->join('booking as b', 'b.booking_id = charge.booking_id', 'left');
+        $this->db->join('booking_block as bb', 'bb.booking_id = b.booking_id', 'left');
+        $this->db->join('room as r', 'r.room_id = bb.room_id', 'left');
+        $this->db->select('charge.*, cu.*, ct.*, user_profiles.*, b.*, b.pay_period, ct.name as charge_type_name, ct.id as charge_type_id,`cf`.`folio_id` as folio_id, CONCAT_WS(" ",first_name,  last_name ) as user_name, r.room_name');
+        $this->db->group_by('charge.charge_id');
+        $this->db->order_by('selling_date', 'ASC');
+        $query = $this->db->get('charge');
+
+        if ($this->db->_error_message()) {
+            show_error($this->db->_error_message());
+        }
+
+        return $query->result_array();
+    }
+
+    function route_charges_to_master($booking_ids, $group_id)
+    {
+        if (empty($booking_ids) || !$group_id) {
+            return 0;
+        }
+
+        $ids = array_map('intval', (array) $booking_ids);
+        $this->db->where_in('booking_id', $ids);
+        $this->db->where('is_deleted', 0);
+        $this->db->update('charge', array(
+            'route_to_master' => 1,
+            'billed_to_group_id' => (int) $group_id,
+        ));
+
+        return $this->db->affected_rows();
+    }
+
 	function get_charges($booking_id, $customer_id = false, $folio_id = null, $is_first_folio = false)
     {
     	$this->db->where("charge.booking_id IN ($booking_id)");
