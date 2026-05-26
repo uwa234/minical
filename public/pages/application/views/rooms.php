@@ -58,7 +58,7 @@
 								?>
 										<div class="panel-footer text-right">
 											<a 
-												href="https://demo.minical.io/online_reservation/select_dates_and_rooms/<?php echo $company_data['company_id']; ?>" 
+												href="<?php echo rtrim(getenv('PROJECT_URL') ?: 'https://demo.veurion.com/', '/'); ?>/online_reservation/select_dates_and_rooms/<?php echo $company_data['company_id']; ?>" 
 												class="text-right btn btn-success">
 											<span class="glyphicon glyphicon-calendar"></span> Book Now!</a>
 										</div>

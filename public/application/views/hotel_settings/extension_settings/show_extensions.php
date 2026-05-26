@@ -1,25 +1,49 @@
-<div class="app-page-title">
-    <div class="page-title-wrapper">
-        <div class="page-title-heading">
-            <div class="page-title-icon">
-                <i class="pe-7s-keypad text-success"></i>
+<div class="extensions-page mc-page">
+    <header class="extensions-header">
+        <div class="extensions-header-inner">
+            <div class="extensions-header-text">
+                <div class="extensions-header-icon" aria-hidden="true">
+                    <i class="fa fa-puzzle-piece"></i>
+                </div>
+                <div>
+                    <h1 class="extensions-title"><?php echo l('Extensions'); ?></h1>
+                    <p class="extensions-subtitle">Enable integrations, channel managers, payment gateways, and more.</p>
+                </div>
             </div>
-            <?php echo l('Extensions'); ?>
+        </div>
+    </header>
+
+    <?php if((isset($is_vendor[0]) && $this->user_permission == 'is_admin') || $this->is_super_admin == 1){ ?>
+        <nav class="extensions-nav" aria-label="<?php echo l('Extensions', true); ?>">
+            <a class="<?php if($this->uri->segment(2) == '') echo 'active'; ?>" href="<?php echo base_url().'extensions'?>"><?php echo l('Installed Extensions', true); ?></a>
+            <a class="<?php if($this->uri->segment(2) == 'show_vendors_extensions') echo 'active'; ?>" href="<?php echo base_url().'extensions/show_vendors_extensions'?>"><?php echo l('All Extensions', true); ?></a>
+        </nav>
+    <?php } ?>
+
+    <div class="extensions-toolbar">
+        <div class="extensions-toolbar-filters extension-filter">
+            <label for="status"><?php echo l('status');?></label>
+            <select name="status" id="status" class="form-control" onchange="getval(this);">
+                <option value="all"><?php echo l('All');?></option>
+                <option value="active"><?php echo l('Active');?></option>
+                <option value="not_active"><?php echo l('not-Active');?></option>
+            </select>
+            <label for="category"><?php echo l('categories');?></label>
+            <select name="category" id="category" class="form-control" onchange="getcat(this);">
+                <option value="all"><?php echo l('All');?></option>
+                <option value="channel_manager"><?php echo l('Channel Manager');?></option>
+                <option value="check_in_automation"><?php echo l('Check-in Automation');?></option>
+                <option value="marketing"><?php echo l('Marketing');?></option>
+                <option value="online_booking_engine"><?php echo l('Online Booking Engine');?></option>
+                <option value="payment_process"><?php echo l('Payment Process');?></option>
+                <option value="pos"><?php echo l('POS');?></option>
+                <option value="promo_discount"><?php echo l('Promo/Discount');?></option>
+                <option value="yield_management"><?php echo l('Yield Management');?></option>
+            </select>
+            <input type="text" name="search_pos" placeholder="<?php echo l('Search Extensions', true); ?>" class="form-control search_ext">
         </div>
     </div>
 
-    <hr>
-
-    <?php if((isset($is_vendor[0]) && $this->user_permission == 'is_admin') || $this->is_super_admin == 1){ ?>
-        <div class="topnav mb-3">
-            <ul>
-                <li><a class="<?php if($this->uri->segment(2) == '') echo 'active'; ?>" href="<?php echo base_url().'extensions'?>"><?php echo l('Installed Extensions', true); ?></a></li>
-                <li><a class="<?php if($this->uri->segment(2) == 'show_vendors_extensions') echo 'active'; ?>" href="<?php echo base_url().'extensions/show_vendors_extensions'?>"><?php echo l('All Extensions', true); ?></a></li>
-            </ul>
-        </div>
-    <?php } ?>
-    
-</div>
 
 <?php $is_favourite = false; 
 if(isset($extensions) && $extensions){ 
@@ -30,9 +54,10 @@ if(isset($extensions) && $extensions){
     }
 } 
 if($is_favourite) { ?>
-    <div><h4><?php echo l('Favourites');?></h4></div>
+    <section class="extensions-favourites">
+    <h2 class="extensions-section-title"><i class="fa fa-heart" aria-hidden="true"></i> <?php echo l('Favourites');?></h2>
 <?php } ?>
-<div class="main-card  <?php echo $is_favourite ? 'mb-5' : ''; ?> ">
+<div class="extensions-card-panel <?php echo $is_favourite ? 'extensions-favourites-panel' : ''; ?>">
     <div class="extension-card">
 
         <?php
@@ -165,56 +190,13 @@ if($is_favourite) { ?>
         </div>
     </div>
 </div>
-
-<div class="row form-group">
-    <div class="col-sm-3">
-        <?php if($is_favourite) { ?>
-            <h4><?php echo l('Extensions');?></h4>
-        <?php } ?>
-        </div>
-    <div class="col-sm-9">
-        <div class="form-inline pull-right extension-filter">
-            
-                <label><?php echo l('status');?></label>
-                <select name="status" id="status" class="form-control" onchange="getval(this);">
-                    <option value="all"><?php echo l('All');?></option>
-                    <option value="active"><?php echo l('Active');?></option>
-                    <option value="not_active"><?php echo l('not-Active');?></option>
-                </select>
-                <label><?php echo l('categories');?></label>
-                <select name="category" id="category" class="form-control" onchange="getcat(this);">
-                    <option value="all"><?php echo l('All');?></option>
-                    <option value="channel_manager"><?php echo l('Channel Manager');?></option>
-                    <option value="check_in_automation"><?php echo l('Check-in Automation');?></option>
-                    <option value="marketing"><?php echo l('Marketing');?></option>
-                    <option value="online_booking_engine"><?php echo l('Online Booking Engine');?></option>
-                    <option value="payment_process"><?php echo l('Payment Process');?></option>
-                    <option value="pos"><?php echo l('POS');?></option>
-                    <option value="promo_discount"><?php echo l('Promo/Discount');?></option>
-                    <option value="yield_management"><?php echo l('Yield Management');?></option>
-                </select>
-               
-               <!--  <input type="" name="" class="form-control" placeholder="search">
-                <button type="submit" class="btn btn-light"><?php echo l('search');?></button> -->
-
-                <input type="text" name="search_pos" placeholder="<?php echo l('Search Extensions', true); ?>" class="form-control search_ext" style="max-width: 200px">
-            
-        </div>
-    </div>
-</div>
-
-<?php if($this->company_subscription_level == 0) { ?>
-    <div class="alert alert-danger" role="alert">
-        <div style="font-size: 15px;">
-            You are currently on a <b>Minimal</b> plan, please select a <b>Partner</b> to get access to all Premium extensions.
-            <a target="_blank" href="<?php echo base_url().'partners' ?>">
-                Select a Partner
-            </a>
-        </div>
-    </div>
+<?php if($is_favourite) { ?></section><?php } ?>
+<?php if($is_favourite) { ?>
+<h2 class="extensions-section-title"><?php echo l('Extensions');?></h2>
 <?php } ?>
 
-<div class="main-card mb-3">
+
+<div class="extensions-card-panel">
     <div class="extension-card">
 
         <?php
@@ -356,6 +338,7 @@ if($is_favourite) { ?>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 

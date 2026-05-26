@@ -10,6 +10,8 @@
 			$js_files = array();
 		
 		array_unshift($js_files, base_url() . auto_version('js/template.js'));
+		$css_files[] = base_url() . auto_version('css/admin/platform-admin.css');
+		$js_files[] = base_url() . auto_version('js/admin/platform-admin.js');
 
 		$files = get_asstes_files($this->module_assets_files, $this->router->fetch_module(), $this->controller_name, $this->function_name);
 		
@@ -35,7 +37,7 @@
         
 	?>
 
-	<body>
+	<body class="pa-platform-admin">
 	
         <div class="modal fade"  id="company-info-modal" data-is_salesperson="<?=$is_salesperson;?>" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 			<div class="modal-dialog modal-lg">
@@ -87,20 +89,17 @@
 
 
 	
+		<div class="pa-app">
 		<?php
 			$this->load->view('includes/admin_menu', $data);
+			$this->load->view($main_content);
+			$this->load->view('includes/bootstrapped_footer');
 		?>
-			
-
-		<div class="col-md-12 admin-main">
-			<?php 
-				$this->load->view($main_content);
-				//Load footer
-				$this->load->view('includes/bootstrapped_footer');
-			?>
+			</main>
+		</div>
 		</div>
 
-        <input type="text" name="project_url" id="project_url" value="<?php echo base_url(); ?>">
+        <input type="hidden" name="project_url" id="project_url" value="<?php echo base_url(); ?>">
 
 	</body>
 

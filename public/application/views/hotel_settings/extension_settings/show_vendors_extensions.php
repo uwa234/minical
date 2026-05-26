@@ -1,29 +1,28 @@
-<div class="app-page-title">
-    <div class="page-title-wrapper">
-        <div class="page-title-heading">
-            <div class="page-title-icon">
-                <i class="pe-7s-keypad text-success"></i>
+<div class="extensions-page mc-page">
+    <header class="extensions-header">
+        <div class="extensions-header-inner">
+            <div class="extensions-header-text">
+                <div class="extensions-header-icon" aria-hidden="true">
+                    <i class="fa fa-puzzle-piece"></i>
+                </div>
+                <div>
+                    <h1 class="extensions-title"><?php echo l('Extensions'); ?></h1>
+                    <p class="extensions-subtitle">Browse and install extensions for your property.</p>
+                </div>
             </div>
-      <?php echo l('Extensions'); ?>
         </div>
-    </div>
-
-    <hr>
+    </header>
 
     <?php if((isset($is_vendor[0]) && $this->user_permission == 'is_admin') || $this->is_super_admin == 1){ ?>
-        <div class="topnav mb-3">
-            <ul>
-                <li><a class="<?php if($this->uri->segment(2) == '') echo 'active'; ?>" href="<?php echo base_url().'extensions'?>"><?php echo l('Installed Extensions', true); ?></a></li>
-                <li><a class="<?php if($this->uri->segment(2) == 'show_vendors_extensions') echo 'active'; ?>" href="<?php echo base_url().'extensions/show_vendors_extensions'?>"><?php echo l('All Extensions', true); ?></a></li>
-            </ul>
-        </div>
+        <nav class="extensions-nav" aria-label="<?php echo l('Extensions', true); ?>">
+            <a class="<?php if($this->uri->segment(2) == '') echo 'active'; ?>" href="<?php echo base_url().'extensions'?>"><?php echo l('Installed Extensions', true); ?></a>
+            <a class="<?php if($this->uri->segment(2) == 'show_vendors_extensions') echo 'active'; ?>" href="<?php echo base_url().'extensions/show_vendors_extensions'?>"><?php echo l('All Extensions', true); ?></a>
+        </nav>
     <?php } ?>
 
-</div>
-
-<div class="main-card mb-3">
+<div class="extensions-card-panel">
     <?php if($this->is_super_admin || $this->user_permission == 'is_admin'){ ?>
-        <b style="font-size: 17px;">Installed Extensions :</b>
+        <h2 class="extensions-section-title"><?php echo l('Installed Extensions', true); ?></h2>
     <?php } ?>
     <div class="extension-card">
 
@@ -109,7 +108,7 @@
     </div>
 
     <?php if($this->is_super_admin || $this->user_permission == 'is_admin'){ ?>
-        <b style="font-size: 17px;">Uninstalled Extensions :</b>
+        <h2 class="extensions-section-title"><?php echo l('All Extensions', true); ?></h2>
         <div class="extension-card">
 
             <?php
@@ -192,6 +191,7 @@
             </div>
         </div>
     <?php } ?>
+</div>
 </div>
 
 <div class="modal fade" id="active_modules_modal">

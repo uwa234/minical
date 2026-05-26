@@ -41,7 +41,10 @@ class Groups extends MY_Controller
             'blocks' => $blocks,
             'room_types' => $this->Room_type_model->get_room_types($this->company_id),
             'selected_menu' => 'groups',
-            'css_files' => array(base_url() . auto_version('css/groups/groups.css')),
+            'css_files' => array(
+                base_url() . auto_version('css/app-modern-page.css'),
+                base_url() . auto_version('css/groups/groups.css'),
+            ),
             'js_files' => array(
                 base_url() . 'js/moment.min.js',
                 base_url() . auto_version('js/groups/groups.js'),
@@ -82,7 +85,10 @@ class Groups extends MY_Controller
             'room_types' => $this->Room_type_model->get_room_types($this->company_id),
             'master_customer' => $master_customer,
             'selected_menu' => 'groups',
-            'css_files' => array(base_url() . auto_version('css/groups/groups.css')),
+            'css_files' => array(
+                base_url() . auto_version('css/app-modern-page.css'),
+                base_url() . auto_version('css/groups/groups.css'),
+            ),
             'js_files' => array(
                 base_url() . 'js/moment.min.js',
                 base_url() . auto_version('js/booking/bookingModal.js'),

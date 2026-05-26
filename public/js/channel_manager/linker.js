@@ -159,7 +159,7 @@ $('.save-all, #sync-occupancy-button').click(function() {
             var minicalRoomTypeOccupancy = $(this).find('option[value="'+pmsRoomType+'"]').attr('data-pms-room-type-occupency');
             var roomName = $(this).find('option[value="'+pmsRoomType+'"]').text();
             if(otaRoomTypeOccupancy != minicalRoomTypeOccupancy){
-                errorMsg = "Error: Agoda room occupancy ("+otaRoomTypeOccupancy+") and minical room occupancy ("+minicalRoomTypeOccupancy+") for room "+roomName+" must be same.";
+                errorMsg = "Error: Agoda room occupancy ("+otaRoomTypeOccupancy+") and PMS room occupancy ("+minicalRoomTypeOccupancy+") for room "+roomName+" must be same.";
             }
         }
 	});
@@ -170,7 +170,7 @@ $('.save-all, #sync-occupancy-button').click(function() {
         $.each(ratePlanCurrencyAr, function(index, ratePlanCurrency){
             if(ratePlanCurrency != otaCompanyCurrency)
             {
-                errorMsg = 'Error: All minical rate plan currency ('+ratePlanCurrency+ ') and Agoda hotel currency ('+otaCompanyCurrency+') must be same.';
+                errorMsg = 'Error: All PMS rate plan currency ('+ratePlanCurrency+ ') and Agoda hotel currency ('+otaCompanyCurrency+') must be same.';
             }
         });
        

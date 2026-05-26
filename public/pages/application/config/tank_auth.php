@@ -9,8 +9,8 @@
 */
 // $config['website_name'] = 'innGrid.net';
 // $config['webmaster_email'] = 'support@roomsy.com';
-$config['website_name'] = 'minical.io';
-$config['webmaster_email'] = 'support@minical.io';
+$config['website_name'] = 'Veurion';
+$config['webmaster_email'] = 'support@veurion.com';
 /*
 |--------------------------------------------------------------------------
 | Security settings

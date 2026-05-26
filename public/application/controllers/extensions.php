@@ -30,7 +30,7 @@ class Extensions extends MY_Controller
                 }
             }
         }
-        if($this->user_email !='support@minical.io'){
+        if (!is_veurion_support_email($this->user_email)) {
             foreach ($all_active_modules as $key => $value) {
                  if(
                     isset($value['is_super_admin_module']) &&
@@ -74,7 +74,10 @@ class Extensions extends MY_Controller
         $i = 0;
         $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
 
-        if($is_hosted_prod_service || $_SERVER['HTTP_HOST'] == "app.minical.io" || $_SERVER['HTTP_HOST'] == "demo.minical.io"){
+        $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+        $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+
+        if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
 
             if($extensions && count($extensions) > 0) {
                 foreach ($extensions as $e => $ext) {
@@ -161,7 +164,7 @@ class Extensions extends MY_Controller
 
             $white_label_info = $this->session->userdata('white_label_information');
 
-            if($is_hosted_prod_service && $_SERVER['HTTP_HOST'] != $white_label_info['domain'] && $_SERVER['HTTP_HOST'] != "app.minical.io" && $_SERVER['HTTP_HOST'] != "demo.minical.io"){
+            if($is_hosted_prod_service && $_SERVER['HTTP_HOST'] != $white_label_info['domain'] && !in_array($current_host, $saas_app_hosts, true)){
                 if($flag){
                     $module['is_active'] = 0;
                     $module['company_id'] = $this->company_id;
@@ -191,6 +194,11 @@ class Extensions extends MY_Controller
         $this->session->set_userdata('activated_modules', $activated_modules);
 
         $data['is_vendor'] = $this->Whitelabel_partner_model->get_whitelabel_admin_ids($this->user_id);
+
+        $data['css_files'] = array(
+            base_url() . auto_version('css/app-modern-page.css'),
+            base_url() . auto_version('css/extensions/extensions.css'),
+        );
 
         $data['js_files'] = array(
             base_url() . auto_version('js/hotel-settings/extension-settings.js'),
@@ -413,7 +421,7 @@ class Extensions extends MY_Controller
             }
         }
 
-        if($this->user_email !='support@minical.io'){
+        if (!is_veurion_support_email($this->user_email)) {
             foreach ($all_active_modules as $key => $value) {
                  if(
                     isset($value['is_super_admin_module']) &&
@@ -612,7 +620,7 @@ class Extensions extends MY_Controller
             }
         }
 
-        if($this->user_email !='support@minical.io'){
+        if (!is_veurion_support_email($this->user_email)) {
             foreach ($all_active_modules as $key => $value) {
                  if(
                     isset($value['is_super_admin_module']) &&
@@ -705,6 +713,11 @@ class Extensions extends MY_Controller
 
         $this->session->set_userdata('activated_modules', $activated_modules);
         
+        $data['css_files'] = array(
+            base_url() . auto_version('css/app-modern-page.css'),
+            base_url() . auto_version('css/extensions/extensions.css'),
+        );
+
         $data['js_files'] = array(
             base_url() . auto_version('js/hotel-settings/extension-settings.js'),
         );

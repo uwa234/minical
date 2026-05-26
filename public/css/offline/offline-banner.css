@@ -1,0 +1,46 @@
+.minical-offline-banner {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: min(640px, calc(100vw - 2rem));
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    background: #1f2937;
+    color: #f9fafb;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.minical-offline-banner.hidden {
+    display: none;
+}
+
+.minical-offline-banner--offline {
+    background: #92400e;
+    color: #fffbeb;
+}
+
+.minical-offline-banner__icon {
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
+.minical-offline-banner__text {
+    flex: 1;
+}
+
+.minical-offline-banner__sync,
+.minical-offline-banner__details {
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+.minical-offline-banner__details.hidden {
+    display: none;
+}

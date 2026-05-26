@@ -1,51 +1,126 @@
 .groups-page {
-    padding: 20px 24px 40px;
+    padding: 0.5rem 0 2.5rem;
     max-width: 1400px;
 }
 
 .groups-header {
-    margin-bottom: 20px;
+    margin-bottom: 1.25rem;
+}
+
+.groups-header .btn-link {
+    padding-left: 0;
+    color: #3f6ad8;
+    font-weight: 500;
 }
 
 .groups-title {
-    margin: 0 0 6px;
-    font-size: 26px;
+    margin: 0.25rem 0 0.35rem;
+    font-size: 1.65rem;
     font-weight: 600;
-    color: #1a2b4a;
+    color: #111827;
+}
+
+.groups-title small {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 500;
 }
 
 .groups-subtitle {
     margin: 0;
-    color: #6b7c93;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.groups-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
 }
 
 .groups-tabs {
-    margin-bottom: 16px;
+    margin-bottom: 1.25rem;
 }
 
 .groups-filters {
-    margin-bottom: 16px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.25rem;
 }
 
 .groups-filters .form-control {
-    margin-right: 8px;
-    margin-bottom: 8px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    min-height: 36px;
 }
 
-.groups-table th {
-    white-space: nowrap;
+.groups-table {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0;
 }
 
-.groups-block-form .block-line {
-    margin-bottom: 8px;
+.groups-table thead th {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #374151;
+    font-weight: 600;
+}
+
+.groups-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.groups-block-form {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.groups-block-form h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.groups-block-form .form-control {
+    border-radius: 8px;
 }
 
 #block-detail-panel {
-    margin-top: 16px;
+    margin-top: 1rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.groups-detail .panel {
+    border-radius: 10px;
+    border-color: #e5e7eb;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.groups-detail .panel-heading {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    font-weight: 600;
+    color: #374151;
 }
 
 .groups-detail .rooming-row--unassigned {
-    background: #fffbf0;
+    background: #fffbeb;
 }
 
 .rooming-toolbar {

@@ -295,12 +295,29 @@ trait Booking_room_operations_trait
                         'check_in_date' => $this->selling_date,
                         'check_out_date' => $check_out_date,
                     ));
+                    if ((int) $latest_block['room_id'] !== (int) $new_room_id) {
+                        $this->load->helper('includes/booking_state');
+                        notify_booking_room_changed(
+                            $booking_id,
+                            (int) $latest_block['room_id'],
+                            (int) $new_room_id,
+                            $this->company_id
+                        );
+                    }
                 } else {
                     $this->Booking_room_history_model->update_check_out_date($latest_block, $check_out_date);
                 }
             } else {
+                $old_room_id_for_lock = (int) $latest_block['room_id'];
                 $this->Booking_room_history_model->update_room_id($latest_block, $new_room_id, $new_room_type_id);
                 $this->Booking_room_history_model->update_check_out_date($latest_block, $check_out_date);
+                if (
+                    (int) $booking['state'] === INHOUSE &&
+                    $old_room_id_for_lock !== (int) $new_room_id
+                ) {
+                    $this->load->helper('includes/booking_state');
+                    notify_booking_room_changed($booking_id, $old_room_id_for_lock, $new_room_id, $this->company_id);
+                }
             }
         } else {
             $warning = l('Room did not change, because the guest is checking out today', true);

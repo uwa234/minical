@@ -88,6 +88,14 @@
                         <?php echo ucwords(l('dashboard', true)); ?>
                     </a>
                 </li>
+                <?php if ($this->User_model->is_property_owner($this->user_id, $this->company_id)): ?>
+                <li class="<?php if ($first_segment == 'owner_dashboard') echo 'mm-active'; ?>">
+                    <a class="<?php if ($first_segment == 'owner_dashboard') echo 'mm-active'; ?>" href="<?php echo base_url('owner_dashboard'); ?>">
+                        <i class="metismenu-icon pe-7s-graph1"></i>
+                        Owner Dashboard
+                    </a>
+                </li>
+                <?php endif; ?>
                 <li class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>">
                     <a class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>" href="<?php echo base_url('channels'); ?>">
                         <i class="metismenu-icon pe-7s-share"></i>

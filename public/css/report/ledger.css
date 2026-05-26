@@ -1,11 +1,362 @@
-/* Preventing printing ahref when printing */
-#room_type{
-  width:232px;
+/* Ledger summary report – modern overview layout */
+
+.ledger-summary-page .ledger-filters label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+    margin: 0;
 }
+
+.ledger-summary-page .ledger-filters .form-control {
+    min-width: 120px;
+}
+
+.ledger-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 3rem 1rem;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.ledger-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+.ledger-kpi-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    border-left: 4px solid #3f6ad8;
+}
+
+.ledger-kpi-card--charges { border-left-color: #6366f1; }
+.ledger-kpi-card--payments { border-left-color: #10b981; }
+.ledger-kpi-card--balance { border-left-color: #f59e0b; }
+.ledger-kpi-card--occupancy { border-left-color: #3f6ad8; }
+.ledger-kpi-card--adr { border-left-color: #8b5cf6; }
+.ledger-kpi-card--revpar { border-left-color: #ec4899; }
+
+.ledger-kpi-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+}
+
+.ledger-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.ledger-kpi-hint {
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: #9ca3af;
+}
+
+.ledger-view-tabs {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.25rem;
+    background: #f3f4f6;
+    border-radius: 10px;
+    margin-bottom: 1.15rem;
+}
+
+.ledger-view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ledger-view-tab:hover {
+    color: #374151;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.ledger-view-tab.is-active {
+    background: #fff;
+    color: #3f6ad8;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.ledger-chart-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem 1.15rem 1.15rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ledger-chart-card__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.ledger-chart-card__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.ledger-chart-legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.ledger-legend-item::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+
+.ledger-legend-item--charges::before { background: #6366f1; }
+.ledger-legend-item--payments::before { background: #10b981; }
+
+.ledger-chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 280px;
+}
+
+.ledger-chart-wrap canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.ledger-period-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.85rem;
+}
+
+.ledger-period-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ledger-period-card:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+}
+
+.ledger-period-card.is-forecast {
+    background: #fffbeb;
+    border-color: #fcd34d;
+}
+
+.ledger-period-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+}
+
+.ledger-period-card__date {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.92rem;
+    text-decoration: none;
+}
+
+.ledger-period-card__date:hover {
+    color: #3f6ad8;
+    text-decoration: none;
+}
+
+.ledger-period-card__badge {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.ledger-period-card__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 0.75rem;
+    margin-bottom: 0.65rem;
+}
+
+.ledger-period-card__metric label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #9ca3af;
+    margin: 0 0 0.1rem;
+    font-weight: 600;
+}
+
+.ledger-period-card__metric span {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.ledger-period-card__flow {
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 999px;
+    overflow: hidden;
+    display: flex;
+    margin-bottom: 0.5rem;
+}
+
+.ledger-period-card__flow-charges {
+    background: #6366f1;
+    height: 100%;
+    min-width: 0;
+    transition: width 0.3s ease;
+}
+
+.ledger-period-card__flow-payments {
+    background: #10b981;
+    height: 100%;
+    min-width: 0;
+    transition: width 0.3s ease;
+}
+
+.ledger-period-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: #6b7280;
+    padding-top: 0.45rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.ledger-period-card__balance {
+    font-weight: 700;
+    color: #111827;
+}
+
+.ledger-period-card__balance.is-negative {
+    color: #dc2626;
+}
+
+.ledger-detail-table .flow-cell {
+    min-width: 90px;
+}
+
+.ledger-flow-bar {
+    height: 6px;
+    background: #f3f4f6;
+    border-radius: 999px;
+    overflow: hidden;
+    display: flex;
+    width: 80px;
+    margin: 0 auto;
+}
+
+.ledger-flow-bar__charges {
+    background: #6366f1;
+    height: 100%;
+}
+
+.ledger-flow-bar__payments {
+    background: #10b981;
+    height: 100%;
+}
+
+.ledger-summary-page .salesRow.futureRow {
+    background: #fffbeb !important;
+}
+
+.ledger-summary-page .salesRow.futureRow:hover {
+    background: #fef3c7 !important;
+}
+
+.ledger-print-range {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+#room_type {
+    width: 232px;
+}
+
+@media (max-width: 768px) {
+    .ledger-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ledger-period-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .ledger-view-tabs {
+        width: 100%;
+    }
+
+    .ledger-view-tab {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
 @media print {
+    .ledger-summary-page .ledger-view-tabs,
+    .ledger-summary-page .ledger-chart-card,
+    .ledger-summary-page .ledger-period-cards,
+    .ledger-summary-page .ledger-kpi-grid {
+        display: none !important;
+    }
 
-  table{
-    font: 13pt Arial, Helvetica,"Lucida Grande", serif; 
-  }
+    .ledger-summary-page #ledger-details-panel {
+        display: block !important;
+    }
 
+    .ledger-summary-page .ledger-detail-table .hidden-print {
+        display: none !important;
+    }
+
+    table {
+        font: 13pt Arial, Helvetica, "Lucida Grande", serif;
+    }
 }

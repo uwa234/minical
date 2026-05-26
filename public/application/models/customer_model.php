@@ -403,12 +403,22 @@ class Customer_model extends CI_Model {
 		) as c2
 
 		GROUP BY customer_id
+		{$this->_get_having_clause($filters)}
 
 		$order_by $order c2.customer_name
 		$limit
 		";
 
         return $sql;
+    }
+
+    function _get_having_clause($filters)
+    {
+        if (!empty($filters['with_outstanding_balance'])) {
+            return "\n\t\tHAVING balance > 0.005";
+        }
+
+        return '';
     }
 
     function _get_where_conditions($filters)

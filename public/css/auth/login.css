@@ -1,0 +1,474 @@
+/* Hotel staff login — modern split layout (Veurion) */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Instrument+Serif:ital@0;1&display=swap");
+
+:root {
+    --al-bg: #f4f2ef;
+    --al-surface: #ffffff;
+    --al-ink: #0c1222;
+    --al-ink-muted: #5c6478;
+    --al-ink-soft: #8b93a7;
+    --al-accent: #4f46e5;
+    --al-accent-hover: #4338ca;
+    --al-accent-soft: rgba(79, 70, 229, 0.14);
+    --al-teal: #0d9488;
+    --al-border: rgba(12, 18, 34, 0.1);
+    --al-danger: #dc2626;
+    --al-danger-soft: rgba(220, 38, 38, 0.1);
+    --al-radius: 14px;
+    --al-radius-lg: 22px;
+    --al-shadow: 0 24px 60px rgba(12, 18, 34, 0.1);
+    --al-font: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --al-font-display: "Instrument Serif", Georgia, serif;
+}
+
+body.auth-login-page {
+    margin: 0;
+    font-family: var(--al-font);
+    -webkit-font-smoothing: antialiased;
+    background: var(--al-bg);
+}
+
+body.auth-login-page .app-container,
+body.auth-login-page .app-theme-white,
+body.auth-login-page .auth-login-container {
+    background: var(--al-bg) !important;
+    min-height: 100vh;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+}
+
+body.auth-login-page .fixed-header,
+body.auth-login-page .app-header__mobile-menu,
+body.auth-login-page .app-main__outer::before {
+    display: none !important;
+}
+
+body.auth-login-page .wrapper {
+    min-height: 100vh;
+    padding: 0 !important;
+}
+
+body.auth-login-page .auth-login-shell {
+    padding: 0 !important;
+    min-height: 100vh;
+    width: 100%;
+    max-width: none;
+    position: relative;
+    z-index: 2;
+}
+
+body.auth-login-page .auth-login {
+    width: 100%;
+    min-height: 100vh;
+}
+
+body.auth-login-page .push {
+    display: none;
+}
+
+/* —— Layout —— */
+.auth-login {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+}
+
+.auth-login-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 56px;
+    background: linear-gradient(145deg, #0c1222 0%, #1a2744 42%, #312e81 100%);
+    color: #fff;
+    overflow: hidden;
+}
+
+.auth-login-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 80% 60% at 20% 100%, rgba(79, 70, 229, 0.45), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 90% 10%, rgba(13, 148, 136, 0.35), transparent 50%);
+    pointer-events: none;
+}
+
+.auth-login-hero > * {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-login-hero-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+}
+
+.auth-login-hero-brand img {
+    max-height: 40px;
+    max-width: 180px;
+    width: auto;
+    object-fit: contain;
+}
+
+.auth-login-hero-brand .veurion-login-brand {
+    color: #fff;
+    font-size: 1.35rem;
+}
+
+.auth-login-hero-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--al-accent) 0%, #7c3aed 100%);
+    flex-shrink: 0;
+}
+
+.auth-login-hero-copy {
+    max-width: 420px;
+    margin: auto 0;
+}
+
+.auth-login-hero-eyebrow {
+    display: inline-block;
+    margin: 0 0 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+}
+
+.auth-login-hero-copy h1 {
+    margin: 0 0 16px;
+    font-family: var(--al-font-display);
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+}
+
+.auth-login-hero-copy p {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.auth-login-hero-features {
+    list-style: none;
+    margin: 32px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-login-hero-features li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.auth-login-hero-features li::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--al-teal);
+    flex-shrink: 0;
+}
+
+.auth-login-hero-footer {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+/* Decorative dashboard mock */
+.auth-login-visual {
+    position: absolute;
+    right: -40px;
+    bottom: -20px;
+    width: min(380px, 55%);
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.auth-login-visual-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(8px);
+}
+
+.auth-login-visual-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.auth-login-visual-bar span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.auth-login-visual-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.auth-login-visual-grid div {
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-login-visual-grid div.highlight {
+    background: rgba(79, 70, 229, 0.5);
+}
+
+/* —— Form panel —— */
+.auth-login-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+    background: var(--al-bg);
+}
+
+.auth-login-card {
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-login-card-header {
+    margin-bottom: 32px;
+}
+
+.auth-login-card-header h2 {
+    margin: 0 0 8px;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--al-ink);
+}
+
+.auth-login-card-header p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--al-ink-muted);
+}
+
+.auth-login-errors {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--al-danger);
+    background: var(--al-danger-soft);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    border-radius: var(--al-radius);
+}
+
+.auth-login-errors:empty {
+    display: none;
+}
+
+.auth-login-field {
+    margin-bottom: 20px;
+}
+
+.auth-login-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--al-ink-muted);
+}
+
+.auth-login-field input {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    font-family: var(--al-font);
+    font-size: 15px;
+    color: var(--al-ink);
+    background: var(--al-surface);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.auth-login-field input::placeholder {
+    color: var(--al-ink-soft);
+}
+
+.auth-login-field input:focus {
+    outline: none;
+    border-color: var(--al-accent);
+    box-shadow: 0 0 0 3px var(--al-accent-soft);
+}
+
+.auth-login-submit {
+    width: 100%;
+    height: 48px;
+    margin-top: 8px;
+    padding: 0 24px;
+    font-family: var(--al-font);
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--al-accent) 0%, #6366f1 100%);
+    border: none;
+    border-radius: var(--al-radius);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+.auth-login-submit:hover {
+    background: linear-gradient(135deg, var(--al-accent-hover) 0%, #4f46e5 100%);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+    transform: translateY(-1px);
+}
+
+.auth-login-submit:active {
+    transform: translateY(0);
+}
+
+.auth-login-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.auth-login-links a {
+    color: var(--al-accent);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.auth-login-links a:hover {
+    color: var(--al-accent-hover);
+    text-decoration: underline;
+}
+
+.auth-login-signup {
+    display: block;
+    margin-top: 12px;
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--al-ink);
+    background: var(--al-surface);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.auth-login-signup:hover {
+    border-color: var(--al-accent);
+    background: var(--al-accent-soft);
+    color: var(--al-accent);
+    text-decoration: none;
+}
+
+.auth-login-legal {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--al-border);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--al-ink-soft);
+    text-align: center;
+}
+
+.auth-login-legal a {
+    color: var(--al-ink-muted);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.auth-login-legal a:hover {
+    color: var(--al-accent);
+}
+
+.auth-login-mobile-brand {
+    display: none;
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+.auth-login-mobile-brand a {
+    color: var(--al-ink);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.auth-login-mobile-brand img {
+    max-height: 36px;
+    max-width: 160px;
+}
+
+.auth-login-mobile-brand .veurion-login-brand {
+    color: var(--al-accent);
+}
+
+/* Validation alert from template — reposition for login */
+body.auth-login-page .container-fluid > .alert-danger {
+    top: 24px !important;
+    left: 50% !important;
+    transform: translateX(-50%);
+    width: min(90%, 480px) !important;
+    margin-left: 0 !important;
+    border-radius: var(--al-radius);
+    box-shadow: var(--al-shadow);
+}
+
+@media (max-width: 960px) {
+    .auth-login {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-login-hero {
+        display: none;
+    }
+
+    .auth-login-mobile-brand {
+        display: block;
+    }
+
+    .auth-login-main {
+        padding: 32px 24px 48px;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-login-card-header h2 {
+        font-size: 1.5rem;
+    }
+}

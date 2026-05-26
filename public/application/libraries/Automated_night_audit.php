@@ -183,7 +183,7 @@ class Automated_night_audit {
         }
 
         $this->ci->load->library('email');
-        $from_email = 'donotreply@minical.io';
+        $from_email = 'donotreply@veurion.com';
         $from_name = 'miniCal';
 
         $this->ci->email->from($from_email, $from_name);

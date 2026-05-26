@@ -249,7 +249,7 @@ class Booking extends MY_Controller
 
         $whitelabelinfo = $this->session->userdata('white_label_information');
 
-        $data['support_email'] = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@minical.io';
+        $data['support_email'] = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
 
         $data['whitelabel_detail'] = $whitelabelinfo;
         $data['is_show_unassigned_rooms'] = $company_data['force_room_selection'];
@@ -1579,6 +1579,13 @@ class Booking extends MY_Controller
 
             do_action('post.update.booking', $post_booking_data);
 
+            $this->load->helper('includes/booking_state');
+            notify_booking_state_changed(
+                $booking_id,
+                $booking_existing_data['state'],
+                $booking['state'],
+                $this->company_id
+            );
 
             $this->_create_booking_log($booking_id, "Booking cancelled");
             if(isset($this->automatic_email_cancellation) && $this->automatic_email_cancellation) {
@@ -2072,7 +2079,21 @@ class Booking extends MY_Controller
                                 $post_booking_data['room_type_id'] = $block['room_type_id'];
                                 $post_booking_data['check_in_date'] = $this->selling_date;
                                 $post_booking_data['check_out_date'] = $block['check_out_date'];
+                                $post_booking_data['company_id'] = $this->company_id;
                                 do_action('post.update.booking', $post_booking_data);
+                                if (
+                                    isset($new_data['booking']['state']) &&
+                                    (string) $new_data['booking']['state'] === INHOUSE &&
+                                    (int) $latest_block['room_id'] !== (int) $new_room_id
+                                ) {
+                                    $this->load->helper('includes/booking_state');
+                                    notify_booking_room_changed(
+                                        $booking_id,
+                                        (int) $latest_block['room_id'],
+                                        (int) $new_room_id,
+                                        $this->company_id
+                                    );
+                                }
                             }
                             else
                             {
@@ -2082,8 +2103,17 @@ class Booking extends MY_Controller
                         }
                         // NO SPLIT: check-in date is after current selling date. Freely update the booking around without splitting.
                         else {
+                            $old_room_id_for_lock = (int) $latest_block['room_id'];
                             $this->Booking_room_history_model->update_room_id($latest_block, $new_room_id, $new_room_type_id);
                             $latest_block['room_id'] = $new_room_id; // because room_id's been modified
+                            if (
+                                isset($new_data['booking']['state']) &&
+                                (string) $new_data['booking']['state'] === INHOUSE &&
+                                $old_room_id_for_lock !== (int) $new_room_id
+                            ) {
+                                $this->load->helper('includes/booking_state');
+                                notify_booking_room_changed($booking_id, $old_room_id_for_lock, $new_room_id, $this->company_id);
+                            }
                             // only change check in date when editing reservation
                             if ($new_data['booking']['state'] == RESERVATION ||
                                 $old_data['booking']['state'] == RESERVATION) {
@@ -2198,7 +2228,13 @@ class Booking extends MY_Controller
             $end_date = $booking_existing_data['check_out_date'];
         }
 
+        $old_booking_state = $booking_existing_data['state'];
         $this->Booking_model->update_booking($booking_id, array('state' => $new_state));
+
+        if ($new_state !== null && (string) $old_booking_state !== (string) $new_state) {
+            $this->load->helper('includes/booking_state');
+            notify_booking_state_changed($booking_id, $old_booking_state, $new_state, $this->company_id);
+        }
 
         $update_availability_data = array(
                         'start_date' => $start_date,

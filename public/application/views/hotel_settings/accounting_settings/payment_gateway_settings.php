@@ -1,6 +1,11 @@
-<div class="page-header">
-	<h2><?php echo l('payment_gateway_settings'); ?></h2>
-</div>
+<div class="mc-page">
+<?php $this->load->view('includes/mc_page_header', array(
+    'title' => l('payment_gateway_settings', true),
+    'icon' => 'fa-lock',
+)); ?>
+
+<div class="main-card mb-3 card mc-card">
+<div class="card-body">
 
     <?php if($this->session->flashdata('setting_update')){ ?>
         <div class="alert alert-success">
@@ -43,4 +48,5 @@
 	<div class="col-sm-12 text-center">
 		<div class="btn btn-light" id="update-button"><?php echo l('Update', true); ?></div>
 	</div>
-</div>	
+</div>
+</div></div></div>

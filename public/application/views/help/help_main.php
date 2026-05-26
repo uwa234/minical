@@ -6,7 +6,7 @@
 		<h2>Contact</h2>
 		<ul>
 			<li>
-				E-mail: <a href="mailto:support@minical.io">support@minical.io</a>
+				E-mail: <a href="mailto:support@veurion.com">support@veurion.com</a>
 			</li>
 			<li>
 				Call: +1 (403) 708 0563

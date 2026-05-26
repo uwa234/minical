@@ -24,39 +24,59 @@ class Menu extends MY_Controller
 				break;
 			}
 		}
-                
-                 
-		//Verify user has permission to look at this company.
-		if (!is_null($user_role = $this->User_model->get_user_role($this->user_id, $company_id)))
-		{
-                      
-                        // Set last login date in company.
-                     /*   if($user_role!='is_admin')
-                        {
-                            $updatedata = array('last_login' => date('Y-m-d'));
-                            $this->Company_model->update_company($company_id, $updatedata);                                  }
-                            */
-                     
-			//Store the latest hotel selected into the database so the next time the user logs in
-			//they can continue using the same hotel
-			$data = array('current_company_id' => $company_id);
-			$this->User_model->update_user_profile($this->user_id, $data);
-			
-			$company = $this->Company_model->get_company($company_id);
-			$data = array (
-				'current_company_id' => $company_id,
-				'current_selling_date' => $company['selling_date'],
-				'is_paying_customer' => $this->Company_model->has_tag($company_id, "PAYING_CUSTOMER"),
-				'user_role' => $user_role,
-				'property_type' => $company['property_type']
-			);
-            $this->session->unset_userdata('permissions');
-            $this->session->unset_userdata('current_company_id');
-			$this->session->set_userdata($data);
-            $employee_permission['permissions'] = $this->Employee_log_model->get_user_permission($this->session->userdata('current_company_id'), $this->session->userdata('user_id'));
-			$this->session->set_userdata($employee_permission);
+
+		$company_id = (int) $company_id;
+		$platform_admin = is_platform_admin($this->user_id, $this->session->userdata('email'));
+
+		if (!$company_id) {
+			$this->session->set_flashdata('flash_warning_message', 'Please select a property.');
+			redirect($platform_admin ? '/admin/property_list' : '/properties/my_properties');
+			return;
 		}
-		
+
+		$user_role = $this->User_model->get_user_role($this->user_id, $company_id);
+		if (is_null($user_role) && $platform_admin) {
+			$user_role = 'is_admin';
+		}
+
+		if (is_null($user_role)) {
+			$this->session->set_flashdata('flash_warning_message', 'You do not have permission to access this property.');
+			redirect('/properties/my_properties');
+			return;
+		}
+
+		$company = $this->Company_model->get_company($company_id);
+		if (!$company || !isset($company['company_id'])) {
+			$this->session->set_flashdata('flash_warning_message', 'Property not found.');
+			redirect($platform_admin ? '/admin/property_list' : '/properties/my_properties');
+			return;
+		}
+
+		// Store the latest hotel selected so the next login continues on this property.
+		$this->User_model->update_user_profile($this->user_id, array('current_company_id' => $company_id));
+
+		$data = array(
+			'current_company_id' => $company_id,
+			'current_selling_date' => $company['selling_date'],
+			'is_paying_customer' => $this->Company_model->has_tag($company_id, 'PAYING_CUSTOMER'),
+			'user_role' => $user_role,
+			'property_type' => $company['property_type'],
+		);
+		$this->session->unset_userdata('permissions');
+		$this->session->unset_userdata('current_company_id');
+		$this->session->set_userdata($data);
+
+		$employee_permission = array(
+			'permissions' => $this->Employee_log_model->get_user_permission(
+				$this->session->userdata('current_company_id'),
+				$this->session->userdata('user_id')
+			),
+		);
+		if ($user_role === 'is_admin' && $platform_admin && !in_array('is_admin', $employee_permission['permissions'], true)) {
+			$employee_permission['permissions'][] = 'is_admin';
+		}
+		$this->session->set_userdata($employee_permission);
+
         $partner = $this->Whitelabel_partner_model->get_partner_detail($company['partner_id']);
         if(
                 isset($partner['partner_slug']) && 

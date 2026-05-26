@@ -44,7 +44,8 @@ if ($this->config->item('use_username', 'tank_auth')) {
 
 	<h2 class="form-signin-heading">Reset your password</h2>
 	<div class="form-group">
-		<input class="text_assisted_input email form-control" title="email" type="text" name="login" value="email" id="login" maxlength="80" >
+		<label for="login" class="sr-only"><?php echo $login_label; ?></label>
+		<input class="text_assisted_input email form-control" title="<?php echo $login_label; ?>" type="email" name="login" value="<?php echo htmlspecialchars(set_value('login'), ENT_QUOTES, 'UTF-8'); ?>" id="login" maxlength="80" placeholder="you@hotel.com" required autocomplete="email" />
 	</div>
 	<div class="form-group">
 		<div style="color: red;">

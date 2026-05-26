@@ -27,4 +27,15 @@ class PaystackTest extends TestCase
     {
         $this->assertNull(Paystack::parseObeReference('invalid'));
     }
+
+    public function testBuildAndParseWhatsappReference()
+    {
+        $reference = Paystack::buildWhatsappReference(5, 99);
+        $this->assertStringStartsWith('waps_5_99_', $reference);
+
+        $parsed = Paystack::parseWhatsappReference($reference);
+        $this->assertNotNull($parsed);
+        $this->assertSame(5, $parsed['company_id']);
+        $this->assertSame(99, $parsed['booking_id']);
+    }
 }

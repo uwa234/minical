@@ -29,8 +29,10 @@ class Room extends MY_Controller
 	
 	function index() {		
 
-		$data['css_files']= array( 
-			base_url() . auto_version('css/review_form/rateit.css')
+		$data['css_files']= array(
+			base_url() . auto_version('css/review_form/rateit.css'),
+			base_url() . auto_version('css/app-modern-page.css'),
+			base_url() . auto_version('css/rooms/rooms.css'),
 		);
 
 		$data['js_files'] = array(
@@ -345,7 +347,9 @@ class Room extends MY_Controller
 			base_url() . auto_version('js/room_inventory.js')
 		);
 		$data['css_files'] = array(
-			base_url() . auto_version('css/room_inventory.css')
+			base_url() . auto_version('css/room_inventory.css'),
+			base_url() . auto_version('css/app-modern-page.css'),
+			base_url() . auto_version('css/rooms/rooms.css'),
 		);
 		$data['selected_menu'] = 'rooms';			
 		$data['main_content'] = 'room/room_inventory';		

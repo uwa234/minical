@@ -1,0 +1,29 @@
+<?php
+
+$lang['revenue_management'] = 'Revenue Management';
+$lang['rms_title'] = 'Revenue Management';
+$lang['rms_subtitle'] = 'Dynamic rates, restrictions, and forecast from ';
+$lang['rms_tab_rates'] = 'Dynamic Rates';
+$lang['rms_tab_restrictions'] = 'Restrictions';
+$lang['rms_tab_forecast'] = 'Forecast';
+$lang['rms_rate_plan'] = 'Rate plan';
+$lang['rms_previous_week'] = 'Previous week';
+$lang['rms_next_week'] = 'Next week';
+$lang['rms_today'] = 'Today';
+$lang['rms_bulk_edit_rates'] = 'Bulk edit rates';
+$lang['rms_manage_rate_plans'] = 'Manage rate plans';
+$lang['rms_restrictions_hint'] = 'Length-of-stay rules, closed-to-arrival/departure, and stop-sell flags for the selected rate plan.';
+$lang['rms_forecast_period'] = 'Forecast period';
+$lang['rms_days'] = '%s days';
+$lang['rms_on_books'] = 'On-books revenue';
+$lang['rms_potential'] = 'Potential revenue';
+$lang['rms_forecast_total'] = 'Total forecast';
+$lang['rms_avg_occupancy'] = 'Avg. occupancy';
+$lang['rms_date'] = 'Date';
+$lang['rms_occupied'] = 'Occupied';
+$lang['rms_available'] = 'Available';
+$lang['rms_occupancy'] = 'Occupancy';
+$lang['rms_adr'] = 'ADR';
+$lang['rms_revpar'] = 'RevPAR';
+$lang['rms_no_rates'] = 'No rate data for this period.';
+$lang['rms_no_rate_plans'] = 'Create a rate plan in Settings to get started.';

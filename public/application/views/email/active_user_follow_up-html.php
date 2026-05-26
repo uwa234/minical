@@ -386,11 +386,11 @@
 																<br/>
 																<strong>Jaeyun Noh</strong>
 																<br/>
-																CEO/CTO, Minical Inc.
+																CEO/CTO, Veurion Inc.
 																<br/><br/>
 																Phone: +1 (403) 708 0563
 																<br/>
-																Email: jaeyun@minical.io
+																Email: jaeyun@veurion.com
 																<br/>
 																
 																

@@ -1,6 +1,6 @@
 <?php
 // Set the whitelabel information
-$whitelabel_detail = $this->session->userdata('white_label_information');
+$whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userdata('white_label_information'));
 ?>
 <head>
     <!-- Google Tag Manager -->
@@ -12,11 +12,23 @@ $whitelabel_detail = $this->session->userdata('white_label_information');
     <!-- End Google Tag Manager -->
 
 	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="mobile-web-app-capable" content="yes">
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<link rel="manifest" href="<?php echo base_url('manifest.webmanifest'); ?>">
+	<meta name="theme-color" content="#1f2937">
+	<link rel="stylesheet" type="text/css" href="<?php echo base_url() . auto_version('css/offline/offline-banner.css'); ?>" />
 	
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
 	<!-- <title><?php echo (isset($whitelabel_detail) && isset($whitelabel_detail['name'])) ? ucfirst($whitelabel_detail['name']) : $this->config->item('branding_name'); ?> - Hotel software made by hotelier</title> -->
-    <title><?php echo isset($this->company_name) && $this->company_name ? ucfirst($this->company_name) : ((isset($whitelabel_detail) && isset($whitelabel_detail['name'])) ? ucfirst($whitelabel_detail['name']) : $this->config->item('branding_name')); ?></title>
+    <title><?php
+        if (isset($this->company_name) && $this->company_name) {
+            echo htmlspecialchars(ucfirst($this->company_name), ENT_QUOTES, 'UTF-8');
+        } elseif (isset($whitelabel_detail['name']) && $whitelabel_detail['name']) {
+            echo htmlspecialchars(ucfirst(veurion_display_brand_name($whitelabel_detail['name'])), ENT_QUOTES, 'UTF-8');
+        } else {
+            echo htmlspecialchars($this->config->item('branding_name') ?: 'Veurion', ENT_QUOTES, 'UTF-8');
+        }
+    ?></title>
 	
 	<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap.min.css"  />	
 	<!-- <link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap-theme.min.css"  />	 -->

@@ -29,7 +29,6 @@ class Ledger extends MY_Controller {
         $global_data['sidebar_menu_url'] = base_url()."reports/ledger/";
         $global_data['menu_items'] = $this->Menu_model->get_menus(array('parent_id' => 4, 'wp_id' => 1));
         $global_data['sidebar_links'] = $this->Menu_model->get_menus(array('parent_id' => 9, 'wp_id' => 1));
-
 		$this->load->vars($global_data);
 		
 	}
@@ -65,14 +64,14 @@ class Ledger extends MY_Controller {
 		$data['company_data'] = $this->Company_model->get_company($this->company_id);
         
         $data['js_files'] = array(
+            base_url() . 'js/chart-2.9.4.min.js',
             base_url().auto_version('js/report/ledger_report.js')
         );
 
-        $data['css_files'][] = base_url().auto_version('css/report/ledger.css');
-  
         $data['selected_submenu'] = 'Ledger'; //for css
         $data['selected_sidebar_link'] = 'Summary';
         $data['main_content']     = 'reports/ledger/ledger_summary_report';
+        $data = $this->_merge_report_css_files($data);
 
         $this->load->view('includes/bootstrapped_template', $data);
     }
@@ -159,6 +158,7 @@ class Ledger extends MY_Controller {
         $data['selected_submenu'] = 'Ledger'; //for css
         $data['selected_sidebar_link'] = 'General Ledger';
         $data['main_content'] = 'reports/ledger/daily_summary_report';
+        $data = $this->_merge_report_css_files($data);
         $this->load->view('includes/bootstrapped_template', $data);
 	}
 	
@@ -342,6 +342,7 @@ class Ledger extends MY_Controller {
         $data['selected_sidebar_link'] = 'Taxes';
         
         $data['main_content']     = 'reports/ledger/monthly_tax_report';
+        $data = $this->_merge_report_css_files($data);
         $this->load->view('includes/bootstrapped_template', $data);
 	}
 	
@@ -384,7 +385,9 @@ class Ledger extends MY_Controller {
                      base_url().'js/moment.min.js',
             base_url().'js/daterangepicker.js',
         );
-        $data['css_files'][] = base_url().auto_version('css/daterangepicker.css');
+        $data = $this->_merge_report_css_files($data, array(
+            base_url().auto_version('css/daterangepicker.css'),
+        ));
         $data['selected_submenu'] = 'Ledger'; //for css
         $data['selected_sidebar_link'] = 'Charges';
         
@@ -434,7 +437,9 @@ class Ledger extends MY_Controller {
             base_url().'js/moment.min.js',
             base_url().'js/daterangepicker.js',
         );
-        $data['css_files'][] = base_url().auto_version('css/daterangepicker.css');
+        $data = $this->_merge_report_css_files($data, array(
+            base_url().auto_version('css/daterangepicker.css'),
+        ));
         $data['selected_submenu'] = 'Ledger'; //for css
         $data['selected_sidebar_link'] = 'Payments';
         $data['main_content']     = 'reports/ledger/monthly_payment_report';
@@ -474,6 +479,7 @@ class Ledger extends MY_Controller {
 
         $data['selected_submenu'] = 'Action'; //for css
         $data['main_content']     = 'report/action_report';
+        $data = $this->_merge_report_css_files($data);
 
         $this->load->view('includes/bootstrapped_template', $data);
     }
@@ -498,6 +504,7 @@ class Ledger extends MY_Controller {
 
         $data['selected_submenu'] = 'Booking'; //for css
         $data['main_content'] = 'report/booking_sources_report';
+        $data = $this->_merge_report_css_files($data);
 
 		$this->load->view('includes/bootstrapped_template', $data);
 	}
@@ -533,6 +540,7 @@ class Ledger extends MY_Controller {
         $data['selected_submenu'] = 'Customer';
 
         $data['main_content'] = 'report/in_house_report';
+        $data = $this->_merge_report_css_files($data);
         $this->load->view('includes/bootstrapped_template', $data);
 
 	}
@@ -1311,5 +1319,15 @@ class Ledger extends MY_Controller {
         }
 //        echo "<pre>"; print_r($bookings);    die();
         force_download_csv($bookings, "daily_summary_report.csv");
+    }
+
+    private function _merge_report_css_files($data, $extra = array())
+    {
+        $base = array(
+            base_url() . auto_version('css/app-modern-page.css'),
+            base_url() . auto_version('css/report/ledger.css'),
+        );
+        $data['css_files'] = array_merge($base, $extra);
+        return $data;
     }
 }

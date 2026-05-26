@@ -1,162 +1,196 @@
 .channels-page {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 24px 16px 48px;
+    padding: 0.5rem 0 2.5rem;
 }
 
 .channels-header {
-    margin-bottom: 24px;
+    margin-bottom: 1.5rem;
 }
 
 .channels-title {
-    margin: 0 0 8px;
-    font-size: 28px;
+    margin: 0 0 0.35rem;
+    font-size: 1.65rem;
     font-weight: 600;
+    color: #111827;
 }
 
 .channels-subtitle {
     margin: 0;
-    color: #5c6b7a;
-    font-size: 15px;
+    color: #6b7280;
+    font-size: 0.95rem;
 }
 
 .channel-card {
     background: #fff;
-    border: 1px solid #e3e8ef;
-    border-radius: 10px;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.channel-card--disabled {
-    opacity: 0.65;
+.channel-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.channel-card--website {
+    border-left: 4px solid #10b981;
+}
+
+.channel-card--booking {
+    border-left: 4px solid #3f6ad8;
+}
+
+.channel-card--airbnb {
+    border-left: 4px solid #ff385c;
+}
+
+.channel-card--expedia {
+    border-left: 4px solid #f59e0b;
 }
 
 .channel-card-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 12px;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
 }
 
 .channel-card-head h2 {
-    margin: 0 8px 0 0;
-    display: inline-block;
-    font-size: 20px;
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #111827;
 }
 
 .channel-card-desc {
-    color: #4a5568;
-    margin-bottom: 16px;
+    color: #4b5563;
+    margin-bottom: 1rem;
+    line-height: 1.5;
 }
 
 .channel-badge {
     display: inline-block;
-    font-size: 11px;
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 3px 8px;
-    border-radius: 4px;
-    margin-right: 6px;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    margin-right: 0.35rem;
     vertical-align: middle;
 }
 
 .channel-badge--native {
-    background: #e8f4ec;
-    color: #1e6b3c;
+    background: #d1fae5;
+    color: #065f46;
 }
 
 .channel-badge--limited {
-    background: #fff4e5;
-    color: #9a5b00;
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .channel-badge--ok {
-    background: #e8f4ec;
-    color: #1e6b3c;
+    background: #d1fae5;
+    color: #065f46;
 }
 
 .channel-badge--muted {
-    background: #f0f2f5;
+    background: #f3f4f6;
     color: #6b7280;
 }
 
-.channel-url-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.channel-url-row .form-control {
-    flex: 1;
-}
-
 .channel-online-toggle {
-    margin-bottom: 16px;
-    padding: 14px 16px;
-    background: #f8fafc;
-    border: 1px solid #e3e8ef;
-    border-radius: 8px;
+    margin-bottom: 1rem;
 }
 
 .channel-toggle-row {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
-}
-
-.channel-toggle-text {
-    flex: 1;
+    gap: 1rem;
 }
 
 .channel-toggle-text strong {
     display: block;
-    margin-bottom: 4px;
-    font-size: 14px;
+    color: #111827;
+    margin-bottom: 0.25rem;
 }
 
 .channel-toggle-help {
     margin: 0;
-    font-size: 13px;
-    color: #5c6b7a;
-    line-height: 1.45;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.channel-field label {
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.35rem;
+}
+
+.channel-url-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.channel-url-row .form-control {
+    flex: 1;
+    min-width: 200px;
+    border-radius: 8px;
 }
 
 .channel-hint {
-    margin-top: 12px;
-    font-size: 13px;
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+}
+
+.channel-hint a {
+    color: #3f6ad8;
 }
 
 .channel-limitations {
-    margin-bottom: 16px;
+    border-radius: 8px;
+    border: none;
+    background: #fffbeb;
+    color: #92400e;
 }
 
-.channel-limitations p {
-    margin: 6px 0 0;
+.channel-ical-table {
+    margin-bottom: 0;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.channel-ical-table th {
-    white-space: nowrap;
+.channel-ical-table thead th {
+    background: #f9fafb;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #374151;
+}
+
+.channel-ical-table tbody tr:hover {
+    background: #f8fafc;
 }
 
 .channel-flags-col {
-    min-width: 180px;
+    min-width: 140px;
+    white-space: nowrap;
 }
 
 .channel-check {
     display: block;
     font-weight: normal;
-    margin-bottom: 6px;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
 }
 
 .channel-check input {
-    margin-right: 6px;
-}
-
-.export-url-field {
-    margin-bottom: 4px;
-    font-size: 12px;
+    margin-right: 0.35rem;
 }

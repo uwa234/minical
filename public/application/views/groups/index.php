@@ -1,4 +1,4 @@
-<div class="groups-page">
+<div class="groups-page mc-page">
     <div class="groups-header">
         <h1 class="groups-title"><?php echo l('groups_blocks_hub', true); ?></h1>
         <p class="groups-subtitle"><?php echo l('linked_groups', true); ?> &amp; <?php echo l('inventory_blocks', true); ?></p>

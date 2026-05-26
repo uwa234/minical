@@ -5,6 +5,23 @@
 class Channel_ical_model extends CI_Model {
 
     const CHANNEL_BOOKING_DOT_COM = 'booking_dot_com';
+    const CHANNEL_AIRBNB = 'airbnb';
+    const CHANNEL_EXPEDIA = 'expedia';
+
+    /** @return string[] */
+    public static function supported_channel_keys()
+    {
+        return array(
+            self::CHANNEL_BOOKING_DOT_COM,
+            self::CHANNEL_AIRBNB,
+            self::CHANNEL_EXPEDIA,
+        );
+    }
+
+    public static function is_valid_channel_key($channel_key)
+    {
+        return in_array($channel_key, self::supported_channel_keys(), true);
+    }
 
     public function __construct()
     {
@@ -140,7 +157,7 @@ class Channel_ical_model extends CI_Model {
         return $count;
     }
 
-    public function get_busy_periods_for_export($company_id, $room_type_id, $start_date, $end_date)
+    public function get_busy_periods_for_export($company_id, $room_type_id, $start_date, $end_date, $exclude_channel_key = null)
     {
         $this->load->model('Room_model');
         $total_rooms = $this->count_rooms_for_type($company_id, $room_type_id);
@@ -163,7 +180,7 @@ class Channel_ical_model extends CI_Model {
 
             $free_rooms = count($available);
             $pms_occupied = max(0, $total_rooms - $free_rooms);
-            $import_blocks = $this->count_import_blocks_on_night($company_id, $room_type_id, $night);
+            $import_blocks = $this->count_import_blocks_on_night($company_id, $room_type_id, $night, $exclude_channel_key);
 
             if ($total_rooms > 0 && ($pms_occupied + $import_blocks) >= $total_rooms) {
                 $periods[] = array(
@@ -190,7 +207,7 @@ class Channel_ical_model extends CI_Model {
         return (int) $this->db->count_all_results();
     }
 
-    public function count_import_blocks_on_night($company_id, $room_type_id, $date)
+    public function count_import_blocks_on_night($company_id, $room_type_id, $date, $exclude_channel_key = null)
     {
         if (!$this->db->table_exists('channel_ical_busy_period')) {
             return 0;
@@ -199,7 +216,9 @@ class Channel_ical_model extends CI_Model {
         $this->db->from('channel_ical_busy_period');
         $this->db->where('company_id', (int) $company_id);
         $this->db->where('room_type_id', (int) $room_type_id);
-        $this->db->where('channel_key', self::CHANNEL_BOOKING_DOT_COM);
+        if ($exclude_channel_key !== null && $exclude_channel_key !== '') {
+            $this->db->where('channel_key !=', $exclude_channel_key);
+        }
         $this->db->where('check_in_date <=', $date);
         $this->db->where('check_out_date >', $date);
 
@@ -220,10 +239,12 @@ class Channel_ical_model extends CI_Model {
         $events = ical_parse_events($fetch['body']);
         $normalized = array();
 
+        $default_summary = $this->default_event_summary_for_channel($mapping['channel_key']);
+
         foreach ($events as $event) {
             $normalized[] = array(
                 'uid' => isset($event['uid']) ? $event['uid'] : null,
-                'summary' => isset($event['summary']) ? $event['summary'] : 'Booking.com',
+                'summary' => isset($event['summary']) ? $event['summary'] : $default_summary,
                 'check_in_date' => $event['check_in_date'],
                 'check_out_date' => $event['check_out_date'],
             );
@@ -243,26 +264,52 @@ class Channel_ical_model extends CI_Model {
             'updated_at' => date('Y-m-d H:i:s'),
         ));
 
+        $channel_label = $this->channel_label($mapping['channel_key']);
+
         return array(
             'success' => true,
-            'message' => $count . ' reservation block(s) imported from Booking.com calendar.',
+            'message' => $count . ' reservation block(s) imported from ' . $channel_label . ' calendar.',
             'count' => $count,
         );
     }
 
-    public function import_all_for_company($company_id)
+    public function import_all_for_company($company_id, $channel_key = null)
     {
         $results = array();
-        $mappings = $this->get_mappings($company_id);
+        $channel_keys = $channel_key !== null
+            ? array($channel_key)
+            : self::supported_channel_keys();
 
-        foreach ($mappings as $mapping) {
-            if (empty($mapping['import_enabled']) || empty($mapping['import_url'])) {
+        foreach ($channel_keys as $key) {
+            if (!self::is_valid_channel_key($key)) {
                 continue;
             }
-            $results[] = $this->import_from_url($mapping);
+            $mappings = $this->get_mappings($company_id, $key);
+            foreach ($mappings as $mapping) {
+                if (empty($mapping['import_enabled']) || empty($mapping['import_url'])) {
+                    continue;
+                }
+                $results[] = $this->import_from_url($mapping);
+            }
         }
 
         return $results;
+    }
+
+    public function channel_label($channel_key)
+    {
+        $labels = array(
+            self::CHANNEL_BOOKING_DOT_COM => 'Booking.com',
+            self::CHANNEL_AIRBNB => 'Airbnb',
+            self::CHANNEL_EXPEDIA => 'Expedia',
+        );
+
+        return isset($labels[$channel_key]) ? $labels[$channel_key] : $channel_key;
+    }
+
+    protected function default_event_summary_for_channel($channel_key)
+    {
+        return $this->channel_label($channel_key);
     }
 
     protected function merge_consecutive_periods($periods)

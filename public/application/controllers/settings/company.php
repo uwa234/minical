@@ -271,11 +271,11 @@ class Company extends MY_Controller
         // if  user doesn't exist in company
         if (!$this->User_model->user_exists_in_company($email, $company_id)) {
 
-            // if user doesn't exist in Minical, create a new user
+            // if user doesn't exist in Veurion, create a new user
             if (is_null($user = $this->users->get_user_by_email($email)))
             {
 
-                echo l("email doesn't exist in Minical. creating a new user",true);
+                echo l("email doesn't exist in Veurion. creating a new user",true);
                 //Note: password is not set for employees until they register
                 $data = array(
                     'email'              => $email,
@@ -343,7 +343,7 @@ class Company extends MY_Controller
         if($whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name']){
             $data['partner_name'] = $whitelabelinfo['name'];
         } else {
-            $data['partner_name'] = 'Minical';
+            $data['partner_name'] = 'Veurion';
         }
         $this->_send_email('register_employee', $employee_email, $data);
     }

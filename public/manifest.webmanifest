@@ -1,0 +1,16 @@
+{
+  "name": "Veurion PMS",
+  "short_name": "Veurion",
+  "description": "Property management with offline change queue",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f2937",
+  "icons": [
+    {
+      "src": "images/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

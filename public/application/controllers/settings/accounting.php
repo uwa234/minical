@@ -42,6 +42,9 @@ class Accounting extends MY_Controller
         
         $view_data['menu_items'] = $this->Menu_model->get_menus(array('parent_id' => 5, 'wp_id' => 1));
         $view_data['sidebar_links'] = $this->Menu_model->get_menus(array('parent_id' => 30, 'wp_id' => 1));
+        $view_data['css_files'] = array(
+            base_url() . auto_version('css/app-modern-page.css'),
+        );
 		
 		$this->load->vars($view_data);
 	}	

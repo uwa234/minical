@@ -136,5 +136,5 @@ if(sessionStorage.getItem("currentCompanyId") != $('#currentCompanyId').val())
 }
 
 window.parent.postMessage({
-    'minical-current-url': window.location.href
+    'veurion-current-url': window.location.href
 },"*");

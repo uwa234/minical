@@ -85,6 +85,7 @@ define('SOURCE_SITEMINDER', '-14');
 define('SOURCE_SEASONAL', '-15');
 define('SOURCE_OTHER_TRAVEL_AGENCY', '-20');
 define('SOURCE_CHANNEX', '-16');
+define('SOURCE_WHATSAPP', '-21');
 
 // these booking sources are hardcoded and common for each user
 define('COMMON_BOOKING_SOURCES', 
@@ -106,7 +107,8 @@ define('COMMON_BOOKING_SOURCES',
             SOURCE_OTHER_TRAVEL_AGENCY => 'Other Travel Agency',
             SOURCE_SITEMINDER => 'Siteminder',
             SOURCE_SEASONAL => 'seasonal.io',
-            SOURCE_CHANNEX => 'Channex'
+            SOURCE_CHANNEX => 'Channex',
+            SOURCE_WHATSAPP => 'WhatsApp'
         ))
     );
 
@@ -299,7 +301,9 @@ define('SUPPORT_PHONE_NUMBER', 				'1 (403) 879-1166'); // Deleted Out of Order
 
 define('SUPER_ADMIN_USER_ID', 				'1');
 
-define('SUPER_ADMIN', 'support@minical.io');
+define('SUPER_ADMIN', 'support@veurion.com');
+define('PLATFORM_SUPER_ADMIN', 'info@veurion.com');
+define('LEGACY_SUPER_ADMIN', 'support@minical.io');
 
 /*
 |--------------------------------------------------------------------------

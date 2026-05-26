@@ -1,0 +1,381 @@
+/* Shared modern page layout for hotelier app sections */
+
+.mc-page {
+    padding: 0.5rem 0 2.5rem;
+    max-width: 1400px;
+}
+
+.mc-page-header {
+    margin-bottom: 1.25rem;
+}
+
+.mc-page-header-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.mc-page-header-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.mc-page-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    color: #4338ca;
+    font-size: 1.25rem;
+}
+
+.mc-page-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.65rem;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.25;
+}
+
+.mc-page-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #6b7280;
+    line-height: 1.45;
+}
+
+.mc-page-extra {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+.mc-page-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Legacy title blocks inside modern pages */
+.mc-page .app-page-title {
+    display: none;
+}
+
+.mc-page .main-card,
+.mc-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+
+.mc-page .main-card > .card-body,
+.mc-card-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.mc-toolbar {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.25rem;
+}
+
+.mc-page .panel.panel-default {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    margin-bottom: 0;
+}
+
+.mc-page .panel.panel-default > .panel-body {
+    padding: 0;
+}
+
+.mc-page .panel.panel-default.hidden-print,
+.mc-page .panel-default.hidden-print {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.25rem;
+}
+
+.mc-page .panel.panel-default.hidden-print > .panel-body {
+    padding: 0;
+}
+
+.mc-page .form-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem 1rem;
+}
+
+.mc-page .form-inline .form-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.mc-page .form-inline .form-control,
+.mc-page .form-inline select {
+    border-radius: 8px;
+    border-color: #d1d5db;
+    min-height: 36px;
+}
+
+.mc-page .form-inline label {
+    margin: 0;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.mc-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.mc-month-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.mc-month-nav a {
+    color: #3f6ad8;
+    text-decoration: none;
+    padding: 0.2rem 0.45rem;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+}
+
+.mc-month-nav a:hover {
+    background: #eef2ff;
+    text-decoration: none;
+}
+
+.mc-page .table {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.mc-page .table > thead > tr > th {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+    color: #374151;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.75rem 0.85rem;
+    white-space: nowrap;
+}
+
+.mc-page .table > tbody > tr > td,
+.mc-page .table > tfoot > tr > td {
+    padding: 0.7rem 0.85rem;
+    vertical-align: middle;
+    border-color: #f3f4f6;
+}
+
+.mc-page .table-hover > tbody > tr:hover {
+    background-color: #f8fafc;
+}
+
+.mc-page .table > tfoot > tr > td {
+    background: #f9fafb;
+    font-weight: 600;
+    border-top: 2px solid #e5e7eb;
+}
+
+.mc-page .btn {
+    border-radius: 8px;
+}
+
+.mc-page .btn-success {
+    background: #059669;
+    border-color: #059669;
+}
+
+.mc-page .btn-success:hover {
+    background: #047857;
+    border-color: #047857;
+}
+
+.mc-page .btn-primary {
+    background: #3f6ad8;
+    border-color: #3f6ad8;
+}
+
+.mc-page .h4 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 1.25rem 0 0.75rem;
+}
+
+/* Tabs (groups, RMS, etc.) */
+.mc-page .nav-tabs,
+.groups-page .nav-tabs,
+.rms-page .nav-tabs {
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 1.25rem;
+}
+
+.mc-page .nav-tabs > li > a,
+.groups-page .nav-tabs > li > a,
+.rms-page .nav-tabs > li > a {
+    border: none;
+    border-radius: 8px 8px 0 0;
+    color: #6b7280;
+    font-weight: 500;
+    padding: 0.65rem 1.15rem;
+    margin-right: 0.25rem;
+}
+
+.mc-page .nav-tabs > li.active > a,
+.mc-page .nav-tabs > li.active > a:hover,
+.mc-page .nav-tabs > li.active > a:focus,
+.groups-page .nav-tabs > li.active > a,
+.groups-page .nav-tabs > li.active > a:hover,
+.groups-page .nav-tabs > li.active > a:focus,
+.rms-page .nav-tabs > li.active > a,
+.rms-page .nav-tabs > li.active > a:hover,
+.rms-page .nav-tabs > li.active > a:focus {
+    color: #3f6ad8;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #3f6ad8;
+    margin-bottom: -2px;
+}
+
+/* Settings / accounting tables */
+.mc-page #other-charge-types-table,
+.mc-page #tax-types,
+.mc-page table.table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.mc-page #other-charge-types-table > tr:first-child th,
+.mc-page #tax-types > tr:first-child th {
+    background: #f9fafb;
+}
+
+.mc-page #other-charge-types-table > tr,
+.mc-page #tax-types > tr.tax-type-tr,
+.mc-page #other-charge-types-table > tr[id] {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.mc-page #other-charge-types-table > tr > td,
+.mc-page #tax-types > tr > td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+}
+
+.mc-page .charge-type-name-editable {
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.mc-page .charge-type-name-editable:hover {
+    background: #f3f4f6;
+}
+
+/* Channel cards alignment */
+.channels-page.mc-page {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* Groups blocks panel */
+.mc-page .groups-block-form,
+.groups-page .groups-block-form {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.groups-page .groups-table,
+.mc-page .groups-table {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* RMS enhancements */
+.rms-page .rms-tabs {
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.rms-page .rms-toolbar {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+}
+
+.rms-page .rms-calendar-table {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.rms-page .rms-stat-card {
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.rms-page .rms-forecast-chart {
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+@media print {
+    .mc-page {
+        padding: 0;
+        max-width: none;
+    }
+
+    .mc-page-header,
+    .mc-toolbar,
+    .mc-page .hidden-print,
+    .hidden-print {
+        display: none !important;
+    }
+
+    .mc-page .main-card,
+    .mc-card {
+        border: none;
+        box-shadow: none;
+    }
+
+    .mc-page .table > thead > tr > th {
+        background: #fff;
+    }
+}

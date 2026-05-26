@@ -44,7 +44,23 @@ class Customer extends MY_Controller {
         $this->session->set_userdata('customer_order_by', 'balance');
         $this->session->set_userdata('customer_order', 'DESC');
         $this->session->set_userdata('booking_order', 'ASC');
+        $this->session->set_userdata('customer_list_mode', 'all');
         $this->show_customers();
+    }
+
+    /**
+     * Guests and accounts with a balance still to pay.
+     */
+    function outstanding_balances()
+    {
+        $this->session->set_userdata('customer_list_mode', 'outstanding');
+        if (!$this->session->userdata('customer_order_by')) {
+            $this->session->set_userdata('customer_order_by', 'balance');
+        }
+        if (!$this->session->userdata('customer_order')) {
+            $this->session->set_userdata('customer_order', 'DESC');
+        }
+        $this->_render_customer_list(true);
     }
     
     function get_credit_card_frame()
@@ -71,12 +87,19 @@ class Customer extends MY_Controller {
      */
     function show_customers()
     {
+        $this->session->set_userdata('customer_list_mode', 'all');
+        $this->_render_customer_list(false);
+    }
+
+    function _render_customer_list($outstanding_only)
+    {
+        $list_path = $outstanding_only ? 'customer/outstanding_balances' : 'customer/show_customers';
+
         $config['per_page'] = (sqli_clean($this->security->xss_clean($this->input->get('per_page'))) ? sqli_clean($this->security->xss_clean($this->input->get('per_page'))) : '30');
-        $config['uri_segment'] = 3; // uri_segment is used to tell pagination which page we're on. it seems that default is 3.
-        $config['base_url'] = base_url() . "customer/show_customers";
+        $config['uri_segment'] = 3;
+        $config['base_url'] = base_url() . $list_path;
         $config['suffix'] = '?'.http_build_query($_GET, '', "&");
-        
-        // pagination stuff
+
         $filters['company_id'] = $this->company_id;
         $filters['order_by'] = $this->session->userdata('customer_order_by');
         $filters['order'] = $this->session->userdata('customer_order');
@@ -87,42 +110,53 @@ class Customer extends MY_Controller {
         $filters['show_deleted'] = sqli_clean($this->security->xss_clean($this->input->get('show_deleted')));
         $filters['search_query'] = sqli_clean($this->security->xss_clean($this->input->get('search_query')));
         $filters['selling_date'] = ($this->security->xss_clean($this->input->get('date')) ? sqli_clean($this->security->xss_clean($this->input->get('date'))) : "");
+
+        if ($outstanding_only) {
+            $filters['with_outstanding_balance'] = true;
+            if (!$filters['order_by']) {
+                $filters['order_by'] = 'balance';
+                $filters['order'] = 'DESC';
+            }
+        }
+
         $view_data['rows'] = $this->Customer_model->get_customers($filters);
         $config['total_rows'] = $this->Customer_model->get_found_rows();
-        // $config['total_rowsfilters'] = $this->Customer_model->get_found_rows();
-       
+
         $this->load->library('pagination');
         $this->pagination->initialize($config);
-        
-        //Load view data
+
+        $view_data['css_files'] = array(
+            base_url() . auto_version('css/app-modern-page.css'),
+            base_url() . auto_version('css/accounting/accounting-page.css'),
+        );
+
         $view_data['js_files'] = array(
             base_url() . auto_version('js/customer/customer_main.js'),
             base_url() . auto_version('js/customer/customerModal.js'),
             base_url() . auto_version('js/card_detail/cardModal.js')
         );
-        
-        $view_data['menu_on'] = true;
 
+        $view_data['menu_on'] = true;
         $view_data['customer_types'] = $this->Customer_type_model->get_customer_types($this->company_id);
+        $view_data['outstanding_balances_view'] = $outstanding_only;
+        $view_data['list_form_action'] = base_url($list_path);
 
         $common_customer_types = json_decode(COMMON_CUSTOMER_TYPES, true);
 
-        foreach($common_customer_types as $id => $name) {
+        foreach ($common_customer_types as $id => $name) {
             $view_data['customer_types'][] = array(
-                                                'id' => $id,
-                                                'name' => $name,
-                                                'company_id' => $this->company_id,
-                                                'is_deleted' => 0,
-                                                'is_common_type' => true,
-                                                'sort_order' => 0
-                                            );
+                'id' => $id,
+                'name' => $name,
+                'company_id' => $this->company_id,
+                'is_deleted' => 0,
+                'is_common_type' => true,
+                'sort_order' => 0
+            );
         }
-
-        
 
         $view_data['selected_menu'] = 'customers';
         $view_data['main_content'] = 'customer/customer_main';
-        $this->load->view('includes/bootstrapped_template',$view_data + $filters);
+        $this->load->view('includes/bootstrapped_template', $view_data + $filters);
     }   
     
 
@@ -679,6 +713,11 @@ class Customer extends MY_Controller {
             }
         } else
             $this->session->set_userdata('customer_order', 'DESC');
+
+        if ($this->session->userdata('customer_list_mode') === 'outstanding') {
+            redirect('/customer/outstanding_balances/');
+        }
+
         redirect('/customer/show_customers/');
     }
 
@@ -1908,6 +1947,10 @@ class Customer extends MY_Controller {
         $filters['show_deleted'] = sqli_clean($this->security->xss_clean($this->input->get('show_deleted')));
         $filters['search_query'] = sqli_clean($this->security->xss_clean($this->input->get('search_query')));
         $filters['selling_date'] = ($this->security->xss_clean($this->input->get('date')) ? sqli_clean($this->security->xss_clean($this->input->get('date'))) : "");
+
+        if ($this->session->userdata('customer_list_mode') === 'outstanding') {
+            $filters['with_outstanding_balance'] = true;
+        }
 
         $csv_array = $this->Customer_model->get_customers($filters);
 

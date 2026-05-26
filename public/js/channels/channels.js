@@ -74,12 +74,14 @@ $(function () {
         }
     });
 
-    $('#booking-com-ical-form').on('submit', function (e) {
+    $('.channel-ical-form').on('submit', function (e) {
         e.preventDefault();
         var $form = $(this);
+        var channelKey = $form.data('channel-key') || $form.find('input[name="channel_key"]').val();
+
         $.ajax({
             type: 'POST',
-            url: getBaseURL() + 'channels/save_booking_com_ical_AJAX',
+            url: getBaseURL() + 'channels/save_ical_AJAX',
             data: $form.serialize(),
             dataType: 'json',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -95,11 +97,16 @@ $(function () {
         });
     });
 
-    $('#sync-booking-com-ical').on('click', function () {
-        var $btn = $(this).prop('disabled', true).text('Syncing...');
+    $('.sync-ical-channel').on('click', function () {
+        var $btn = $(this);
+        var channelKey = $btn.data('channel-key');
+        var syncLabel = $btn.data('sync-label') || 'Sync import now';
+        $btn.prop('disabled', true).text('Syncing...');
+
         $.ajax({
             type: 'POST',
-            url: getBaseURL() + 'channels/sync_booking_com_ical_AJAX',
+            url: getBaseURL() + 'channels/sync_ical_AJAX',
+            data: { channel_key: channelKey },
             dataType: 'json',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             success: function (resp) {
@@ -112,25 +119,31 @@ $(function () {
                 alert('Sync failed.');
             },
             complete: function () {
-                $btn.prop('disabled', false).text('Sync import now');
+                $btn.prop('disabled', false).text(syncLabel);
             }
         });
     });
 
     $('.regenerate-export-token').on('click', function () {
         var roomTypeId = $(this).data('room-type-id');
-        var $row = $('tr[data-room-type-id="' + roomTypeId + '"]');
+        var channelKey = $(this).data('channel-key');
+        var $card = $(this).closest('.channel-card');
+        var $row = $card.find('tr[data-room-type-id="' + roomTypeId + '"]');
+
         $.ajax({
             type: 'POST',
             url: getBaseURL() + 'channels/regenerate_export_token_AJAX',
-            data: { room_type_id: roomTypeId },
+            data: {
+                room_type_id: roomTypeId,
+                channel_key: channelKey
+            },
             dataType: 'json',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             success: function (resp) {
                 if (resp.success && resp.export_url) {
                     $row.find('.export-url-field').val(resp.export_url);
                     $row.find('input[name="mappings[' + roomTypeId + '][export_enabled]"]').prop('checked', true);
-                    alert('Export link updated. Paste it in Booking.com calendar import.');
+                    alert('Export link updated. Paste it in the OTA calendar import settings.');
                 } else {
                     alert('Could not regenerate export link.');
                 }
@@ -139,5 +152,10 @@ $(function () {
                 alert('Could not regenerate export link.');
             }
         });
+    });
+
+    // Store original sync button labels for restore after sync
+    $('.sync-ical-channel').each(function () {
+        $(this).data('sync-label', $(this).text());
     });
 });

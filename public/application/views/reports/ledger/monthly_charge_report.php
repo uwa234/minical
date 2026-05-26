@@ -1,27 +1,17 @@
-<div id="printable-container">
+<div id="printable-container" class="mc-page">
+    <?php $this->load->view('includes/mc_page_header', array(
+        'title' => l('Charge Report', true),
+        'icon' => 'fa-money',
+        'hidden_print' => true,
+    )); ?>
 
-   <div class="app-page-title">
-	<div class="page-title-wrapper">
-		<div class="page-title-heading">
-			<div class="page-title-icon">
-				<i class="pe-7s-graph text-success"></i>
-			</div>
-			 <?php echo l('Charge Report', true); ?>
-			<div>
-			
-		</div>
-	</div>
-  </div>
-
-    </div>
-
-    <div class="main-card mb-3 card">
+    <div class="main-card mb-3 card mc-card">
 	<div class="card-body">
 
 
 
-	<div class="panel panel-default hidden-print">
-		<div class="panel-body h4">
+	<div class="panel panel-default hidden-print mc-toolbar">
+		<div class="panel-body">
 			<div class="form-inline">
                             <div class="form-group col-md-3 col-lg-3 col-xs-12 col-sm-6 monthselectpicker" style="padding: 0;">
 					<?php 

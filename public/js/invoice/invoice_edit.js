@@ -1740,7 +1740,12 @@ $(function() {
                         folio_id: $('#current_folio_id').val(),
                         capture_payment_type: capture_payment_type
                     }, function(data) {
-                        data = JSON.parse(data);
+                        data = typeof data === 'string' ? JSON.parse(data) : data;
+                        if (typeof minicalIsOfflineQueued === 'function' && minicalIsOfflineQueued(data)) {
+                            alert(data.message);
+                            $(that).prop("disabled", false);
+                            return;
+                        }
                         if (data.success) {
                             window.location.reload();
                         } else {
@@ -1769,7 +1774,12 @@ $(function() {
                             return;
                         }
 
-                        data = JSON.parse(data);
+                        data = typeof data === 'string' ? JSON.parse(data) : data;
+                        if (typeof minicalIsOfflineQueued === 'function' && minicalIsOfflineQueued(data)) {
+                            alert(data.message);
+                            $(that).prop("disabled", false);
+                            return;
+                        }
                         if (data.success) {
                             window.location.reload();
                         } else if (data.expire) {
@@ -1805,7 +1815,12 @@ $(function() {
                         cvc: $("input[name='cvc']").val(),
                         folio_id: $('#current_folio_id').val()
                     }, function(data) {
-                        data = JSON.parse(data);
+                        data = typeof data === 'string' ? JSON.parse(data) : data;
+                        if (typeof minicalIsOfflineQueued === 'function' && minicalIsOfflineQueued(data)) {
+                            alert(data.message);
+                            $(that).prop("disabled", false);
+                            return;
+                        }
                         if (data.success) {
                             window.location.reload();
                         } else {

@@ -12,8 +12,8 @@ $lang['run_night_audit'] = 'Run Night Audit';
 $lang['undo_night_audit'] = 'Undo Night Audit (Beta)';
 $lang['selling_date_behind_today'] = 'Selling Date is behind Today';
 
-$lang['how_to_setup_minical'] = 'How to Setup Minical';
-$lang['how_to_use_minical'] = 'How to Use Minical';
+$lang['how_to_setup_minical'] = 'How to Setup Veurion';
+$lang['how_to_use_minical'] = 'How to Use Veurion';
 $lang['support_center'] = 'Support Center';
 $lang['my_account'] = 'My Account';
 $lang['my_properties'] = 'My Properties';
@@ -92,7 +92,7 @@ $lang['unconfirmed_reservations'] = 'Unconfirmed Reservations';
 
 $lang['online_booking_engine'] = 'Online Booking Engine';
 $lang['channels'] = 'Channels';
-$lang['minical_channel_manager'] = 'Minical Channel Manager';
+$lang['minical_channel_manager'] = 'Veurion Channel Manager';
 $lang['myallocator'] = 'Myallocator';
 
 $lang['images'] = 'Images';
@@ -120,6 +120,45 @@ $lang['reports'] = 'Reports';
 $lang['booking_history'] = 'Booking History';
 $lang['statements'] = 'Statements';
 $lang['groups'] = 'Groups & Blocks';
+
+$lang['offline_mode_active'] = 'You are offline. Changes are saved on this device and will sync when connection returns.';
+$lang['offline_change_queued'] = 'Saved offline. Changes will sync when you are back online.';
+$lang['offline_pending_changes'] = 'You have offline changes waiting to sync.';
+$lang['offline_sync_in_progress'] = 'Syncing offline changes…';
+$lang['offline_no_cached_data'] = 'No cached data for this view while offline. Open this page once while online first.';
+$lang['offline_sync_complete'] = 'Offline changes have been synced.';
+$lang['offline_view_sync_status'] = 'View sync status';
+$lang['offline_sync_now'] = 'Sync now';
+$lang['offline_pending_and_conflicts'] = 'Pending sync and conflicts need review';
+$lang['offline_conflicts_need_review'] = 'Some changes conflicted with the server';
+$lang['offline_sync_conflict'] = 'A change could not be synced: ';
+$lang['offline_sync_rejected'] = 'Server rejected this change';
+$lang['offline_sync_unknown_error'] = 'Sync failed';
+
+$lang['offline_sync_status_title'] = 'Offline sync status';
+$lang['offline_sync_status_subtitle'] = 'Review queued changes and resolve conflicts after reconnecting.';
+$lang['offline_sync_checking'] = 'Checking connection…';
+$lang['offline_sync_refresh'] = 'Refresh';
+$lang['offline_sync_online'] = 'Online';
+$lang['offline_sync_offline'] = 'Offline';
+$lang['offline_sync_unavailable'] = 'Offline sync is not available in this browser.';
+$lang['offline_sync_pending_heading'] = 'Pending changes';
+$lang['offline_sync_pending_hint'] = 'These actions were saved on this device and will be sent to the server when you sync.';
+$lang['offline_sync_pending_empty'] = 'No pending offline changes.';
+$lang['offline_sync_conflicts_heading'] = 'Conflicts';
+$lang['offline_sync_conflicts_hint'] = 'The server rejected these changes (e.g. room no longer available, payment declined). Retry or dismiss after fixing the issue.';
+$lang['offline_sync_conflicts_empty'] = 'No sync conflicts.';
+$lang['offline_sync_col_action'] = 'Action';
+$lang['offline_sync_col_details'] = 'Details';
+$lang['offline_sync_col_queued'] = 'Queued at';
+$lang['offline_sync_col_failed'] = 'Failed at';
+$lang['offline_sync_col_error'] = 'Error';
+$lang['offline_sync_col_actions'] = 'Actions';
+$lang['offline_sync_discard'] = 'Discard';
+$lang['offline_sync_discard_confirm'] = 'Discard this queued change? It will not be synced.';
+$lang['offline_sync_retry'] = 'Retry';
+$lang['offline_sync_dismiss'] = 'Dismiss';
+$lang['offline_sync_dismiss_confirm'] = 'Remove this conflict record? The change will not be retried.';
 
 /* End of file booking_lang.php */
 /* Location: ./application/language/english/menu_lang.php */

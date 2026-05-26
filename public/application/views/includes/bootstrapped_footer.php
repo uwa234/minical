@@ -60,7 +60,7 @@
    
      $time = time() ;
      $year= date("Y",$time);
-     echo isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name']." &copy; " . $year ."  " : "Minical Inc."." &copy; " . $year ."  ";
+     echo isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name']." &copy; " . $year ."  " : "Veurion Inc."." &copy; " . $year ."  ";
     ?>
 
     <?php  //if(check_active_extensions('terms_and_privacy', $this->company_id)){
@@ -270,6 +270,10 @@ mixpanel.init("3bc910ef237696a92d7ca663bafa883c");</script><!-- end Mixpanel -->
     <script type="text/javascript" src="<?php echo base_url();?>js/jquery-ui.min.js"></script>
 <?php } ?>
 <script type="text/javascript" src="<?php echo base_url() . auto_version('js/helpers.js');?>"></script>
+<script type="text/javascript">
+    window.MINICAL_SW_URL = <?php echo json_encode(base_url('sw.js')); ?>;
+</script>
+<script type="text/javascript" src="<?php echo base_url() . auto_version('js/offline/offline-sync.js'); ?>"></script>
 <script type="text/javascript" src="<?php echo base_url() . auto_version('js/underscore-min.js'); ?>"></script>
 <script type="text/javascript" src="<?php echo base_url() . auto_version('js/wizard.js');?>"></script>
 <script type="text/javascript" src="<?php echo base_url() . auto_version('js/language_translation.js');?>"></script>

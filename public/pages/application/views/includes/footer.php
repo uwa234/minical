@@ -77,7 +77,7 @@
 		</div>
 		<br/><br/>
 		<div class="container text-center highlight col-md-12">
-			powered by <a href="http://www.minical.io" target="_blank">Minical</a> 
+			powered by <a href="http://www.veurion.com" target="_blank">Veurion</a> 
 			<br/><br/>
 		</div>
 

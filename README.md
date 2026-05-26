@@ -17,6 +17,7 @@
 * [Features](#features)
 * [Documentation](#documentation)
 * [Installation](#installation)
+* [AWS production (self-hosting)](#aws-production-self-hosting)
 * [Demo](#demo)
 * [Code of conduct](#code-of-conduct)
 * [Contribute](#contribute)
@@ -64,6 +65,10 @@ miniCal documentation is available here [minical.doc](https://docs.minical.io/).
 * Install composer dependencies by running the "composer install" command on your project root.
 * Install miniCal Database by going to `http://localhost/minical/public/install.php` in your browser, following the installation steps, and create an admin account.
 * That's it. You are done! Visit miniCal at `http://localhost/minical/public`
+
+## AWS production (self-hosting)
+
+For deploying to **Amazon Web Services** (EC2, RDS, ALB, Lightsail, or ECS), see **[docs/AWS_PRODUCTION.md](docs/AWS_PRODUCTION.md)** for architecture options, `.env` checklist, TLS, cron, and hardening notes.
 
 ## Demo
 Visit [miniCal Demo](https://demo.minical.io/).

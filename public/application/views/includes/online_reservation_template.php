@@ -205,8 +205,10 @@ $ifieldKey = getenv('CARDKNOX_IFIELD_KEY');
 	    $year= date("Y",$time);
 	    echo l('powered by', true);
         
-        if(empty($whitelabelinfo) || (isset($whitelabelinfo['name']) && $whitelabelinfo['name'] == 'Minical')) {
-            echo " <a target='_blank' href='https://www.minical.io'>Minical</a>";
+        $wl_brand = isset($whitelabelinfo['name']) ? strtolower(trim((string) $whitelabelinfo['name'])) : '';
+        $default_powered_by_brands = array('minical', 'veurion');
+        if (empty($whitelabelinfo) || ($wl_brand !== '' && in_array($wl_brand, $default_powered_by_brands, true))) {
+            echo " <a target='_blank' href='https://www.veurion.com'>Veurion</a>";
         } else {
         	if(!empty($whitelabelinfo['website'])) {
         		echo '<a target="_blank" href="'.$whitelabelinfo['website'].'" > '.$partner_name.'</a>';

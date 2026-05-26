@@ -3,21 +3,14 @@
 <div id="confirm_delete_dialog" ></div>
 
 
-<div class="app-page-title">
-    <div class="page-title-wrapper">
-        <div class="page-title-heading">
-            <div class="page-title-icon">
-                <i class="pe-7s-note2 text-success"></i>
-            </div>
-            <div><?php echo l('tax_types')." ".l('settings'); ?>
+<div class="mc-page">
+<?php $this->load->view('includes/mc_page_header', array(
+    'title' => l('tax_types', true) . ' ' . l('settings', true),
+    'subtitle' => l('Click existing fields to edit.', true),
+    'icon' => 'fa-percent',
+)); ?>
 
-        </div>
-    </div>
-  </div>
-</div>
-
-
-<div class="main-card mb-3 card">
+<div class="main-card mb-3 card mc-card">
     <div class="card-body">
 
 

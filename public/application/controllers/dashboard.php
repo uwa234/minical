@@ -46,6 +46,8 @@ class Dashboard extends MY_Controller
             $this->session->set_userdata(array('currency_symbol' => $currency_symbol));
         }
 
+        $trial_context = build_trial_subscription_context($this->company_data);
+
         $data = array(
             'selling_date' => $selling_date,
             'selling_date_label' => date('l, F j, Y', strtotime($selling_date)),
@@ -54,6 +56,7 @@ class Dashboard extends MY_Controller
             'analytics' => $analytics,
             'analytics_days' => $analytics_days,
             'analytics_payload' => $this->build_analytics_payload($analytics, $currency_symbol),
+            'trial_context' => $trial_context,
             'selected_menu' => 'dashboard',
             'css_files' => array(
                 base_url() . auto_version('css/dashboard/dashboard.css'),

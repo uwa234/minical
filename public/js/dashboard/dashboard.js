@@ -229,6 +229,69 @@
             });
     }
 
+    function parseTrialConfig() {
+        var node = document.getElementById('dashboard-trial-data');
+        if (!node || !node.textContent) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(node.textContent);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function padCountdown(n) {
+        return n < 10 ? '0' + n : String(n);
+    }
+
+    function initTrialCountdown() {
+        var trialConfig = parseTrialConfig();
+        if (!trialConfig || !trialConfig.expiresAt) {
+            return;
+        }
+
+        var $days = $('#dashboard-trial-days');
+        var $hours = $('#dashboard-trial-hours');
+        var $minutes = $('#dashboard-trial-minutes');
+        var $wrap = $('#dashboard-trial-countdown');
+
+        if (!$days.length) {
+            return;
+        }
+
+        function tick() {
+            var now = Math.floor(Date.now() / 1000);
+            var remaining = trialConfig.expiresAt - now;
+
+            if (remaining <= 0) {
+                $wrap.addClass('dashboard-trial-countdown--expired');
+                $days.text(trialConfig.expiredLabel || '0');
+                $hours.text('00');
+                $minutes.text('00');
+                return;
+            }
+
+            var days = Math.floor(remaining / 86400);
+            remaining -= days * 86400;
+            var hours = Math.floor(remaining / 3600);
+            remaining -= hours * 3600;
+            var minutes = Math.floor(remaining / 60);
+
+            $days.text(padCountdown(days));
+            $hours.text(padCountdown(hours));
+            $minutes.text(padCountdown(minutes));
+        }
+
+        tick();
+        window.setInterval(tick, 1000);
+    }
+
+    $(function () {
+        initTrialCountdown();
+    });
+
     $(function () {
         var config = parseAnalyticsConfig();
 

@@ -2,24 +2,14 @@
 <div id="confirm_delete_dialog" ></div>	
 
 
-<div class="app-page-title">
-    <div class="page-title-wrapper">
-        <div class="page-title-heading">
-            <div class="page-title-icon">
-                <i class="pe-7s-wallet text-success"></i>
-            </div>
-            <div><?php echo l('charge_type')." ".l('settings'); ?></h2>
-	<div class="page-title-subheading"><span id="helpBlock" class="help-block">
-		<?php echo l('Click existing fields to edit.', true); ?>
-	</span></div>
+<div class="mc-page">
+<?php $this->load->view('includes/mc_page_header', array(
+    'title' => l('charge_type', true) . ' ' . l('settings', true),
+    'subtitle' => l('Click existing fields to edit.', true),
+    'icon' => 'fa-tags',
+)); ?>
 
-        </div>
-    </div>
-  </div>
-</div>
-
-
-<div class="main-card mb-3 card">
+<div class="main-card mb-3 card mc-card">
     <div class="card-body">
 
 <div class="table-responsive">
@@ -105,4 +95,4 @@
 
 </div>
 <button id="add-charge-type" class="btn btn-primary"><?php echo l('add_charge_type'); ?></button>
-</div></div>
+</div></div></div>

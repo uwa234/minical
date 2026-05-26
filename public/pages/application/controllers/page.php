@@ -26,7 +26,8 @@ class Page extends CI_controller
 
     function minical_homepage()
 	{
-		if ($_SERVER['HTTP_HOST'] == 'localhost'||$_SERVER['HTTP_HOST'] == 'demo.minical.io'||$_SERVER['HTTP_HOST'] == 'app.minical.io') {
+		$saas_app_hosts = array('localhost', 'demo.veurion.com', 'app.veurion.com', 'demo.minical.io', 'app.minical.io');
+		if (in_array($_SERVER['HTTP_HOST'], $saas_app_hosts, true)) {
 			$destination_uri = strtolower($this->uri->segment(2));
 			$destination_uri_page = strtolower($this->uri->segment(3));
 		    $company = $this->Company_model->get_company($destination_uri);
@@ -35,7 +36,7 @@ class Page extends CI_controller
 				strtolower($this->uri->segment(1))=='send_email'
 			) {
             } else {
-                header("Location: https://www.minical.io", true, 301);
+                header("Location: https://www.veurion.com", true, 301);
                 exit;
             }
 
@@ -179,7 +180,7 @@ class Page extends CI_controller
 		// if ($uri == 'send_email' || $uri == 'pricing' || $uri == '')
 		if ($uri == '')
 		{
-			$to_email = "support@minical.io";
+			$to_email = "support@veurion.com";
 		}
 		else
 		{

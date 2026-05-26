@@ -223,7 +223,7 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
                         GROUP BY b.company_id) as la "
                         , "la.company_id = c.company_id", "left");
         }
-		$this->db->select('c.*, capi.*, up.*, cs.subscription_level, cs.limit_feature, cs.subscription_state, cs.payment_method, cs.subscription_id, cs.balance, u.email as owner_email, p.*, count(DISTINCT r.room_id) as number_of_rooms_actual,c.partner_id,IFNULL(wp.username,"Minical") as partner_name, cpg.selected_payment_gateway',FALSE);
+		$this->db->select('c.*, capi.*, up.*, cs.subscription_level, cs.limit_feature, cs.subscription_state, cs.payment_method, cs.subscription_id, cs.balance, u.email as owner_email, p.*, count(DISTINCT r.room_id) as number_of_rooms_actual,c.partner_id,IFNULL(wp.username,"Veurion") as partner_name, cpg.selected_payment_gateway',FALSE);
 		$this->db->from('company as c');
 		$this->db->join('company_admin_panel_info as capi', 'c.company_id = capi.company_id', 'left');
 		$this->db->join('company_subscription as cs', 'c.company_id = cs.company_id', 'left');
@@ -771,17 +771,31 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 	// stop deleting from users table (but delete user permissions), as users can be assigned to different properties
 	function delete_company($company_id)
 	{
+		$company_id = (int) $company_id;
+		if ($company_id < 1) {
+			return false;
+		}
+
+		$preserve_user_emails = array(
+			'support@minical.io',
+			'support@veurion.com',
+			'info@veurion.com',
+		);
+		$preserve_emails_sql = implode(',', array_map(array($this->db, 'escape'), $preserve_user_emails));
 
 		$queries = array(
 			"
-				DELETE u, up, ua, upro
-				FROM  
-					user_permissions as up
-				LEFT JOIN users as u ON u.id = up.user_id AND u.email != 'support@minical.io'
+				DELETE FROM user_permissions WHERE company_id = $company_id;
+			",
+			"
+				DELETE u, ua, upro
+				FROM users as u
 				LEFT JOIN user_autologin as ua ON u.id = ua.user_id
 				LEFT JOIN user_profiles as upro ON u.id = upro.user_id
-				WHERE  
-					up.company_id = $company_id
+				LEFT JOIN user_permissions as up ON up.user_id = u.id
+				WHERE
+					up.user_id IS NULL
+					AND u.email NOT IN ($preserve_emails_sql)
 			",
 			"
 				DELETE
@@ -884,24 +898,59 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 					company_id = $company_id;
 			",
 			"
-				DELETE FROM company WHERE company_id = $company_id;				
+				DELETE FROM key_x_company WHERE company_id = $company_id;
 			",
 			"
-				DELETE FROM company_subscription WHERE company_id = $company_id;				
+				DELETE FROM extensions_x_company WHERE company_id = $company_id;
 			",
 			"
-				DELETE FROM company_admin_panel_info WHERE company_id = $company_id;				
+				DELETE FROM booking_field WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM customer_fields WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM booking_source WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM folio WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM menu WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM employee_log WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM company_groups_x_company WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM company_payment_gateway WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM company_x_tag WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM company_admin_panel_info WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM company_subscription WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM company WHERE company_id = $company_id;
 			"
 		);
 
 		foreach ($queries as $query) {
 			$this->db->query($query);
 
-			if ($this->db->_error_message())
-				show_error($this->db->_error_message());
+			if ($this->db->_error_message()) {
+				log_message('error', 'delete_company failed for company_id ' . $company_id . ': ' . $this->db->_error_message());
+				return false;
+			}
 		}
 
-
+		return true;
 	}
 
 	function get_company_country_code($country_name){

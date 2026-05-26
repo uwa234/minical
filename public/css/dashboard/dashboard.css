@@ -69,6 +69,17 @@
     border-color: #fdba74;
 }
 
+a.dashboard-metric-card--link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+a.dashboard-metric-card--link:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+}
+
 .dashboard-metric-label {
     font-size: 0.8rem;
     text-transform: uppercase;
@@ -289,7 +300,263 @@
     font-weight: 600;
 }
 
+.dashboard-trial {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-trial-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.dashboard-trial-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-radius: 999px;
+}
+
+.dashboard-trial-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #1e3a5f;
+}
+
+.dashboard-trial-subtitle,
+.dashboard-trial-expiry-date {
+    margin: 0;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+.dashboard-trial-expiry-date {
+    margin-top: 0.35rem;
+    font-weight: 500;
+}
+
+.dashboard-trial-countdown-wrap {
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.dashboard-trial-countdown-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.dashboard-trial-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+}
+
+.dashboard-trial-countdown-unit {
+    min-width: 4rem;
+    padding: 0.5rem 0.65rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.dashboard-trial-countdown-value {
+    display: block;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+
+.dashboard-trial-countdown-unit-label {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.dashboard-trial-countdown-sep {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #94a3b8;
+    line-height: 1;
+}
+
+.dashboard-trial-countdown--expired .dashboard-trial-countdown-value {
+    font-size: 1rem;
+}
+
+.dashboard-trial-cta {
+    white-space: nowrap;
+}
+
+.dashboard-trial-plan-current {
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.dashboard-trial-plan-label {
+    margin: 0 0 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.dashboard-trial-plan-name {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.dashboard-trial-plan-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.dashboard-trial-plans-header h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.dashboard-trial-plans-header p {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.dashboard-trial-plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.dashboard-trial-plan-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+.dashboard-trial-plan-card--current {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.dashboard-trial-plan-card--upgrade {
+    border-color: #86efac;
+}
+
+.dashboard-trial-plan-tag {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 4px;
+}
+
+.dashboard-trial-plan-tag--current {
+    color: #1d4ed8;
+    background: #dbeafe;
+}
+
+.dashboard-trial-plan-tag--upgrade {
+    color: #15803d;
+    background: #dcfce7;
+}
+
+.dashboard-trial-plan-card h4 {
+    margin: 0 0 0.25rem;
+    padding-right: 4rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.dashboard-trial-plan-rooms {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.dashboard-trial-plan-price {
+    margin: 0 0 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.dashboard-trial-plan-period {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.dashboard-trial-plan-features {
+    flex: 1;
+    margin: 0 0 0.75rem;
+    padding-left: 1.1rem;
+    font-size: 0.8rem;
+    color: #4b5563;
+}
+
+.dashboard-trial-plan-features li {
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-trial-plan-btn {
+    margin-top: auto;
+}
+
 @media (max-width: 768px) {
+    .dashboard-trial-main {
+        flex-direction: column;
+    }
+
+    .dashboard-trial-countdown-wrap {
+        width: 100%;
+    }
+
+    .dashboard-trial-plans-grid {
+        grid-template-columns: 1fr;
+    }
+
     .dashboard-analytics-header-actions {
         width: 100%;
         flex-direction: column;

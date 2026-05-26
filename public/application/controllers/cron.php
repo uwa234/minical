@@ -452,6 +452,31 @@ class Cron extends CI_Controller
 
 		$data = array();
 		do_action('hourly-cron', $data);
+
+		$this->_run_ttlock_reconciliation();
+	}
+
+	/**
+	 * Sweep TTLock passcodes for all enabled properties (stale revokes, missing codes, room drift).
+	 */
+	private function _run_ttlock_reconciliation()
+	{
+		$service_path = APPPATH . 'extensions/ttlock-integration/libraries/Ttlock_service.php';
+		if (!file_exists($service_path)) {
+			return;
+		}
+
+		$this->load->model('../extensions/ttlock-integration/models/Ttlock_model');
+		$this->load->library('../extensions/ttlock-integration/libraries/Ttlock_service');
+
+		$company_ids = $this->Ttlock_model->get_enabled_company_ids();
+		if (!$company_ids) {
+			return;
+		}
+
+		foreach ($company_ids as $company_id) {
+			$this->ttlock_service->reconcile_company($company_id);
+		}
 	}
 
 	function daily(){
@@ -650,6 +675,68 @@ class Cron extends CI_Controller
         	
         }
     }
+    /**
+     * Internal endpoint for API/mobile apps to trigger booking state hooks (e.g. door locks).
+     */
+    function ttlock_reconcile()
+    {
+        $company_id = $this->input->get('company_id');
+
+        $service_path = APPPATH . 'extensions/ttlock-integration/libraries/Ttlock_service.php';
+        if (!file_exists($service_path)) {
+            echo json_encode(array('success' => false, 'message' => 'TTLock extension not installed'));
+            return;
+        }
+
+        $this->load->model('../extensions/ttlock-integration/models/Ttlock_model');
+        $this->load->library('../extensions/ttlock-integration/libraries/Ttlock_service');
+
+        if ($company_id) {
+            $stats = $this->ttlock_service->reconcile_company((int) $company_id);
+            echo json_encode(array('success' => true, 'company_id' => (int) $company_id, 'stats' => $stats));
+            return;
+        }
+
+        $summary = $this->ttlock_service->reconcile_all_companies();
+        echo json_encode(array('success' => true, 'summary' => $summary));
+    }
+
+    function notify_booking_state_changed()
+    {
+        $booking_id = $this->input->get('booking_id');
+        $old_state = $this->input->get('old_state');
+        $new_state = $this->input->get('new_state');
+        $company_id = $this->input->get('company_id');
+
+        if (!$booking_id || !$company_id || $new_state === null || $new_state === '') {
+            echo json_encode(array('success' => false, 'message' => 'Missing required parameters'));
+            return;
+        }
+
+        $this->load->helper('includes/booking_state');
+        notify_booking_state_changed($booking_id, $old_state, $new_state, $company_id);
+
+        echo json_encode(array('success' => true));
+    }
+
+    function notify_booking_room_changed()
+    {
+        $booking_id = $this->input->get('booking_id');
+        $old_room_id = $this->input->get('old_room_id');
+        $new_room_id = $this->input->get('new_room_id');
+        $company_id = $this->input->get('company_id');
+
+        if (!$booking_id || !$company_id || !$old_room_id || !$new_room_id) {
+            echo json_encode(array('success' => false, 'message' => 'Missing required parameters'));
+            return;
+        }
+
+        $this->load->helper('includes/booking_state');
+        notify_booking_room_changed($booking_id, $old_room_id, $new_room_id, $company_id);
+
+        echo json_encode(array('success' => true));
+    }
+
     function update_channex_availability(){
     	$start_date = $this->input->get('start_date');
     	$end_date = $this->input->get('end_date');
@@ -722,5 +809,16 @@ class Cron extends CI_Controller
 		}
 	}
 
-	
+
+	/**
+	 * Expire platform trials past trial_expiry_date (hosted SaaS).
+	 * Schedule daily: /cron/expire_platform_trials
+	 */
+	function expire_platform_trials()
+	{
+		$this->load->model('Admin_model');
+		$count = $this->Admin_model->expire_trials_past_expiry();
+		echo json_encode(array('success' => true, 'expired_count' => $count));
+	}
+
 }

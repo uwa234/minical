@@ -108,6 +108,42 @@ class Paystack
         );
     }
 
+    /**
+     * Build a reference for WhatsApp Booking Management Paystack payments.
+     */
+    public static function buildWhatsappReference($company_id, $booking_id)
+    {
+        return 'waps_' . (int) $company_id . '_' . (int) $booking_id . '_' . bin2hex(random_bytes(8));
+    }
+
+    /**
+     * @return array{company_id:int,booking_id:int}|null
+     */
+    public static function parseWhatsappReference($reference)
+    {
+        if (!preg_match('/^waps_(\d+)_(\d+)_/', $reference, $matches)) {
+            return null;
+        }
+
+        return array(
+            'company_id' => (int) $matches[1],
+            'booking_id' => (int) $matches[2],
+        );
+    }
+
+    /**
+     * Verify Paystack webhook (charge.success) signature.
+     */
+    public static function verifyWebhookSignature($raw_body, $signature_header, $secret_key)
+    {
+        if (!$secret_key || !$signature_header) {
+            return false;
+        }
+
+        $computed = hash_hmac('sha512', $raw_body, $secret_key);
+        return hash_equals($computed, $signature_header);
+    }
+
     private function request($method, $path, $body = null)
     {
         $this->last_error = null;
@@ -127,6 +163,8 @@ class Paystack
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         apply_curl_ssl_options($ch);
 
         if ($method === 'POST') {

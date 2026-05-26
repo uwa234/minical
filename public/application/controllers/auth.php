@@ -41,7 +41,7 @@ class Auth extends MY_Controller
         $this->load->model('Employee_log_model');
         $this->load->model('Whitelabel_partner_model');
         $this->load->model('Extension_model');
-        $this->test_email = 'test@minical.io';
+        $this->test_email = 'test@veurion.com';
     }
 
     function index()
@@ -123,12 +123,13 @@ class Auth extends MY_Controller
         }
         if($data['whitelabel_detail'])
         {
-            $this->session->set_userdata('white_label_information', $white_label_detail);
+            $data['whitelabel_detail'] = veurion_normalize_whitelabel_partner($data['whitelabel_detail']);
+            $this->session->set_userdata('white_label_information', $data['whitelabel_detail']);
         } else {
-            $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => 0)); // default Minical
+            $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => 0)); // default SaaS partner (Veurion)
             if($white_label_detail)
             {
-                $white_label_detail = $white_label_detail[0];
+                $white_label_detail = veurion_normalize_whitelabel_partner($white_label_detail[0]);
                 $data['whitelabel_detail'] = $white_label_detail;
                 $this->session->set_userdata('white_label_information', $white_label_detail);
             }
@@ -193,7 +194,11 @@ class Auth extends MY_Controller
                 }
                 
                 $employee_permission['permissions'] = $this->Employee_log_model->get_user_permission($this->session->userdata('current_company_id'),$this->session->userdata('user_id'));
-                $this->session->set_userdata($employee_permission); 
+                $this->session->set_userdata($employee_permission);
+
+                if (is_platform_admin($this->session->userdata('user_id'))) {
+                    redirect('/admin/dashboard');
+                }
 
                 $is_db_name = getenv('DATABASE_NAME');
                 
@@ -212,6 +217,9 @@ class Auth extends MY_Controller
                     ) && $admin_user_ids[0] == $this->session->userdata('user_id')
                 )
                 {
+                    if (is_platform_admin($this->session->userdata('user_id'))) {
+                        redirect('/admin/dashboard');
+                    }
                     redirect('/admin');
                 }               
                 elseif($this->session->userdata('user_role') == "is_housekeeping" || in_array("is_housekeeping", $employee_permission['permissions']))
@@ -260,6 +268,9 @@ class Auth extends MY_Controller
 //            }
 
             $data['main_content'] = 'auth/login_form';
+            $data['css_files'] = array(
+                base_url() . auto_version('css/auth/login.css'),
+            );
 
             $this->load->view('includes/bootstrapped_template', $data);
 
@@ -469,10 +480,10 @@ class Auth extends MY_Controller
 
                 $data['company_id'] = $company_id;
 
-                // if the email address is not a test account (domain != innGrid.net or Minical)
+                // if the email address is not a test account (domain != innGrid.net or SaaS domain)
                 $domain = strtolower(substr(strrchr($data['email'], "@"), 1));
 
-                if (($domain != "inngrid.net" && $domain != "minical.io"))
+                if (($domain != "inngrid.net" && $domain != "minical.io" && $domain != "veurion.com"))
                 {
                     /*
                      * Do not added to mailchimp,close io and don't send welcome email
@@ -489,7 +500,7 @@ class Auth extends MY_Controller
                 }
                 else
                 {
-                    // if email is test@minical.io then redirect
+                    // if email is test account then redirect
                     if($email==$this->test_email)
                     {
                         $employee_data = $this->tank_auth->forgot_password($data['email']);
@@ -556,7 +567,9 @@ class Auth extends MY_Controller
             else{
                 //print_r(validation_errors());
                 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-                if($is_hosted_prod_service || $_SERVER['HTTP_HOST'] == "app.minical.io" || $_SERVER['HTTP_HOST'] == "demo.minical.io"){
+                $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+                $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+                if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
                     echo 'The Email field must contain a valid email address.';
                 } else {
                     echo strip_tags(form_error('email'));
@@ -631,18 +644,21 @@ class Auth extends MY_Controller
         
         if($data['whitelabel_detail'])
         {
-            $this->session->set_userdata('white_label_information', $white_label_detail);
+            $data['whitelabel_detail'] = veurion_normalize_whitelabel_partner($data['whitelabel_detail']);
+            $this->session->set_userdata('white_label_information', $data['whitelabel_detail']);
         } else {
-            $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => 0)); // default minical
+            $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => 0)); // default SaaS partner (Veurion)
             if($white_label_detail)
             {
-                $white_label_detail = $white_label_detail[0];
+                $white_label_detail = veurion_normalize_whitelabel_partner($white_label_detail[0]);
                 $data['whitelabel_detail'] = $white_label_detail;
                 $this->session->set_userdata('white_label_information', $white_label_detail);
             }
         }
 
         $data['whitelabelinfo']  = $this->session->userdata('white_label_information');
+        $this->load->model('Platform_settings_model');
+        $data['default_trial_days'] = $this->Platform_settings_model->get_default_trial_days();
         $company_data = $this->Company_model->get_company($this->company_id);
         $data['css_files'] = array(
             base_url() . auto_version('css/bootstrap.min.css'),
@@ -712,7 +728,7 @@ class Auth extends MY_Controller
 
         $whitelabelinfo = $this->session->userdata('white_label_information');
 
-        $email_from = $whitelabelinfo && isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : 'donotreply@minical.io';
+        $email_from = $whitelabelinfo && isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : 'donotreply@veurion.com';
 
         // Send welcome email
         if (
@@ -720,10 +736,10 @@ class Auth extends MY_Controller
             $data['name'] != 'selenium test company'
         ) {    // send "welcome" email
 
-            // alert support@minical.io about this new user that registered
+            // alert sales about this new user that registered
             $this->load->library('email');
             $this->email->from($email_from);
-            $this->email->to("sales@minical.io");
+            $this->email->to("sales@veurion.com");
             $this->email->subject("New user alert");
             $this->email->message("company name: ".$data['name']
                 ." \n<br/>email: ".$data['email']."\n<br/>name: "
@@ -777,24 +793,85 @@ class Auth extends MY_Controller
     }
 
     public function create_company() {
+        $created_by = $this->input->post('created_by');
+        if ($created_by === 'admin' && !$this->_is_platform_admin()) {
+            $this->output
+                ->set_status_header(403)
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array('success' => false, 'error' => 'Platform admin access required.')));
+            return;
+        }
+
+        $owner_email = trim(strtolower($this->input->post('owner_email')));
+        $provision_user_id = $this->user_id;
+        if ($created_by === 'admin' && $owner_email !== '') {
+            $owner_user_id = $this->_resolve_or_create_owner_user(
+                $owner_email,
+                trim($this->input->post('owner_first_name')),
+                trim($this->input->post('owner_last_name'))
+            );
+            if (!$owner_user_id) {
+                $this->output
+                    ->set_status_header(500)
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode(array('success' => false, 'error' => 'Could not create or find owner user.')));
+                return;
+            }
+            $provision_user_id = $owner_user_id;
+        }
+
         $data = array(
             'name' => $this->input->post('name'),
             'number_of_rooms' => $this->input->post('number_of_rooms'),
-            'user_id' => $this->user_id,
-            'close_io'=>true    // if true then the request is from My Property page, otherwise registration page.
+            'user_id' => $provision_user_id,
+            'email' => $owner_email !== '' ? $owner_email : null,
+            'close_io' => ($created_by !== 'admin'),
         );
 
         $subscription_type = $this->input->post('subscription_type');
         $region = $this->input->post('region');
-        $created_by = $this->input->post('created_by');
+        $subscription_state_override = $this->input->post('subscription_state');
 
-        $this->_create_company($data, $subscription_type, $region, $created_by);
-        $response = array(
-            'success'=> 'true'
+        $trial_days = $this->input->post('trial_days');
+        $company_id = $this->_create_company(
+            $data,
+            $subscription_type,
+            $region,
+            $created_by,
+            $subscription_state_override,
+            $trial_days !== null && $trial_days !== '' ? (int) $trial_days : null
         );
 
-        echo json_encode($response);
+        echo json_encode(array(
+            'success' => 'true',
+            'company_id' => $company_id,
+        ));
+    }
 
+    function _is_platform_admin()
+    {
+        return is_platform_admin($this->user_id);
+    }
+
+    function _resolve_or_create_owner_user($email, $first_name, $last_name)
+    {
+        $this->load->model('tank_auth/users');
+        $user = $this->users->get_user_by_email($email);
+        if ($user) {
+            return (int) $user->id;
+        }
+
+        $data = array(
+            'email' => $email,
+            'first_name' => $first_name ?: 'Owner',
+            'last_name' => $last_name ?: '',
+            'password' => md5(uniqid(rand(), true) . microtime()),
+        );
+        $created = $this->users->create_user($data, false);
+        if ($created && isset($created['user_id'])) {
+            return (int) $created['user_id'];
+        }
+        return null;
     }
 
     /**
@@ -802,7 +879,7 @@ class Auth extends MY_Controller
      * @param $time_zone
      * @return mixed
      */
-    private function _create_company($data, $subscription_type = "BASIC", $region = "NA", $created_by = null)
+    private function _create_company($data, $subscription_type = "BASIC", $region = "NA", $created_by = null, $subscription_state_override = null, $trial_days = null)
     {
         $time_zone    = 'America/New_York';
         $this->load->model('Whitelabel_partner_model');
@@ -879,11 +956,12 @@ class Auth extends MY_Controller
             $this->User_model->add_user_permission($company_id, $data['user_id'], 'is_admin');
 
             $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
+            $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+            $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
 
             if(
                 !$is_hosted_prod_service && 
-                $_SERVER['HTTP_HOST'] != "app.minical.io" && 
-                $_SERVER['HTTP_HOST'] != "demo.minical.io"
+                !in_array($current_host, $saas_app_hosts, true)
             ){
                 $partner_x_admin_data = array(
                                             'partner_id' => $company_data['partner_id'], 
@@ -894,7 +972,7 @@ class Auth extends MY_Controller
 
         }
 
-         // support@minical.io will have admin permission
+         // Primary SaaS support inbox may have admin permission (see SUPER_ADMIN constant)
         
         // check for whitelabel partner
         // $admin_user_ids = $this->Whitelabel_partner_model->get_whitelabel_admin_ids($data['user_id']);        
@@ -949,14 +1027,20 @@ class Auth extends MY_Controller
         $subscription_level = $signup_minical_plan == "minimal" ? BASIC : $subscription_level;
         $subscription_level = $signup_minical_plan == "premium" ? PREMIUM : $subscription_level;
         // $subscription_level = $signup_minical_plan == "elite" ? ELITE : $subscription_level;
-        $subscription_state = isset($partner_detail[0]['default_property_status']) ? $partner_detail[0]['default_property_status'] :'active';
+        $subscription_state = isset($partner_detail[0]['default_property_status']) ? $partner_detail[0]['default_property_status'] : 'active';
+        if ($subscription_state_override !== null && $subscription_state_override !== '') {
+            $allowed_states = array('trialing', 'active', 'unpaid', 'canceled', 'trial_ended');
+            if (in_array($subscription_state_override, $allowed_states, true)) {
+                $subscription_state = $subscription_state_override;
+            }
+        }
 
-        $subscription_type = $this->_process_subscription_type($subscription_type, $company_id, $region, $subscription_level,$subscription_state);
+        $subscription_type = $this->_process_subscription_type($subscription_type, $company_id, $region, $subscription_level, $subscription_state);
         
         // Get Company was created by which lead source
         $lead_source_slug = isset($data['lead_source_slug']) ? $data['lead_source_slug'] : '';
         $utm_source = ($this->session->userdata('utm_source')) ? $this->session->userdata('utm_source') : '';
-        $this->_process_admin_panel_info($company_id, $time_zone, $lead_source_slug, $utm_source); // to track when the company was created
+        $this->_process_admin_panel_info($company_id, $time_zone, $lead_source_slug, $utm_source, $trial_days);
 
         // push property data to close.io lead.
         if( $data['close_io'] ){
@@ -1150,11 +1234,25 @@ class Auth extends MY_Controller
         return $subscription_type;
     }
 
+    private function _trial_expiry_date_for_company($time_zone, $trial_days = null)
+    {
+        if ($trial_days === null) {
+            $this->load->model('Platform_settings_model');
+            $trial_days = $this->Platform_settings_model->get_default_trial_days();
+        }
+        $trial_days = (int) $trial_days;
+        if ($trial_days < 1) {
+            $trial_days = 14;
+        }
+        $base = convert_to_local_time(new DateTime(), $time_zone)->format('Y-m-d G:i');
+        return date('Y-m-d', strtotime($base . ' +' . $trial_days . ' days'));
+    }
+
     /**
      * @param $company_id
      * @param $time_zone
      */
-    private function _process_admin_panel_info($company_id, $time_zone, $lead_source_slug = NULL, $utm_source = NULL)
+    private function _process_admin_panel_info($company_id, $time_zone, $lead_source_slug = NULL, $utm_source = NULL, $trial_days = null)
     {        
         $this->load->model('Admin_model');
         $this->load->model('Lead_source_model');
@@ -1168,7 +1266,7 @@ class Auth extends MY_Controller
         $company_admin_panel_info_array = array(
             'company_id'    => $company_id,
             'creation_date' => convert_to_local_time(new DateTime(), $time_zone)->format("Y-m-d G:i"), // for admin panel to log when the account was created, and when it needs to be followed
-            'trial_expiry_date' => date('Y-m-d', strtotime(convert_to_local_time(new DateTime(), $time_zone)->format("Y-m-d G:i"). ' + 14 days')),
+            'trial_expiry_date' => $this->_trial_expiry_date_for_company($time_zone, $trial_days),
             'lead_source_id' => $lead_source_id, // added lead source id 
             'utm_source' => $utm_source // added utm_source
         );
@@ -1291,28 +1389,55 @@ class Auth extends MY_Controller
      * @param    array
      * @return    void
      */
+    /**
+     * @return bool Whether the message was accepted by the mail transport
+     */
     function _send_email($type, $email, &$data)
     {
-        //echo "sending email to ".$email;
+        if (!minical_env('SMTP_USER', '')) {
+            log_message('error', 'Auth email skipped ('.$type.'): SMTP_USER is not configured in .env');
+            return false;
+        }
+
         $this->load->library('email');
-        
+
         $whitelabelinfo = $this->session->userdata('white_label_information');
+        $smtp_user = minical_env('SMTP_USER', '');
+        $from_name = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name']
+            ? $whitelabelinfo['name']
+            : 'Veurion';
 
-        $from_email = $whitelabelinfo && isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : 'donotreply@minical.io';
-        
-        $from_name = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name'] : 'Minical';
+        // Prefer the authenticated SMTP mailbox as From (required by many providers, e.g. AWS WorkMail).
+        if ($smtp_user) {
+            $from_email = $smtp_user;
+        } elseif ($whitelabelinfo && !empty($whitelabelinfo['do_not_reply_email'])) {
+            $from_email = $whitelabelinfo['do_not_reply_email'];
+        } else {
+            $from_email = minical_env('MAIL_FROM', 'donotreply@veurion.com');
+        }
 
-        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@minical.io';
-        
-        $reply_to_name = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name'] : 'Minical';
+        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email']
+            ? $whitelabelinfo['support_email']
+            : minical_env('MAIL_REPLY_TO', 'support@veurion.com');
+
+        $reply_to_name = $from_name;
 
         $this->email->from($from_email, $from_name);
-        $this->email->reply_to($reply_to_email, $reply_to_name." Support");
+        $this->email->reply_to($reply_to_email, $reply_to_name.' Support');
         $this->email->to($email);
         $this->email->subject(sprintf($this->lang->line('auth_subject_'.$type), $from_name));
         $this->email->message($this->load->view('email/'.$type.'-html', $data, true));
         $this->email->set_alt_message($this->load->view('email/'.$type.'-txt', $data, true));
-        $this->email->send();
+
+        $sent = $this->email->send();
+        if (!$sent) {
+            log_message('error', 'Auth email failed ('.$type.') to '.$email.': '.$this->email->print_debugger(array('headers', 'subject')));
+            if (ENVIRONMENT === 'development' && $type === 'forgot_password' && isset($data['user_id'], $data['new_pass_key'])) {
+                log_message('error', 'Dev password reset link: '.site_url('auth/reset_password/'.$data['user_id'].'/'.$data['new_pass_key']));
+            }
+        }
+
+        return $sent;
     }
 
     function _create_customer($data)
@@ -1442,9 +1567,14 @@ class Auth extends MY_Controller
                     $whitelabelinfo = $this->session->userdata('white_label_information');
                     $data['site_name'] = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name'] : $this->config->item('website_name', 'tank_auth');
 
-                    // Send email with password activation link
-                    $this->_send_email('forgot_password', $data['email'], $data);
-                    $this->_show_message($this->lang->line('auth_message_new_password_sent').' '.anchor('/auth/login/', 'Login'));
+                    if ($this->_send_email('forgot_password', $data['email'], $data)) {
+                        $this->_show_message($this->lang->line('auth_message_new_password_sent').' '.anchor('/auth/login/', 'Login'), 'success');
+                    } else {
+                        $this->_show_message(
+                            'We could not send the password reset email. Check that SMTP settings are configured in .env, or contact support@veurion.com.',
+                            'danger'
+                        );
+                    }
 
                 } else {
                     $errors = $this->tank_auth->get_error_message();
@@ -1763,7 +1893,7 @@ class Auth extends MY_Controller
     function _check_max_rooms($number_of_rooms)
     {
         $whitelabelinfo = $this->session->userdata('white_label_information');
-        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@minical.io';
+        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
 
         if ($number_of_rooms > 500) {
             $this->form_validation->set_message(
@@ -1813,7 +1943,7 @@ class Auth extends MY_Controller
     {
         $this->load->model('Company_subscription_model');
         $whitelabelinfo = $this->session->userdata('white_label_information');
-        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@minical.io';
+        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
         //$this->load->library('Chargify_wrapper');
         $subscription = null;
         $response     = array(
@@ -1845,7 +1975,7 @@ class Auth extends MY_Controller
                 case 'trial_ended':
                     $response = array(
                         'is_blocking' => 0,
-                        'message'     => 'Thank you for trying minical! To set up your recurring subscription '.($is_manual
+                        'message'     => 'Thank you for trying Veurion! To set up your recurring subscription '.($is_manual
                                 ? 'please contact '.$reply_to_email
                                 : 'please update your payment details. '),
                         'show_link'   => 1,
@@ -1899,7 +2029,7 @@ class Auth extends MY_Controller
     function thank_you()
     {
         $whitelabelinfo = $this->session->userdata('white_label_information');
-        $data['support_email'] = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@minical.io';
+        $data['support_email'] = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
        
         $data['menu_on'] = FALSE;
         $data['main_content'] = 'auth/thank_you';
@@ -1950,7 +2080,9 @@ class Auth extends MY_Controller
         ///property build logic
          $data_build = $company_data = array();
         $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-        if($is_hosted_prod_service || $_SERVER['HTTP_HOST'] == "app.minical.io" || $_SERVER['HTTP_HOST'] == "demo.minical.io"){
+        $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+        $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
          
             $property_data = $this->Company_model->get_property_build($data['property_type']);
             $feature_setting = json_decode($property_data['setting_json'], true);

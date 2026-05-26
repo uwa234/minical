@@ -1,0 +1,96 @@
+.offline-sync-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+}
+
+.offline-sync-header {
+    margin-bottom: 1.25rem;
+}
+
+.offline-sync-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.offline-sync-subtitle {
+    margin: 0;
+    color: #6b7280;
+}
+
+.offline-sync-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.offline-sync-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.offline-sync-badge--online {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.offline-sync-badge--offline {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.offline-sync-badge--unknown {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.offline-sync-panel {
+    margin-bottom: 2rem;
+    padding: 1.25rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.offline-sync-panel--conflicts {
+    border-color: #fecaca;
+}
+
+.offline-sync-panel h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+}
+
+.offline-sync-panel-hint {
+    margin: 0 0 1rem;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.offline-sync-empty {
+    margin: 0;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    color: #6b7280;
+}
+
+.offline-sync-table {
+    margin-bottom: 0;
+    font-size: 13px;
+}
+
+.offline-sync-error {
+    max-width: 360px;
+    word-break: break-word;
+}
+
+.offline-sync-actions .btn {
+    margin-right: 0.25rem;
+}

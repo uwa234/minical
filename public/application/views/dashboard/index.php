@@ -6,9 +6,14 @@ $analytics_summary = isset($analytics['summary']) ? $analytics['summary'] : arra
 $analytics_days = isset($analytics_days) ? (int) $analytics_days : 14;
 $analytics_payload = isset($analytics_payload) ? $analytics_payload : array();
 $analytics_period_label = sprintf(l('analytics_period_days', true), $analytics_days);
+$trial_context = isset($trial_context) ? $trial_context : null;
 ?>
 
 <div class="dashboard-page">
+    <?php if ($trial_context): ?>
+        <?php $this->load->view('dashboard/trial_banner', array('trial_context' => $trial_context)); ?>
+    <?php endif; ?>
+
     <div class="dashboard-header">
         <div class="dashboard-header-text">
             <h1 class="dashboard-title"><?php echo l('operational_dashboard', true); ?></h1>
@@ -45,7 +50,7 @@ $analytics_period_label = sprintf(l('analytics_period_days', true), $analytics_d
                 <?php echo l('rooms_occupied', true); ?>
             </div>
         </div>
-        <div class="dashboard-metric-card dashboard-metric-card--balance <?php echo $snapshot['outstanding_count'] > 0 ? 'dashboard-metric-card--alert' : ''; ?>">
+        <a href="<?php echo base_url('customer/outstanding_balances'); ?>" class="dashboard-metric-card dashboard-metric-card--balance dashboard-metric-card--link <?php echo $snapshot['outstanding_count'] > 0 ? 'dashboard-metric-card--alert' : ''; ?>">
             <div class="dashboard-metric-label"><?php echo l('outstanding_balance', true); ?></div>
             <div class="dashboard-metric-value">
                 <?php echo htmlspecialchars($currency_symbol) . number_format($snapshot['outstanding_total'], 2); ?>
@@ -54,7 +59,7 @@ $analytics_period_label = sprintf(l('analytics_period_days', true), $analytics_d
                 <?php echo (int) $snapshot['outstanding_count']; ?>
                 <?php echo l('bookings_with_balance', true); ?>
             </div>
-        </div>
+        </a>
         <div class="dashboard-metric-card dashboard-metric-card--unassigned <?php echo $snapshot['unassigned_count'] > 0 ? 'dashboard-metric-card--alert' : ''; ?>">
             <div class="dashboard-metric-label"><?php echo l('unassigned_rooms', true); ?></div>
             <div class="dashboard-metric-value"><?php echo (int) $snapshot['unassigned_count']; ?></div>
@@ -226,6 +231,7 @@ $analytics_period_label = sprintf(l('analytics_period_days', true), $analytics_d
             <div class="card-body">
                 <div class="dashboard-panel-header">
                     <h2><?php echo l('outstanding_balance', true); ?></h2>
+                    <a href="<?php echo base_url('customer/outstanding_balances'); ?>"><?php echo l('view_outstanding_balances', true); ?></a>
                 </div>
                 <?php if (empty($snapshot['unpaid_stays'])): ?>
                     <p class="dashboard-empty"><?php echo l('no_outstanding_balances', true); ?></p>

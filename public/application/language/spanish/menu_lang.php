@@ -12,8 +12,8 @@ $lang['run_night_audit'] = 'Comenzar noche de auditoría';
 $lang['undo_night_audit'] = 'Undo Night Audit';
 $lang['selling_date_behind_today'] = 'Fecha venta es anterior al día de hoy';
 
-$lang['how_to_setup_minical'] = 'Cómo configurar minical';
-$lang['how_to_use_minical'] = 'Cómo usar minical';
+$lang['how_to_setup_minical'] = 'Cómo configurar Veurion';
+$lang['how_to_use_minical'] = 'Cómo usar Veurion';
 $lang['support_center'] = 'Centro de Apoyo';
 $lang['my_account'] = 'Mi cuenta';
 $lang['my_properties'] = 'Mis Propiedades';
@@ -91,7 +91,7 @@ $lang['customer_fields'] = 'Campos del cliente';
 $lang['unconfirmed_reservations'] = 'Reservaciones no confirmadas';
 
 $lang['online_booking_engine'] = 'Motor de reservas en línea';
-$lang['minical_channel_manager'] = 'Gestor de canales de minical';
+$lang['minical_channel_manager'] = 'Gestor de canales de Veurion';
 $lang['myallocator'] = 'Myallocator';
 
 $lang['images'] = 'Imágenes';

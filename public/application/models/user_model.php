@@ -294,6 +294,43 @@ class User_model extends CI_Model {
         return array();
     }
 
+    /**
+     * Whether the user has property owner role for a company (independent of is_admin).
+     */
+    function is_property_owner($user_id, $company_id)
+    {
+        $this->db->where('user_id', (int) $user_id);
+        $this->db->where('company_id', (int) $company_id);
+        $this->db->where('permission', 'is_owner');
+        return $this->db->count_all_results('user_permissions') > 0;
+    }
+
+    /**
+     * Replace the property owner: removes existing is_owner rows for the company,
+     * clears other roles for the new user on that company, then grants is_owner.
+     */
+    function transfer_property_owner($company_id, $user_id, $grant_default_permissions = true)
+    {
+        $company_id = (int) $company_id;
+        $user_id = (int) $user_id;
+        if (!$company_id || !$user_id) {
+            return false;
+        }
+
+        $this->db->where('company_id', $company_id);
+        $this->db->where('permission', 'is_owner');
+        $this->db->delete('user_permissions');
+
+        $this->db->where('company_id', $company_id);
+        $this->db->where('user_id', $user_id);
+        $this->db->where('permission !=', 'is_owner');
+        $this->db->delete('user_permissions');
+
+        $this->add_user_permission($company_id, $user_id, 'is_owner', $grant_default_permissions);
+
+        return true;
+    }
+
     function set_owner($email, $company_id)
     {
         // find user_id of the email given first

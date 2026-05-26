@@ -602,14 +602,21 @@ if ( ! function_exists('auto_version'))
 {
 	function auto_version($file)
 	{
-		//Define the proper DOCUMENT_ROOT
         $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-		if ($is_hosted_prod_service || $_SERVER['HTTP_HOST'] === 'app.minical.io' || $_SERVER['HTTP_HOST'] === 'demo.minical.io') {
-            $mtime = filemtime($_SERVER['DOCUMENT_ROOT'] . '/'. $file);
-            return preg_replace('{\\.([^./]+)$}', ".$mtime.\$1", $file);
-		} else {
-            return $file;
+		$saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+		if (
+            $is_hosted_prod_service === '1' || $is_hosted_prod_service === 'true' || $is_hosted_prod_service === true
+            || in_array($_SERVER['HTTP_HOST'], $saas_app_hosts, true)
+        ) {
+            $path = FCPATH . ltrim(str_replace('\\', '/', $file), '/');
+            if (is_file($path)) {
+                $mtime = filemtime($path);
+                if ($mtime) {
+                    return $file . '?v=' . $mtime;
+                }
+            }
 		}
+        return $file;
 	}
 }
 

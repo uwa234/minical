@@ -879,17 +879,13 @@ $(function() {
                 distribute_equal_amount: $("select[name='payment_distribution']").val(),
 				capture_payment_type : capture_payment_type
             }, function (data) {
-                var msg = "";
-				// if(data){
-    //                 var data = JSON.parse(data);
-    //                 $.each(data, function(index, value){
-    //                     msg += l('Booking', true)+" "+l('Id')+": "+ value['booking_id']+"   "+l('Error', true)+": "+value['error_msg']+"\n\n";
-    //                 });
-    //                 alert(msg);
-    //             } 
-    //             else{
-                    window.location.reload();
-                // }
+                data = typeof data === 'string' ? JSON.parse(data) : data;
+                if (typeof minicalIsOfflineQueued === 'function' && minicalIsOfflineQueued(data)) {
+                    alert(data.message);
+                    $('#add_payment_normal').prop('disabled', false);
+                    return;
+                }
+                window.location.reload();
             });
         }
     

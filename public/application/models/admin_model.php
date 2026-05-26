@@ -48,7 +48,7 @@ class Admin_model extends CI_Model {
 					    cs.renewal_period,
 					    cs.payment_method,
 					    cs.subscription_id,
-                        IFNULL(wp.username, 'Minical') as  partner,
+                        IFNULL(wp.username, 'Veurion') as  partner,
 					    capi.company_id,
 					    capi.churn_date,
 					    capi.utm_source,
@@ -424,7 +424,7 @@ class Admin_model extends CI_Model {
         if($from_date && $to_date)
         {
             $sql1 = "SELECT year, month, SUM(creation_count) AS cre_count FROM (SELECT
-                        COUNT(company_id) AS creation_count, YEAR(capi.creation_date) as year, MONTH(capi.creation_date) as month
+                        COUNT(capi.company_id) AS creation_count, YEAR(capi.creation_date) as year, MONTH(capi.creation_date) as month
                     FROM
                         company_admin_panel_info AS capi
                     LEFT JOIN
@@ -1098,6 +1098,119 @@ class Admin_model extends CI_Model {
         $this->db->where("cs.subscription_state =  'trialing'");
         $this->db->update('company_admin_panel_info AS capi join company_subscription AS cs ON capi.company_id = cs.company_id',array('subscription_state' => 'trial_ended'));
     }
+
+    /**
+     * End trials whose trial_expiry_date is before today.
+     *
+     * @return int number of companies updated
+     */
+    function expire_trials_past_expiry()
+    {
+        $today = date('Y-m-d');
+        $sql = "
+            SELECT capi.company_id
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            WHERE cs.subscription_state = 'trialing'
+              AND capi.trial_expiry_date IS NOT NULL
+              AND capi.trial_expiry_date != ''
+              AND capi.trial_expiry_date != '0000-00-00'
+              AND capi.trial_expiry_date < ?
+        ";
+        $query = $this->db->query($sql, array($today));
+        if ($query->num_rows() < 1) {
+            return 0;
+        }
+        $count = 0;
+        foreach ($query->result_array() as $row) {
+            $this->db->where('company_id', (int) $row['company_id']);
+            $this->db->update('company_subscription', array('subscription_state' => 'trial_ended'));
+            $count++;
+        }
+        return $count;
+    }
+
+    function get_subscription_state_counts()
+    {
+        $sql = "
+            SELECT cs.subscription_state, COUNT(*) AS cnt
+            FROM company AS c
+            INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+            WHERE c.is_deleted = 0
+            GROUP BY cs.subscription_state
+        ";
+        $query = $this->db->query($sql);
+        $counts = array(
+            'trialing' => 0,
+            'active' => 0,
+            'unpaid' => 0,
+            'canceled' => 0,
+            'trial_ended' => 0,
+            'total' => 0,
+        );
+        if ($query->num_rows() < 1) {
+            return $counts;
+        }
+        foreach ($query->result_array() as $row) {
+            $state = $row['subscription_state'];
+            $cnt = (int) $row['cnt'];
+            if (isset($counts[$state])) {
+                $counts[$state] = $cnt;
+            }
+            $counts['total'] += $cnt;
+        }
+        return $counts;
+    }
+
+    function get_mrr_estimate()
+    {
+        $sql = "
+            SELECT SUM(
+                IF((cs.renewal_period = 'year' OR cs.renewal_period = '1 year' OR cs.renewal_period = '12 month' OR cs.renewal_period = '12months' OR cs.renewal_period = '12 months'),
+                    (cs.renewal_cost / 12),
+                    IF(cs.renewal_period = '6 month',
+                        (cs.renewal_cost / 6),
+                        IF(cs.renewal_period = '3 month',
+                            (cs.renewal_cost / 3),
+                            cs.renewal_cost
+                        )
+                    )
+                )
+            ) AS mrr
+            FROM company_subscription AS cs
+            INNER JOIN company AS c ON c.company_id = cs.company_id
+            WHERE c.is_deleted = 0 AND cs.subscription_state = 'active'
+        ";
+        $query = $this->db->query($sql);
+        $row = $query->row_array();
+        return isset($row['mrr']) ? round((float) $row['mrr'], 2) : 0;
+    }
+
+    function get_trials_expiring_within_days($days = 7)
+    {
+        $end = date('Y-m-d', strtotime('+' . (int) $days . ' days'));
+        $today = date('Y-m-d');
+        $sql = "
+            SELECT c.company_id, c.name, capi.trial_expiry_date, u.email AS owner_email
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            INNER JOIN company AS c ON c.company_id = capi.company_id
+            LEFT JOIN user_permissions AS up ON up.company_id = c.company_id AND up.permission = 'is_owner'
+            LEFT JOIN users AS u ON u.id = up.user_id
+            WHERE cs.subscription_state = 'trialing'
+              AND capi.trial_expiry_date >= ?
+              AND capi.trial_expiry_date <= ?
+              AND c.is_deleted = 0
+            GROUP BY c.company_id
+            ORDER BY capi.trial_expiry_date ASC
+            LIMIT 20
+        ";
+        $query = $this->db->query($sql, array($today, $end));
+        if ($query->num_rows() < 1) {
+            return array();
+        }
+        return $query->result_array();
+    }
     
     function get_hotels_using_old_booking_modal()
     {
@@ -1208,6 +1321,106 @@ class Admin_model extends CI_Model {
         }
         
         return NULL;
+    }
+
+    /**
+     * SaaS tenant list for platform admin property list.
+     *
+     * @param array $filters subscription_state (all|trialing|active|...), search, include_deleted
+     * @return array
+     */
+    function get_tenant_list($filters = array())
+    {
+        $this->db->select(
+            'c.company_id, c.name, c.email, c.number_of_rooms, c.country, capi.creation_date, c.is_deleted, c.last_login,
+            cs.subscription_state, cs.subscription_level, cs.subscription_type, cs.region,
+            capi.trial_expiry_date,
+            u.email AS owner_email, pf.first_name AS owner_first_name, pf.last_name AS owner_last_name',
+            false
+        );
+        $this->db->from('company AS c');
+        $this->db->join('company_subscription AS cs', 'cs.company_id = c.company_id', 'left');
+        $this->db->join('company_admin_panel_info AS capi', 'capi.company_id = c.company_id', 'left');
+        $this->db->join(
+            "(SELECT up1.company_id, up1.user_id
+              FROM user_permissions AS up1
+              INNER JOIN (
+                  SELECT company_id, MIN(user_id) AS user_id
+                  FROM user_permissions
+                  WHERE permission = 'is_owner'
+                  GROUP BY company_id
+              ) AS owner_pick ON owner_pick.company_id = up1.company_id
+                  AND owner_pick.user_id = up1.user_id
+              WHERE up1.permission = 'is_owner'
+            ) AS up",
+            'up.company_id = c.company_id',
+            'left',
+            false
+        );
+        $this->db->join('users AS u', 'u.id = up.user_id', 'left');
+        $this->db->join('user_profiles AS pf', 'pf.user_id = u.id', 'left');
+
+        if (empty($filters['include_deleted'])) {
+            $this->db->where('c.is_deleted', 0);
+        }
+
+        $state = isset($filters['subscription_state']) ? $filters['subscription_state'] : 'all';
+        if ($state !== '' && $state !== 'all') {
+            $this->db->where('cs.subscription_state', $state);
+        }
+
+        if (!empty($filters['search'])) {
+            $q = $this->db->escape_like_str($filters['search']);
+            $this->db->where(
+                "(c.name LIKE '%{$q}%' OR c.email LIKE '%{$q}%' OR u.email LIKE '%{$q}%')",
+                null,
+                false
+            );
+        }
+
+        $this->db->group_by('c.company_id');
+        $this->db->order_by('c.company_id', 'DESC');
+
+        $query = $this->db->get();
+        if ($query->num_rows() >= 1) {
+            return $query->result_array();
+        }
+        return array();
+    }
+
+    /**
+     * Used by internal tooling (e.g. company/get_all_companies).
+     *
+     * @param array $options
+     * @return array|null
+     */
+    function get_company_list($options = array())
+    {
+        $status = isset($options['status']) ? $options['status'] : 'active';
+        $active_subscriptions = isset($options['active_subscriptions']) ? $options['active_subscriptions'] : true;
+
+        $this->db->select('c.company_id, c.name, cs.subscription_state');
+        $this->db->from('company AS c');
+        $this->db->join('company_subscription AS cs', 'cs.company_id = c.company_id', 'left');
+        $this->db->join('company_admin_panel_info AS capi', 'capi.company_id = c.company_id', 'left');
+        $this->db->where('c.is_deleted', 0);
+
+        if ($active_subscriptions) {
+            $this->db->where('cs.subscription_state', 'active');
+        } elseif ($status) {
+            $this->db->where('cs.subscription_state', $status);
+        }
+
+        if (!empty($options['last_login'])) {
+            $days = (int) $options['last_login'];
+            $this->db->where("DATEDIFF(NOW(), IF(c.last_login = '0000-00-00', capi.creation_date, c.last_login)) <= {$days}", null, false);
+        }
+
+        $query = $this->db->get();
+        if ($query->num_rows() >= 1) {
+            return $query->result_array();
+        }
+        return null;
     }
 }
 	

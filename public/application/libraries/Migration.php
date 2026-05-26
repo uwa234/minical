@@ -85,11 +85,31 @@ class CI_Migration {
 			$this->db->insert('migrations', array('version' => 0));
 		}
 
-        // Do we auto migrate to the latest migration?
-        if (isset($this->user_id) && isset($this->company_id) && $this->user_id && $this->company_id && $this->_migration_auto_latest === TRUE && ! $this->latest())
-        {
-            show_error($this->error_string());
-        }
+        // Auto-migrate runs from MY_Controller after check_login() sets user/company context.
+	}
+
+	/**
+	 * Run pending migrations when auto_latest is enabled (called after auth context exists).
+	 *
+	 * @return bool
+	 */
+	public function run_auto_latest()
+	{
+		if ($this->_migration_auto_latest !== TRUE) {
+			return true;
+		}
+
+		if ( ! $this->db->table_exists('migrations')) {
+			return true;
+		}
+
+		$result = $this->latest();
+		if ($result === FALSE) {
+			log_message('error', 'Migration auto_latest failed: ' . $this->error_string());
+			return false;
+		}
+
+		return true;
 	}
 
 	// --------------------------------------------------------------------
@@ -302,8 +322,8 @@ class CI_Migration {
 	 */
 	protected function _get_version()
 	{
-		$row = $this->db->get('migrations')->row();
-		return $row ? $row->version : 0;
+		$row = $this->db->select_max('version', 'version')->get('migrations')->row();
+		return $row && $row->version !== null ? (int) $row->version : 0;
 	}
 
 	// --------------------------------------------------------------------

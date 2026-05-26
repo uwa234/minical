@@ -55,9 +55,16 @@ p {
 </head>
 <body>
 	<div id="container">
-		<?php $this->ci =& get_instance(); 
-
-		$support_email = isset($this->ci->session->userdata('white_label_information')['support_email']) && $this->ci->session->userdata('white_label_information')['support_email'] !='' ? $this->ci->session->userdata('white_label_information')['support_email'] : 'support@minical.io' ; ?>
+		<?php
+		$support_email = 'support@veurion.com';
+		if (class_exists('CI_Controller', false)) {
+			$ci =& get_instance();
+			$white_label = $ci->session->userdata('white_label_information');
+			if (is_array($white_label) && !empty($white_label['support_email'])) {
+				$support_email = $white_label['support_email'];
+			}
+		}
+		?>
 		<h1><?php echo $heading; ?></h1>
 		<div style="margin:20px;">
             <br/><br/>

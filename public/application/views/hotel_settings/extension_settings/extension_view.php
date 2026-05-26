@@ -124,7 +124,7 @@
             }
             ?>
         <?php else : ?>
-            <h3><?php echo l('No extensions have been found.', true); ?></h3>
+            <div class="extensions-empty"><h4><?php echo l('No extensions have been found.', true); ?></h4></div>
         <?php endif; ?>
     </div>
 

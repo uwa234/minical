@@ -148,5 +148,6 @@ $lang['create_duplicate_booking'] = 'Create duplicate booking';
 $lang['open_invoice'] = 'Open Invoice';
 $lang['send_email_confirmation'] = 'Send email confirmation';
 
-/* End of file booking_lang.php */
-/* Location: ./application/language/english/booking_lang.php */
+$lang['Veurion Customer - Partner Contact Form'] = 'Veurion Customer - Partner Contact Form';
+
+/* End of file roomsy_lang.php */

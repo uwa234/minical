@@ -1,7 +1,7 @@
 <?php
 
 /* 
-*   Base Controller that takes care of Security & Permission (User Access) of Minical
+*   Base Controller that takes care of Security & Permission (User Access) of Veurion
 */
 class MY_Controller extends CI_Controller {
 
@@ -53,6 +53,7 @@ class MY_Controller extends CI_Controller {
         $this->image_url = "https://".getenv("AWS_S3_BUCKET").".s3.amazonaws.com/";
 
         $this->check_login();
+        $this->_run_auto_migrations_if_needed();
 
         $all_active_modules = array();
         $modules_path = $this->config->item('module_location'); 
@@ -205,23 +206,16 @@ class MY_Controller extends CI_Controller {
             foreach ($module_permission as $key => $module) {
 
                 if ($this->router->fetch_module() && strpos($module, $this->router->fetch_module()) !== FALSE) {
-                    if (
+                    if (strpos($key, 'cron') === 0 || strpos($key, 'public') === 0) {
+                        // Webhook/cron endpoints validate company inside the controller
+                    } elseif (
                         isset($company_id) &&
                         $company_id &&
-                        (strpos($key, 'cron') == 0 || strpos($key, 'public') == 0) &&
                         ($this->permission->is_extension_active($this->router->fetch_module(), $company_id))
                     ) {
                         // let it run
                     } else {
-                        if(
-                            isset($company_id) &&
-                            $company_id &&
-                            ($this->permission->is_extension_active($this->router->fetch_module(), $company_id))
-                        ){
-                            // let it run
-                        } else {
-                            show_404();
-                        }
+                        show_404();
                     }
                 } else {
                     // continue with loop
@@ -278,6 +272,35 @@ class MY_Controller extends CI_Controller {
 
     }
 
+    protected function _run_auto_migrations_if_needed()
+    {
+        if (!$this->config->item('migration_enabled') || !$this->config->item('migration_auto_latest')) {
+            return;
+        }
+
+        $should_run = false;
+
+        if ($this->controller_name === 'marketing' && is_hosted_prod_service()) {
+            $should_run = true;
+        } elseif (
+            $this->controller_name === 'admin'
+            && $this->tank_auth->is_logged_in()
+            && is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null)
+        ) {
+            $should_run = true;
+        } elseif ($this->tank_auth->is_logged_in() && $this->user_id && $this->company_id) {
+            $should_run = true;
+        }
+
+        if (!$should_run || !isset($this->migration)) {
+            return;
+        }
+
+        if (!$this->migration->run_auto_latest()) {
+            show_error($this->migration->error_string());
+        }
+    }
+
     public function check_login()
     {
         if ($this->tank_auth->is_logged_in()) 
@@ -289,7 +312,7 @@ class MY_Controller extends CI_Controller {
 
             if(!$this->input->is_ajax_request() && !($company && isset($company['company_id']) && $company['company_id'])){
                 $controller_name = $this->ci->uri->rsegment(1);
-                if($controller_name != "properties" && $controller_name != "menu" && $controller_name != "auth" && $controller_name != "admin"){
+                if($controller_name != "properties" && $controller_name != "menu" && $controller_name != "auth" && $controller_name != "admin" && $controller_name != "marketing"){
                     $this->session->set_flashdata('flash_warning_message', 'Please select a property.');
                     redirect('/properties/my_properties');
                 }
@@ -386,10 +409,11 @@ class MY_Controller extends CI_Controller {
             $host_name = $_SERVER['HTTP_HOST'];
             $protocol = $this->config->item('server_protocol');
             $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-            if ((!$whitelabelinfo && $this->company_data['partner_id']) || ($whitelabelinfo && ($is_hosted_prod_service || $host_name ==  'app.minical.io' || $host_name ==  'demo.minical.io') && isset($whitelabelinfo['id']) && $whitelabelinfo['id'] != $this->company_data['partner_id'])) {
+            $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+            if ((!$whitelabelinfo && $this->company_data['partner_id']) || ($whitelabelinfo && ($is_hosted_prod_service || in_array($host_name, $saas_app_hosts, true)) && isset($whitelabelinfo['id']) && $whitelabelinfo['id'] != $this->company_data['partner_id'])) {
                 $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => $this->company_data['partner_id']));
                 if($white_label_detail && isset($white_label_detail[0])) {
-                    $this->session->set_userdata('white_label_information', $white_label_detail[0]);
+                    $this->session->set_userdata('white_label_information', veurion_normalize_whitelabel_partner($white_label_detail[0]));
                 }
             }
 
@@ -416,6 +440,13 @@ class MY_Controller extends CI_Controller {
             {
                 redirect('/auth/access_restriction');
                 exit;
+            }
+            elseif (
+                $this->controller_name === 'admin' &&
+                is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null)
+            )
+            {
+                return;
             }
             elseif (
                 $this->permission->check_access_to_function(
@@ -474,6 +505,11 @@ class MY_Controller extends CI_Controller {
                 } elseif ($website_uri && $website_route =='location' ) {
                     redirect($builder_url."pages/page/".$website_uri.'/'.$website_route, 'location', 301);
                 }
+            }
+
+            if ($this->controller_name === 'admin') {
+                redirect('/admin/login');
+                return;
             }
 
             redirect('/auth/login/');

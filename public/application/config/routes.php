@@ -40,9 +40,11 @@ require_once APPPATH . 'helpers/module_helper.php';
 |
 */
 
-$route['default_controller'] = "auth";
+$is_hosted_prod = getenv('IS_HOSTED_PROD_SERVICE');
+$route['default_controller'] = ($is_hosted_prod === '1' || $is_hosted_prod === 'true') ? 'marketing' : 'auth';
 $route['404_override'] = '';
 
+$route['reports'] = 'reports/ledger';
 $route['invoice/(:num)'] = 'invoice/index/$1';
 $route['settings/translation/(:num)'] = 'settings/translation/index/$1';
 

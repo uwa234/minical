@@ -1,41 +1,33 @@
-<div id="printable-container">
-	  <div class="app-page-title">
-	<div class="page-title-wrapper">
-		<div class="page-title-heading">
-			<div class="page-title-icon">
-				<i class="pe-7s-graph1 text-success"></i>
-			</div>
-			<?php echo l('Daily Summary Report'); ?>
-			<div>
-			
-		</div>
-	</div>
-  </div>
+<div id="printable-container" class="mc-page">
+    <?php $this->load->view('includes/mc_page_header', array(
+        'title' => l('Daily Summary Report', true),
+        'icon' => 'fa-calendar-check-o',
+        'hidden_print' => true,
+    )); ?>
 
-    </div>
-
-    <div class="main-card mb-3 card">
+    <div class="main-card mb-3 card mc-card">
 	<div class="card-body">
 
-	<div class="form-inline">
+	<div class="mc-toolbar form-inline">
 		<label for="date">
 		<?php echo l('Date:'); ?>
 		</label>
 		<input type="text" name="date" class="sellingDate form-control" value="<?php echo $date; ?>">	
-		<button id="printReportButton" class="btn btn-primary hidden-print">
-		<?php echo l('Print Report'); ?>
-		</button>
 		<?php $date = ($this->uri->segment(4) != '') ? $this->uri->segment(4) : ""; ?>
 		<?php $param = $date; ?>
-		<a id="downloaddailyreport" href="<?php if ($param != '/') {
-			echo base_url() . "reports/ledger/download_daily_summary_report_csv_export/" . $param;
-		} else {
-			echo base_url() . "reports/ledger/download_daily_summary_report_csv_export/";
-		} ?>" class="btn btn-primary" style="margin-right: 10px;" target="blank">
-			<span title="Export to CSV" class="glyphicon glyphicon-download-alt"></span>
-		</a>
-
-	</div><!-- /.form-inline -->
+        <div class="mc-toolbar-actions">
+            <a id="downloaddailyreport" href="<?php if ($param != '/') {
+                echo base_url() . "reports/ledger/download_daily_summary_report_csv_export/" . $param;
+            } else {
+                echo base_url() . "reports/ledger/download_daily_summary_report_csv_export/";
+            } ?>" class="btn btn-default hidden-print" target="blank" title="<?php echo l('Export to CSV', true); ?>">
+                <span class="glyphicon glyphicon-download-alt"></span>
+            </a>
+            <button id="printReportButton" class="btn btn-default hidden-print" title="<?php echo l('Print Report', true); ?>">
+                <span class="glyphicon glyphicon-print"></span>
+            </button>
+        </div>
+	</div>
 	<div class="h4">
 	<?php echo l('Charge Summary'); ?>
       </div>

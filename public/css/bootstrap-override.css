@@ -4697,3 +4697,13 @@
     min-height: 34px !important;
     padding-bottom: 0 !important;
 }
+
+/* Auth pages — Veurion text mark when legacy Minical logo asset is still in DB */
+.veurion-login-brand {
+    display: inline-block;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #3f6ad8;
+    line-height: 1.2;
+}

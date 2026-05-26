@@ -35,10 +35,22 @@ $config['base_url']	= getenv('PROJECT_URL');
 $config['api_url']	= getenv('API_URL');
 
 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
+$config['is_hosted_prod_service'] = ($is_hosted_prod_service === '1' || $is_hosted_prod_service === 'true' || $is_hosted_prod_service === true);
 
-if ($is_hosted_prod_service && $_SERVER['HTTP_HOST'] !== "app.minical.io") {
-    $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'];
+$saas_primary_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+$is_saas_primary_host = in_array($_SERVER['HTTP_HOST'], $saas_primary_hosts, true);
+
+if ($is_hosted_prod_service && !$is_saas_primary_host) {
+    $projectUrl = getenv('PROJECT_URL');
+    if (!empty($projectUrl)) {
+        $config['base_url'] = rtrim($projectUrl, '/') . '/';
+    } else {
+        $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/';
+    }
 }
+
+$config['branding_name'] = 'Veurion';
+$config['branding_logo'] = 'minical-logo.jpeg';
 
 
 /*
@@ -205,7 +217,7 @@ $config['directory_trigger']	= 'd'; // experimental not currently in use
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+$config['log_threshold'] = (defined('ENVIRONMENT') && ENVIRONMENT === 'development') ? 1 : 0;
 
 /*
 |--------------------------------------------------------------------------

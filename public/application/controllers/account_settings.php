@@ -17,6 +17,7 @@ class Account_settings extends MY_Controller {
 		
 		$this->load->model('Company_model');
 		$this->load->model('Company_subscription_model');
+		$this->load->model('Platform_settings_model');
 		$this->load->model('User_model');
                 // Load Translation Model for Language Translation
 		$this->load->model('translation_model');
@@ -24,6 +25,9 @@ class Account_settings extends MY_Controller {
 		$this->load->library('form_validation');
                 // Load language Translation Helper
                 $this->load->helper('language_translation');
+
+		$language = $this->session->userdata('language');
+		$this->lang->load('dashboard', $language ? $language : 'english');
 		
 		$view_data['menu_on'] = true;
 		$view_data['selected_menu'] = 'my account';		
@@ -118,6 +122,32 @@ class Account_settings extends MY_Controller {
 		
 		$this->load->view('includes/bootstrapped_template',$data);
 		
+	}
+
+	function subscription()
+	{
+		$language = $this->session->userdata('language');
+		$this->lang->load('dashboard', $language ? $language : 'english');
+
+		$trial_context = build_trial_subscription_context($this->company_data);
+
+		$data = array(
+			'selected_submenu' => 'subscription',
+			'trial_context' => $trial_context,
+			'subscription_state' => $this->company_subscription_state,
+			'current_plan_name' => $trial_context
+				? $trial_context['current_plan_name']
+				: subscription_level_display_name($this->company_subscription_level),
+			'pricing_tiers' => $this->Platform_settings_model->get_pricing_tiers(true),
+			'room_count' => $trial_context
+				? $trial_context['room_count']
+				: (isset($this->company_data['number_of_rooms_actual']) ? (int) $this->company_data['number_of_rooms_actual'] : 1),
+			'css_files' => array(base_url() . auto_version('css/dashboard/dashboard.css')),
+			'js_files' => array(base_url() . auto_version('js/dashboard/dashboard.js')),
+			'main_content' => 'account_settings/subscription',
+		);
+
+		$this->load->view('includes/bootstrapped_template', $data);
 	}
 
 	function change_language() {

@@ -11,12 +11,27 @@
  }
 ?>
 
-<body class="theme-<?=isset($this->company_ui_theme) ? $this->company_ui_theme : 0;?>">
-	<div class="app-container  app-theme-white body-tabs-shadow fixed-header fixed-sidebar <?= $classtoggle;?>">
+<?php
+$protocol = $this->config->item('server_protocol');
+$is_auth_login = (current_url() == $protocol . $_SERVER['HTTP_HOST'] . '/auth/login'
+    || str_ends_with(current_url(), '/public/auth/login'));
+$body_classes = 'theme-' . (isset($this->company_ui_theme) ? $this->company_ui_theme : 0);
+if ($is_auth_login) {
+    $body_classes .= ' auth-login-page';
+}
+?>
+<body class="<?php echo $body_classes; ?>">
+	<?php
+	$app_container_classes = 'app-container app-theme-white';
+	if ($is_auth_login) {
+		$app_container_classes .= ' auth-login-container';
+	} else {
+		$app_container_classes .= ' body-tabs-shadow fixed-header fixed-sidebar ' . $classtoggle;
+	}
+	?>
+	<div class="<?php echo trim($app_container_classes); ?>">
 
 		<?php 
-
-		$protocol = $this->config->item('server_protocol');
 
 		//Generate css and js file arrays if they don't already exist.
 		//This prevents clobbering of the variables caused by multiple loading of this file (ie. iframes).
@@ -163,14 +178,12 @@
 			<div class="wrapper clearfix">
 
 
-		<?php if(current_url() == $protocol . $_SERVER['HTTP_HOST']."/auth/login"){
-			?>
-			<div class="col-md-12 main" style="padding-top: 100px" >
-			<?php $this->load->view($main_content);?>
+		<?php if ($is_auth_login) { ?>
+			<div class="auth-login-shell">
+			<?php $this->load->view($main_content); ?>
 
-					<div class="push"></div>
-								</div>
-							<?php } else { ?>
+			</div>
+		<?php } else { ?>
 
 		
 				<div class="app-main">

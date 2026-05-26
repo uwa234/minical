@@ -1,0 +1,266 @@
+.rms-page {
+    padding: 0.5rem 0 2.5rem;
+    max-width: 1400px;
+}
+
+.rms-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.rms-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.65rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.rms-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.rms-tabs {
+    margin-bottom: 20px;
+}
+
+.rms-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.rms-toolbar .form-inline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.rms-toolbar label {
+    margin-right: 8px;
+    margin-bottom: 0;
+}
+
+.rms-date-range-label {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.rms-grid-wrap {
+    min-height: 120px;
+}
+
+.rms-grid-wrap.rms-loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.rms-calendar-table {
+    font-size: 12px;
+    margin-bottom: 0;
+}
+
+.rms-calendar-table th,
+.rms-calendar-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.rms-row-label {
+    text-align: left !important;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #f8f9fa;
+}
+
+.rms-day-col {
+    min-width: 88px;
+}
+
+.rms-day-date {
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.rms-day-dow {
+    color: #6c757d;
+    font-size: 11px;
+}
+
+.rms-rate-cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.rms-badge {
+    display: inline-block;
+    margin: 2px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #e9ecef;
+    color: #495057;
+}
+
+.rms-badge--cta,
+.rms-badge--ctd {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.rms-badge--stop {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.rms-badge--open {
+    background: #d4edda;
+    color: #155724;
+}
+
+.rms-forecast-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.rms-stat-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.rms-stat-card--highlight {
+    border-color: #3f6ad8;
+    background: #f0f4ff;
+}
+
+.rms-stat-label {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 4px;
+}
+
+.rms-stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.rms-forecast-chart {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    min-height: 180px;
+}
+
+.rms-forecast-chart.rms-loading {
+    opacity: 0.5;
+}
+
+.rms-chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 140px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.rms-chart-bar-wrap {
+    flex: 1 0 28px;
+    max-width: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.rms-chart-bar {
+    width: 100%;
+    max-width: 32px;
+    background: #dee2e6;
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    min-height: 4px;
+}
+
+.rms-chart-bar-onbooks {
+    width: 100%;
+    background: #3f6ad8;
+}
+
+.rms-chart-label {
+    font-size: 10px;
+    color: #6c757d;
+    margin-top: 6px;
+    white-space: nowrap;
+}
+
+.rms-chart-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.rms-legend-onbooks,
+.rms-legend-potential {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.rms-legend-onbooks {
+    background: #3f6ad8;
+}
+
+.rms-legend-potential {
+    background: #dee2e6;
+}
+
+.rms-forecast-table {
+    font-size: 13px;
+}
+
+.rms-hint {
+    margin: 0;
+}
+
+.rms-empty {
+    padding: 24px;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .rms-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .rms-toolbar .btn-primary {
+        width: 100%;
+        text-align: center;
+    }
+}

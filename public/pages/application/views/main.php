@@ -109,7 +109,8 @@
 						<div class="container-fluid" id="online-booking-widget">
 							<div id="online-booking" style="visibility: hidden; position:absolute; top:400px;"></div>
 						
-							<form action="https://demo.minical.io/online_reservation/select_dates_and_rooms/<?php echo $company_data['company_id']; ?>" method="post" target="_blank" id="booking-form"  role="form" class="form-horizontal">
+							<?php $pms_base = rtrim(getenv('PROJECT_URL') ?: 'https://demo.veurion.com/', '/'); ?>
+							<form action="<?php echo $pms_base; ?>/online_reservation/select_dates_and_rooms/<?php echo $company_data['company_id']; ?>" method="post" target="_blank" id="booking-form"  role="form" class="form-horizontal">
 								<div class="form-group">
 									<div class="col-md-10">
 										<div class="form-group col-md-3">

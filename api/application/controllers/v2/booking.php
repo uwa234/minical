@@ -2340,10 +2340,28 @@ class Booking extends MY_Controller
             $this->response(array('status' => false, 'error' => 'Booking Type is Invalid.'), 200);
         }
 
+        $old_state = $booking_data['state'];
         $update_data = array('state' => $booking_type);
 
         $this->Booking_model->update_booking($update_data, $booking_id);
-        
+
+        if ((string) $old_state !== (string) $booking_type) {
+            $query = http_build_query(array(
+                'booking_id' => $booking_id,
+                'old_state' => $old_state,
+                'new_state' => $booking_type,
+                'company_id' => $company_id,
+            ));
+
+            $this->call_api(
+                $this->config->item('app_url'),
+                '/cron/notify_booking_state_changed?' . $query,
+                array(),
+                array(),
+                'GET'
+            );
+        }
+
         $this->response(array('status' => true, 'message' => 'Booking Type is updated successfully.'), 200);
     }
 }

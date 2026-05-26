@@ -379,7 +379,9 @@
 
                                 <?php
                                 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-                                if($is_hosted_prod_service || $_SERVER['HTTP_HOST'] == "app.minical.io" || $_SERVER['HTTP_HOST'] == "demo.minical.io"){?>
+                                $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+                                $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+                                if ($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)) {?>
                                     <br/><br/>
                                     <div class="form-group" >
                                     <label for="property_type" class="col-sm-3 control-label">
@@ -517,7 +519,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="myModalLabel">
-                    <?=l("A quick Introduction to Minical");?>
+                    <?=l("A quick Introduction to Veurion");?>
                     <button type="button" class="btn btn-success pull-right" data-dismiss="modal" aria-hidden="true"><?=l("Skip");?></button>
                 </h3>
             </div>
@@ -612,7 +614,7 @@
                 $('.help-link[data-toggle="popover"]').popover('hide');
             });
         <?php 
-            setcookie("is_shown_tutorial_popover", true, time()+60*60*24*365*10, "minical.io"); // 86400 = 1 day
+            setcookie("is_shown_tutorial_popover", true, time()+60*60*24*365*10, "/"); // 86400 = 1 day
         endif; 
         ?>
 	});

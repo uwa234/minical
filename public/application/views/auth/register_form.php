@@ -66,7 +66,7 @@
 			    <p class="list-group-item-text">Our customer service specialist will get in touch with you and give you a tutorial over the phone</p>
 		  	</div>
 		  	<div class="list-group-item">
-		  		<h4 class="list-group-item-heading">14-day trial</h4>
+		  		<h4 class="list-group-item-heading"><?php echo isset($default_trial_days) ? (int) $default_trial_days : 14; ?>-day trial</h4>
 			    <p class="list-group-item-text">Try out all features unlocked!</p>
 		  	</div>
 		  	<div class="list-group-item">
@@ -103,16 +103,16 @@
 						data-controls-modal="#myModal" 
 					   	data-backdrop="static" 
 					   	data-keyboard="false" 
-					   	value="Try Minical now!"
+					   	value="Try Veurion now!"
                         name="register_submit_form" />
 				</div>
 			</div>
 		</div>
         
 		<?php echo "By creating an account you agree to our "; ?> 
-        <a href="https://demo.minical.io/terms-of-service/">Terms Of Service</a>
+        <a href="<?php echo base_url('auth/show_terms_of_service'); ?>">Terms Of Service</a>
         <?php echo ", and " ?>
-        <a href="https://demo.minical.io/privacy">Privacy Policy</a>
+        <a href="<?php echo base_url('auth/show_privacy_policy'); ?>">Privacy Policy</a>
 	</div>
 
 	<div class="col-md-3 text-center" >

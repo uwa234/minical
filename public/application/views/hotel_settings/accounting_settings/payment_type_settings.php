@@ -1,22 +1,12 @@
 
-<div class="app-page-title">
-    <div class="page-title-wrapper">
-        <div class="page-title-heading">
-            <div class="page-title-icon">
-                <i class="pe-7s-cash text-success"></i>
-            </div>
-            <div><?php echo l('payment_type_settings'); ?></h2>
-	<div class="page-title-subheading"><span id="helpBlock" class="help-block">
-		<?php echo l('Click existing fields to edit.', true); ?>
-	</span></div>
+<div class="mc-page">
+<?php $this->load->view('includes/mc_page_header', array(
+    'title' => l('payment_type_settings', true) . ' ' . l('settings', true),
+    'subtitle' => l('Click existing fields to edit.', true),
+    'icon' => 'fa-credit-card',
+)); ?>
 
-        </div>
-    </div>
-  </div>
-</div>
-
-
-<div class="main-card mb-3 card">
+<div class="main-card mb-3 card mc-card">
     <div class="card-body">
 
 
@@ -47,4 +37,4 @@
 
 
 <button id="add-payment-type" class="btn btn-primary"><?php echo l('add_payment_type'); ?></button>
-</div></div>
+</div></div></div>

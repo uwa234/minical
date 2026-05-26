@@ -1,8 +1,10 @@
 <?php
 $website_enabled = !empty($website_enabled);
+$ical_channels = isset($ical_channels) ? $ical_channels : array();
+$mappings_by_channel = isset($mappings_by_channel) ? $mappings_by_channel : array();
 ?>
 
-<div class="channels-page">
+<div class="channels-page mc-page">
     <div class="channels-header">
         <h1 class="channels-title"><?php echo l('channels', true); ?></h1>
         <p class="channels-subtitle"><?php echo l('channels_subtitle', true); ?></p>
@@ -52,97 +54,12 @@ $website_enabled = !empty($website_enabled);
         </p>
     </div>
 
-    <div class="channel-card channel-card--booking">
-        <div class="channel-card-head">
-            <div>
-                <h2><?php echo l('channel_booking_com', true); ?></h2>
-                <span class="channel-badge channel-badge--limited"><?php echo l('channel_status_limited', true); ?></span>
-            </div>
-            <button type="button" class="btn btn-default" id="sync-booking-com-ical">
-                <?php echo l('sync_now', true); ?>
-            </button>
-        </div>
-        <p class="channel-card-desc"><?php echo l('channel_booking_com_desc', true); ?></p>
-
-        <div class="alert alert-warning channel-limitations">
-            <strong><?php echo l('ical_limitations_title', true); ?></strong>
-            <p><?php echo l('ical_limitations_body', true); ?></p>
-        </div>
-
-        <?php if (empty($room_types)) : ?>
-            <p class="text-muted"><?php echo l('no_room_types', true); ?></p>
-        <?php else : ?>
-            <form id="booking-com-ical-form">
-                <div class="table-responsive">
-                    <table class="table table-striped channel-ical-table">
-                        <thead>
-                            <tr>
-                                <th><?php echo l('room_type', true); ?></th>
-                                <th><?php echo l('ical_import_url', true); ?></th>
-                                <th><?php echo l('ical_export_url', true); ?></th>
-                                <th class="channel-flags-col"><?php echo l('enable_import', true); ?> / <?php echo l('enable_export', true); ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($room_types as $room_type) :
-                                $rt_id = $room_type['id'];
-                                $mapping = isset($mappings_by_room[$rt_id]) ? $mappings_by_room[$rt_id] : null;
-                                $export_token = $mapping && !empty($mapping['export_token']) ? $mapping['export_token'] : '';
-                                $export_url = $export_token
-                                    ? base_url('channels/ical_export/' . $mapping['export_token'] . '/' . $rt_id)
-                                    : '';
-                                ?>
-                                <tr data-room-type-id="<?php echo (int) $rt_id; ?>">
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($room_type['name']); ?></strong>
-                                        <?php if (!empty($mapping['last_import_at'])) : ?>
-                                            <br><small class="text-muted">Last sync: <?php echo htmlspecialchars($mapping['last_import_at']); ?>
-                                            <?php if (!empty($mapping['last_import_message'])) : ?>
-                                                — <?php echo htmlspecialchars($mapping['last_import_message']); ?>
-                                            <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <input type="url" class="form-control input-sm"
-                                               name="mappings[<?php echo (int) $rt_id; ?>][import_url]"
-                                               placeholder="https://admin.booking.com/..."
-                                               value="<?php echo $mapping && !empty($mapping['import_url']) ? htmlspecialchars($mapping['import_url']) : ''; ?>">
-                                    </td>
-                                    <td>
-                                        <input type="text" class="form-control input-sm export-url-field" readonly
-                                               value="<?php echo htmlspecialchars($export_url); ?>">
-                                        <button type="button" class="btn btn-link btn-xs regenerate-export-token"
-                                                data-room-type-id="<?php echo (int) $rt_id; ?>">
-                                            <?php echo l('regenerate_export_link', true); ?>
-                                        </button>
-                                    </td>
-                                    <td class="channel-flags-col">
-                                        <label class="channel-check">
-                                            <input type="checkbox"
-                                                   name="mappings[<?php echo (int) $rt_id; ?>][import_enabled]" value="1"
-                                                <?php echo ($mapping && !empty($mapping['import_enabled'])) ? 'checked' : ''; ?>>
-                                            <?php echo l('enable_import', true); ?>
-                                        </label>
-                                        <label class="channel-check">
-                                            <input type="checkbox"
-                                                   name="mappings[<?php echo (int) $rt_id; ?>][export_enabled]" value="1"
-                                                <?php echo ($mapping && !empty($mapping['export_enabled'])) ? 'checked' : ''; ?>>
-                                            <?php echo l('enable_export', true); ?>
-                                        </label>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <button type="submit" class="btn btn-primary"><?php echo l('save_channels', true); ?></button>
-            </form>
-        <?php endif; ?>
-    </div>
-
-    <div class="channel-card channel-card--disabled">
-        <h2><?php echo l('channel_expedia', true); ?></h2>
-        <span class="channel-badge channel-badge--muted"><?php echo l('channel_expedia_coming', true); ?></span>
-    </div>
+    <?php foreach ($ical_channels as $channel_key => $channel_ui) :
+        $this->load->view('channels/_ical_channel_card', array(
+            'channel_key' => $channel_key,
+            'channel_ui' => $channel_ui,
+            'room_types' => $room_types,
+            'mappings_by_room' => isset($mappings_by_channel[$channel_key]) ? $mappings_by_channel[$channel_key] : array(),
+        ));
+    endforeach; ?>
 </div>

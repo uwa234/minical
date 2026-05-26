@@ -22,6 +22,8 @@ class Permission_model extends CI_Model {
             ($controller_name === 'customer' && $function_name === 'delete_unused_token') ||
             ($controller_name === 'cron') ||
             ($controller_name === "auth" && $function_name != 'create_company') ||
+            ($controller_name === 'marketing') ||
+            ($controller_name === 'admin' && in_array($function_name, array('login', 'index'), true)) ||
             ($controller_name === "language_translation" && $function_name == 'get_translated_phrase') ||
             ($controller_name === "menu") ||
             ($controller_name === "test") ||
@@ -43,6 +45,10 @@ class Permission_model extends CI_Model {
                 (
                     $function_name === 'channex_get_bookings'
                 )
+            ) ||
+            (
+                $controller_name === 'whatsapp_booking' &&
+                in_array($function_name, array('webhook', 'paystack_callback', 'paystack_webhook'), true)
             ) ||
             (
                 $controller_name === "subscription" && 
@@ -118,7 +124,11 @@ class Permission_model extends CI_Model {
             $controller_name === "auth" ||
             ($controller_name === 'account_settings') ||
             ($controller_name === 'menu' && $function_name === 'select_hotel') ||
-            $controller_name === "properties"
+            $controller_name === "properties" ||
+            (
+                $controller_name === 'admin' &&
+                is_platform_admin($user_id)
+            )
         ) {
             return true;
         }
@@ -521,6 +531,16 @@ class Permission_model extends CI_Model {
 
     function has_access_to_company_id($user_id, $company_id)
     {
+        if ($company_id && is_platform_admin($user_id)) {
+            $this->db->select('1', false);
+            $this->db->from('company');
+            $this->db->where('company_id', (int) $company_id);
+            $this->db->where('is_deleted', 0);
+            if ($this->db->get()->num_rows() >= 1) {
+                return true;
+            }
+        }
+
         $this->db->from('user_permissions as up, company as c');
         $this->db->where('up.user_id', $user_id);
         $this->db->where('up.company_id = c.company_id');
@@ -598,6 +618,10 @@ class Permission_model extends CI_Model {
             $result_array = $query->result_array();
             $results[] = $result_array[0]['permission'];
 		}
+
+        if ($company_id && is_platform_admin($user_id) && !in_array('is_admin', $results, true)) {
+            $results[] = 'is_admin';
+        }
 
         return $results;
     }

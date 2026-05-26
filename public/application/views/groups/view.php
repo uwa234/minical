@@ -2,7 +2,7 @@
 $group_id = (int) $group['id'];
 $billing_mode = !empty($group['billing_mode']) ? $group['billing_mode'] : 'room';
 ?>
-<div class="groups-page groups-detail" data-group-id="<?php echo $group_id; ?>">
+<div class="groups-page groups-detail mc-page" data-group-id="<?php echo $group_id; ?>">
     <div class="groups-header">
         <a href="<?php echo base_url('groups'); ?>" class="btn btn-link">&larr; <?php echo l('groups', true); ?></a>
         <h1 class="groups-title"><?php echo htmlspecialchars($group['name']); ?> <small>#<?php echo $group_id; ?></small></h1>
