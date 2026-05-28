@@ -3,12 +3,14 @@ $current = $this->uri->segment(2) ?: 'dashboard';
 $nav_items = array(
     'dashboard' => array('label' => 'Dashboard', 'icon' => 'fa-dashboard', 'url' => 'admin/dashboard'),
     'property_list' => array('label' => 'Properties', 'icon' => 'fa-building', 'url' => 'admin/property_list'),
+    'trial_registrations' => array('label' => 'Trial sign-ups', 'icon' => 'fa-envelope', 'url' => 'admin/trial_registrations'),
     'revenue' => array('label' => 'Revenue', 'icon' => 'fa-line-chart', 'url' => 'admin/revenue'),
     'settings' => array('label' => 'Settings', 'icon' => 'fa-cog', 'url' => 'admin/settings'),
 );
 $page_titles = array(
     'dashboard' => 'Dashboard',
     'property_list' => 'Properties',
+    'trial_registrations' => 'Trial sign-ups',
     'revenue' => 'Revenue',
     'settings' => 'Settings',
 );

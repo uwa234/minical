@@ -11,6 +11,16 @@
         $menus['primary_menus'] = $primary_menus;
         $this->session->set_userdata('menus', $menus);
     }
+
+    if (
+        isset($this->company_subscription_level) &&
+        (string) $this->company_subscription_level === (string) STARTER
+    ) {
+        $starter_restricted_menu_links = array('extensions', 'revenue_management');
+        $primary_menus = array_values(array_filter($primary_menus, function ($menu) use ($starter_restricted_menu_links) {
+            return !in_array($menu['link'], $starter_restricted_menu_links, true);
+        }));
+    }
     
     $first_segment= $this->uri->segment(1);
     $second_segment= $this->uri->segment(2);
@@ -96,6 +106,15 @@
                     </a>
                 </li>
                 <?php endif; ?>
+                <?php if ($this->session->userdata('user_role') != 'is_housekeeping'): ?>
+                <li class="<?php if ($first_segment == 'account_settings' && $second_segment == 'subscription') echo 'mm-active'; ?>">
+                    <a class="<?php if ($first_segment == 'account_settings' && $second_segment == 'subscription') echo 'mm-active'; ?>" href="<?php echo base_url('account_settings/subscription'); ?>">
+                        <i class="metismenu-icon pe-7s-credit"></i>
+                        <?php echo ucwords(l('trial_manage_billing', true)); ?>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <?php if (!isset($this->company_subscription_level) || (string) $this->company_subscription_level !== (string) STARTER): ?>
                 <li class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>">
                     <a class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>" href="<?php echo base_url('channels'); ?>">
                         <i class="metismenu-icon pe-7s-share"></i>
@@ -108,6 +127,7 @@
                         <?php echo ucwords(l('groups', true)); ?>
                     </a>
                 </li>
+                <?php endif; ?>
                 <?php foreach($primary_menus as $m_menu){ ?>
 
                     <?php  

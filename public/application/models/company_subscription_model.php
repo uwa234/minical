@@ -29,7 +29,7 @@ class Company_subscription_model extends CI_Model {
 
     function get_company_subscription($company_id = null, $payment_method = null, $is_full_data = false)
     {
-        $this->db->select('`company_id`, `subscription_id`, `subscription_type`, `subscription_state`, `renewal_period`,`tax`,`cost_amount`, `renewal_cost`, `balance`, `region`, `payment_method`, `expiration_date`, `transition_after_expired`, `chargify_subscription_link`, `invoice_link`, `subscription_level`, `limit_feature`');
+        $this->db->select('`company_id`, `subscription_id`, `subscription_type`, `subscription_state`, `renewal_period`,`tax`,`cost_amount`, `renewal_cost`, `balance`, `region`, `payment_method`, `expiration_date`, `transition_after_expired`, `invoice_link`, `subscription_level`, `limit_feature`, `meta_data`');
         $this->db->from('company_subscription');
 		if($company_id)
 			$this->db->where('company_id', $company_id);

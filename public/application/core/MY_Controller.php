@@ -20,6 +20,7 @@ class MY_Controller extends CI_Controller {
     public $all_active_modules;
     public $cache_values;
     public $import_insert_batch;
+    public $trial_lockout_active;
 
 
     public function __construct()
@@ -53,6 +54,7 @@ class MY_Controller extends CI_Controller {
         $this->image_url = "https://".getenv("AWS_S3_BUCKET").".s3.amazonaws.com/";
 
         $this->check_login();
+        $this->trial_lockout_active = isset($this->trial_lockout_active) ? $this->trial_lockout_active : false;
         $this->_run_auto_migrations_if_needed();
 
         $all_active_modules = array();
@@ -280,10 +282,19 @@ class MY_Controller extends CI_Controller {
 
         $should_run = false;
 
-        if ($this->controller_name === 'marketing' && is_hosted_prod_service()) {
+        $router_class = $this->router->fetch_class();
+        $router_method = $this->router->fetch_method();
+
+        if ($router_class === 'marketing' && is_hosted_prod_service()) {
             $should_run = true;
         } elseif (
-            $this->controller_name === 'admin'
+            $router_class === 'auth'
+            && in_array($router_method, array('register', 'register_success'), true)
+            && is_hosted_prod_service()
+        ) {
+            $should_run = true;
+        } elseif (
+            $router_class === 'admin'
             && $this->tank_auth->is_logged_in()
             && is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null)
         ) {
@@ -328,7 +339,7 @@ class MY_Controller extends CI_Controller {
             $this->company_name = $company['name'];
             $this->company_email = $company['email'];
             $this->company_timezone = $company['time_zone'];
-            $this->company_subscription_level = $company['subscription_level'];
+            $this->company_subscription_level = resolve_company_subscription_level($company);
             $this->company_subscription_state = $company['subscription_state'];
             $this->company_feature_limit = $company['limit_feature'];
             $this->company_creation_date = $company['creation_date'];
@@ -367,6 +378,33 @@ class MY_Controller extends CI_Controller {
             
             $user = $this->User_model->get_user_by_id($this->user_id);
             $this->user_email = $user['email'];
+
+            $this->trial_lockout_active = company_requires_trial_lockout(
+                $company,
+                $this->user_id,
+                $this->user_email
+            );
+
+            if (
+                $this->trial_lockout_active &&
+                !is_trial_lockout_allowed_route($this->controller_name, $this->function_name)
+            ) {
+                if ($this->input->is_ajax_request()) {
+                    $this->output
+                        ->set_status_header(403)
+                        ->set_content_type('application/json')
+                        ->set_output(json_encode(array(
+                            'success' => false,
+                            'error' => 'Your trial has ended. Choose a plan to restore access.',
+                            'redirect' => trial_lockout_subscription_url(),
+                        )));
+                    exit;
+                }
+
+                redirect('/account_settings/subscription');
+                exit;
+            }
+
             $this->company_is_tos_agreed = ($user['tos_agreed_date'] >= TOS_PUBLISH_DATE);
             $this->is_overview_calendar = false; // $user['is_overview_calendar'];
 
@@ -429,8 +467,8 @@ class MY_Controller extends CI_Controller {
             }
 
             if(
-                $this->company_feature_limit == 1 && 
-                $this->company_subscription_state != 'trialing' &&
+                !$this->trial_lockout_active &&
+                company_plan_restrictions_apply($company, $this->company_subscription_level) &&
                 !empty($this->Company_model->get_subscription_restriction(
                                             $this->company_subscription_level,
                                             $this->controller_name, 
@@ -444,6 +482,13 @@ class MY_Controller extends CI_Controller {
             elseif (
                 $this->controller_name === 'admin' &&
                 is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null)
+            )
+            {
+                return;
+            }
+            elseif (
+                $this->trial_lockout_active &&
+                is_trial_lockout_allowed_route($this->controller_name, $this->function_name)
             )
             {
                 return;

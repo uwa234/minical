@@ -178,12 +178,11 @@ function validateUserRestriction()
     var companyFeatureLimit      = $("input[name='limit_feature']").val();
 
     if(
-        companyFeatureLimit == 1 && 
-        companySubscriptionState != 'trialing' &&
+        companyFeatureLimit == 1 &&
         (
             (companySubscriptionLevel == STARTER && user_count >= 1) ||
-            (companySubscriptionLevel == BASIC && user_count >= 3) ||
-            (companySubscriptionLevel == PREMIUM && user_count >= 5)
+            (companySubscriptionLevel == BASIC && companySubscriptionState != 'trialing' && user_count >= 3) ||
+            (companySubscriptionLevel == PREMIUM && companySubscriptionState != 'trialing' && user_count >= 5)
         )
     )
     {

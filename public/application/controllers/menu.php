@@ -90,7 +90,12 @@ class Menu extends MY_Controller
 			redirect('/room');
 		}
 	 	else 
-		{			
+		{
+            if (company_requires_trial_lockout($company, $this->user_id, $this->user_email)) {
+                redirect('/account_settings/subscription');
+                return;
+            }
+
             redirect('/dashboard/');
         }
 	}

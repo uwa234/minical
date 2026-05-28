@@ -81,13 +81,13 @@ if (!empty($ctx['trial_expiry_date'])) {
                         <h4><?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?></h4>
                         <p class="dashboard-trial-plan-rooms"><?php echo htmlspecialchars($room_label, ENT_QUOTES, 'UTF-8'); ?></p>
                         <p class="dashboard-trial-plan-price">
-                            <span><?php echo htmlspecialchars($tier['currency'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            <?php echo number_format((float) $tier['monthly_price'], 0); ?>
+                            <span><?php echo saas_currency_symbol($tier['currency']); ?></span>
+                            <?php echo format_saas_price_amount($tier['monthly_price']); ?>
                             <span class="dashboard-trial-plan-period">/mo</span>
                         </p>
                         <?php if (!empty($tier['features']) && is_array($tier['features'])): ?>
                             <ul class="dashboard-trial-plan-features">
-                                <?php foreach (array_slice($tier['features'], 0, 4) as $feature): ?>
+                                <?php foreach ($tier['features'] as $feature): ?>
                                     <li><?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8'); ?></li>
                                 <?php endforeach; ?>
                             </ul>

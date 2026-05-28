@@ -8,9 +8,6 @@
 			<li>
 				<a href="<?php echo base_url(); ?>account_settings/language" <?php if ($selected_submenu == 'language') echo 'id="selected_submenu"'; ?> ><?php echo $this->lang->line('language'); ?></a>
 			</li>
-			<li>
-				<a href="<?php echo base_url(); ?>account_settings/subscription" <?php if ($selected_submenu == 'subscription') echo 'id="selected_submenu"'; ?>><?php echo l('trial_manage_billing', true); ?></a>
-			</li>
 
 		</ul>
 	</div>

@@ -202,8 +202,8 @@
                         <h3><?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
                         <p class="mc-tier-rooms"><?php echo htmlspecialchars($room_label, ENT_QUOTES, 'UTF-8'); ?></p>
                         <p class="mc-tier-price">
-                            <span class="mc-tier-currency"><?php echo htmlspecialchars($tier['currency'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            <?php echo number_format((float) $tier['monthly_price'], 0); ?>
+                            <span class="mc-tier-currency"><?php echo saas_currency_symbol($tier['currency']); ?></span>
+                            <?php echo format_saas_price_amount($tier['monthly_price']); ?>
                             <span class="mc-tier-period">/month</span>
                         </p>
                         <ul class="mc-tier-features">

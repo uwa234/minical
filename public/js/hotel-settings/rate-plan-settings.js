@@ -212,8 +212,7 @@ $(function() {
         var companyFeatureLimit      = $("input[name='limit_feature']").val();
 
         if(
-            companyFeatureLimit == 1 && 
-            companySubscriptionState != 'trialing' &&
+            companyFeatureLimit == 1 &&
             (companySubscriptionLevel == STARTER)
         )
         {
@@ -279,8 +278,7 @@ $(function() {
         var companyFeatureLimit      = $("input[name='limit_feature']").val();
 
         if(
-            companyFeatureLimit == 1 && 
-            companySubscriptionState != 'trialing' &&
+            companyFeatureLimit == 1 &&
             (companySubscriptionLevel == STARTER)
         )
         {
@@ -321,8 +319,7 @@ $(function() {
         var companyFeatureLimit      = $("input[name='limit_feature']").val();
 
         if(
-            companyFeatureLimit == 1 && 
-            companySubscriptionState != 'trialing' &&
+            companyFeatureLimit == 1 &&
             (companySubscriptionLevel == STARTER)
         )
         {

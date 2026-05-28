@@ -13,8 +13,15 @@
 
 <?php
 $protocol = $this->config->item('server_protocol');
-$is_auth_login = (current_url() == $protocol . $_SERVER['HTTP_HOST'] . '/auth/login'
-    || str_ends_with(current_url(), '/public/auth/login'));
+$auth_shell_paths = array('/auth/login', '/auth/register', '/auth/register_success');
+$current_path = parse_url(current_url(), PHP_URL_PATH);
+$is_auth_login = false;
+foreach ($auth_shell_paths as $auth_path) {
+    if ($current_path === $auth_path || str_ends_with($current_path, '/public' . $auth_path)) {
+        $is_auth_login = true;
+        break;
+    }
+}
 $body_classes = 'theme-' . (isset($this->company_ui_theme) ? $this->company_ui_theme : 0);
 if ($is_auth_login) {
     $body_classes .= ' auth-login-page';
@@ -196,7 +203,15 @@ if ($is_auth_login) {
 
             		</div>
             	   
-					<?php if(isset($menu_on) && $menu_on && current_url() != $protocol . $_SERVER['HTTP_HOST'].'/auth/register' && current_url() != $protocol . $_SERVER['HTTP_HOST'].'/auth/login' && current_url() != $protocol . $_SERVER['HTTP_HOST'].'/auth/forgot_password'){?>
+					<?php
+                    $trial_lockout_mode = !empty($trial_lockout_mode) || !empty($this->trial_lockout_active);
+                    if(
+                        isset($menu_on) && $menu_on &&
+                        !$trial_lockout_mode &&
+                        current_url() != $protocol . $_SERVER['HTTP_HOST'].'/auth/register' &&
+                        current_url() != $protocol . $_SERVER['HTTP_HOST'].'/auth/login' &&
+                        current_url() != $protocol . $_SERVER['HTTP_HOST'].'/auth/forgot_password'
+                    ){?>
 						<div  >
                             
 							<?php 
@@ -302,7 +317,7 @@ data-keyboard="false" style="z-index: 9999;"
         <p class="message"></p>
       </div>
       <div class="modal-footer">
-        <a class="btn btn-success" href="<?php echo base_url(); ?>settings/company/view_subscription"><?php echo l('Update payment details', true); ?></a>
+        <a class="btn btn-success" href="<?php echo base_url(); ?>account_settings/subscription"><?php echo l('Update payment details', true); ?></a>
       </div>
       
     </div><!-- /.modal-content -->

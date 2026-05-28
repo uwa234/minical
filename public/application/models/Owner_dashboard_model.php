@@ -3,14 +3,24 @@
 class Owner_dashboard_model extends CI_Model
 {
     /**
-     * SQL fragment: earliest booking_log entry per booking (proxy for created-at).
+     * SQL fragment: booking created-at (booking_log, then WhatsApp link, then first stay date).
      */
     private function booking_created_subquery_sql()
     {
+        $whatsapp_created = $this->db->table_exists('whatsapp_x_booking')
+            ? '(SELECT MIN(wxb.created_at) FROM whatsapp_x_booking AS wxb WHERE wxb.booking_id = b.booking_id)'
+            : 'NULL';
+
         return "
-            SELECT booking_id, MIN(date_time) AS created_at
-            FROM booking_log
-            GROUP BY booking_id
+            SELECT
+                b.booking_id,
+                COALESCE(
+                    (SELECT MIN(bl.date_time) FROM booking_log AS bl WHERE bl.booking_id = b.booking_id),
+                    {$whatsapp_created},
+                    (SELECT MIN(bb.check_in_date) FROM booking_block AS bb WHERE bb.booking_id = b.booking_id)
+                ) AS created_at
+            FROM booking AS b
+            HAVING created_at IS NOT NULL
         ";
     }
 
@@ -242,17 +252,24 @@ class Owner_dashboard_model extends CI_Model
         $company_id  = (int) $company_id;
         $month_start = date('Y-m-01', strtotime($today));
         $created_subquery = $this->booking_created_subquery_sql();
+        $whatsapp_join = $this->db->table_exists('whatsapp_x_booking')
+            ? "LEFT JOIN whatsapp_x_booking AS wxb ON wxb.booking_id = b.booking_id AND wxb.company_id = {$company_id}"
+            : '';
+        $source_expr = $this->db->table_exists('whatsapp_x_booking')
+            ? "IF(wxb.booking_id IS NOT NULL, '" . SOURCE_WHATSAPP . "', b.source)"
+            : 'b.source';
 
         $rows = $this->db->query("
             SELECT
-                b.source AS source_id,
+                {$source_expr} AS source_id,
                 COUNT(b.booking_id) AS count
             FROM booking AS b
             INNER JOIN ({$created_subquery}) AS bl ON bl.booking_id = b.booking_id
+            {$whatsapp_join}
             WHERE b.company_id = {$company_id}
               AND b.is_deleted != '1'
               AND DATE(bl.created_at) >= '{$month_start}'
-            GROUP BY b.source
+            GROUP BY source_id
             ORDER BY count DESC
             LIMIT 8
         ")->result_array();

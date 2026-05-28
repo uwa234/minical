@@ -223,7 +223,7 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
                         GROUP BY b.company_id) as la "
                         , "la.company_id = c.company_id", "left");
         }
-		$this->db->select('c.*, capi.*, up.*, cs.subscription_level, cs.limit_feature, cs.subscription_state, cs.payment_method, cs.subscription_id, cs.balance, u.email as owner_email, p.*, count(DISTINCT r.room_id) as number_of_rooms_actual,c.partner_id,IFNULL(wp.username,"Veurion") as partner_name, cpg.selected_payment_gateway',FALSE);
+		$this->db->select('c.*, capi.*, up.*, cs.subscription_level, cs.limit_feature, cs.subscription_state, cs.payment_method, cs.subscription_id, cs.balance, cs.expiration_date, u.email as owner_email, p.*, count(DISTINCT r.room_id) as number_of_rooms_actual,c.partner_id,IFNULL(wp.username,"Veurion") as partner_name, cpg.selected_payment_gateway',FALSE);
 		$this->db->from('company as c');
 		$this->db->join('company_admin_panel_info as capi', 'c.company_id = capi.company_id', 'left');
 		$this->db->join('company_subscription as cs', 'c.company_id = cs.company_id', 'left');
@@ -783,20 +783,11 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 		);
 		$preserve_emails_sql = implode(',', array_map(array($this->db, 'escape'), $preserve_user_emails));
 
+		// Run in a transaction; user_permissions are removed last so a failed delete
+		// does not leave properties without owners on the admin property list.
+		$this->db->trans_start();
+
 		$queries = array(
-			"
-				DELETE FROM user_permissions WHERE company_id = $company_id;
-			",
-			"
-				DELETE u, ua, upro
-				FROM users as u
-				LEFT JOIN user_autologin as ua ON u.id = ua.user_id
-				LEFT JOIN user_profiles as upro ON u.id = upro.user_id
-				LEFT JOIN user_permissions as up ON up.user_id = u.id
-				WHERE
-					up.user_id IS NULL
-					AND u.email NOT IN ($preserve_emails_sql)
-			",
 			"
 				DELETE
 					rt, 
@@ -821,13 +812,19 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 					b,
 					brh,
 					bl,
+					bscl,
+					cf,
+					pf,
+					fo,
 					c,
-					p,
-					bscl
+					p
 				FROM 
 					booking as b
 				LEFT JOIN booking_block as brh ON b.booking_id = brh.booking_id
 				LEFT JOIN booking_staying_customer_list as bscl ON b.booking_id = bscl.booking_id
+				LEFT JOIN folio as fo ON fo.booking_id = b.booking_id
+				LEFT JOIN charge_folio as cf ON cf.folio_id = fo.id
+				LEFT JOIN payment_folio as pf ON pf.folio_id = fo.id
 				LEFT JOIN charge as c ON c.booking_id = b.booking_id
 				LEFT JOIN payment as p ON p.booking_id = b.booking_id	
 				LEFT JOIN booking_x_extra as bxe ON bxe.booking_id = b.booking_id
@@ -851,9 +848,30 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 					e.company_id = $company_id;
 			",
 			"
+				DELETE cxcf
+				FROM customer_x_customer_field AS cxcf
+				INNER JOIN customer AS cust ON cust.customer_id = cxcf.customer_id
+				WHERE cust.company_id = $company_id;
+			",
+			"
+				DELETE ccd
+				FROM customer_card_detail AS ccd
+				INNER JOIN customer AS cust ON cust.customer_id = ccd.customer_id
+				WHERE cust.company_id = $company_id;
+			",
+			"
 				DELETE FROM customer
 				WHERE 
 					company_id = $company_id;
+			",
+			"
+				DELETE FROM customer_type WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM common_customer_type_setting WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM common_booking_source_setting WHERE company_id = $company_id;
 			",
 			"
 				DELETE FROM room 
@@ -907,22 +925,22 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 				DELETE FROM booking_field WHERE company_id = $company_id;
 			",
 			"
-				DELETE FROM customer_fields WHERE company_id = $company_id;
+				DELETE FROM common_customer_fields_setting WHERE company_id = $company_id;
+			",
+			"
+				DELETE FROM customer_field WHERE company_id = $company_id;
 			",
 			"
 				DELETE FROM booking_source WHERE company_id = $company_id;
 			",
 			"
-				DELETE FROM folio WHERE company_id = $company_id;
+				DELETE FROM company_payment WHERE company_id = $company_id;
 			",
 			"
-				DELETE FROM menu WHERE company_id = $company_id;
+				DELETE FROM company_charge WHERE company_id = $company_id;
 			",
 			"
-				DELETE FROM employee_log WHERE company_id = $company_id;
-			",
-			"
-				DELETE FROM company_groups_x_company WHERE company_id = $company_id;
+				DELETE FROM company_x_currency WHERE company_id = $company_id;
 			",
 			"
 				DELETE FROM company_payment_gateway WHERE company_id = $company_id;
@@ -937,17 +955,50 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
 				DELETE FROM company_subscription WHERE company_id = $company_id;
 			",
 			"
+				DELETE el
+				FROM employee_log AS el
+				INNER JOIN user_permissions AS up ON up.user_id = el.user_id
+				WHERE up.company_id = $company_id;
+			",
+			"
+				DELETE FROM user_permissions WHERE company_id = $company_id;
+			",
+			"
+				DELETE u, ua, upro
+				FROM users as u
+				LEFT JOIN user_autologin as ua ON u.id = ua.user_id
+				LEFT JOIN user_profiles as upro ON u.id = upro.user_id
+				LEFT JOIN user_permissions as up ON up.user_id = u.id
+				WHERE
+					up.user_id IS NULL
+					AND u.email NOT IN ($preserve_emails_sql)
+			",
+			"
 				DELETE FROM company WHERE company_id = $company_id;
 			"
 		);
 
 		foreach ($queries as $query) {
-			$this->db->query($query);
+			try {
+				$this->db->query($query);
+			} catch (Exception $e) {
+				log_message('error', 'delete_company failed for company_id ' . $company_id . ': ' . $e->getMessage());
+				$this->db->trans_rollback();
+				return false;
+			}
 
 			if ($this->db->_error_message()) {
 				log_message('error', 'delete_company failed for company_id ' . $company_id . ': ' . $this->db->_error_message());
+				$this->db->trans_rollback();
 				return false;
 			}
+		}
+
+		$this->db->trans_complete();
+
+		if ($this->db->trans_status() === false) {
+			log_message('error', 'delete_company transaction failed for company_id ' . $company_id);
+			return false;
 		}
 
 		return true;
@@ -1085,9 +1136,10 @@ function get_total_companies($extension_name = null, $is_extension_active = fals
     function get_subscription_restriction($company_subscription_level, $controller_name, $function_name)
     {
         $this->db->from('subscription_restriction');
-        $this->db->where('subscription_plan', $company_subscription_level);
+        $this->db->where('subscription_plan', (int) $company_subscription_level);
         $this->db->where('controller', $controller_name);
-        $this->db->where('function', $function_name);
+        $fn = $this->db->escape($function_name);
+        $this->db->where("(`function` = {$fn} OR `function` = '' OR `function` = '*')", null, false);
         $query = $this->db->get();
         
         if($query->num_rows() >= 1)

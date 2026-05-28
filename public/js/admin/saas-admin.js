@@ -63,13 +63,18 @@ $(function () {
             return;
         }
 
+        var $tierSelect = $('[name="saas_tier_id"]');
+        var tierId = parseInt($tierSelect.val(), 10) || 0;
+        var legacyType = ($tierSelect.find('option:selected').data('legacy-type') || 'BASIC') + '';
+
         postAdminJson(
             baseUrl() + 'auth/create_company/',
             {
                 name: name,
                 number_of_rooms: $('[name="saas_number_of_rooms"]').val() || 1,
                 region: $('[name="saas_region"]').val(),
-                subscription_type: $('[name="saas_subscription_type"]').val(),
+                // Keep legacy subscription_type for older signup logic, but drive pricing with tier_id.
+                subscription_type: legacyType,
                 subscription_state: $('[name="saas_subscription_state"]').val(),
                 trial_days: $('[name="saas_trial_days"]').val(),
                 created_by: 'admin',
@@ -77,8 +82,19 @@ $(function () {
                 owner_first_name: $('[name="saas_owner_first_name"]').val(),
                 owner_last_name: $('[name="saas_owner_last_name"]').val()
             },
-            function () {
-                window.location.reload();
+            function (resp) {
+                // After creating the tenant, store the actual SaaS pricing tier selection.
+                if (!tierId || !resp || !resp.company_id) {
+                    window.location.reload();
+                    return;
+                }
+
+                postAdminJson(
+                    baseUrl() + 'admin/update_subscription/',
+                    { company_id: resp.company_id, tier_id: tierId },
+                    function () { window.location.reload(); },
+                    function () { window.location.reload(); }
+                );
             },
             function (msg) {
                 alert(msg);
@@ -234,13 +250,37 @@ $(function () {
         });
     });
 
-    $('.saas-subscription-level').on('change', function () {
+    $('.saas-pricing-tier').on('change', function () {
         pushSubscriptionUpdate($(this).data('company-id'), {
-            subscription_level: $(this).val()
+            tier_id: $(this).val()
         });
     });
 
+    $('.saas-plan-expiry-save-btn').on('click', function () {
+        var $button = $(this);
+        var companyId = $button.data('company-id');
+        var $row = $button.closest('tr');
+        var planExpiryDate = $.trim($row.find('.saas-plan-expiry-date').val());
+        if (!planExpiryDate) {
+            alert('Select a plan expiry date first.');
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/update_plan_expiry/',
+            { company_id: companyId, plan_expiry_date: planExpiryDate },
+            function () {
+                window.location.reload();
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $button
+        );
+    });
+
     $('.saas-trial-save-btn').on('click', function () {
+        var $button = $(this);
         var companyId = $(this).data('company-id');
         var $row = $(this).closest('tr');
         var days = parseInt($row.find('.saas-trial-days').val(), 10);
@@ -257,7 +297,7 @@ $(function () {
             function (msg) {
                 alert(msg);
             },
-            $(this)
+            $button
         );
     });
 });

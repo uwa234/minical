@@ -14,6 +14,7 @@ class Admin extends MY_Controller {
             'Company_subscription_model',
             'User_model',
             'Platform_settings_model',
+            'Trial_registration_request_model',
         ));
         $this->load->library('form_validation');
     }
@@ -173,6 +174,42 @@ class Admin extends MY_Controller {
         $this->load->view('includes/admin_template', $data);
     }
 
+    function trial_registrations()
+    {
+        $this->_require_platform_admin();
+
+        $search_query = trim((string) $this->input->get('search_query'));
+        $data['search_query'] = $search_query;
+        $data['registrations'] = $this->Trial_registration_request_model->get_all(array(
+            'search' => $search_query,
+        ));
+        $data['main_content'] = 'admin/trial_registrations';
+        $data['js_files'] = array(base_url() . auto_version('js/admin/trial-registrations.js'));
+        $data['css_files'] = array();
+
+        $this->load->view('includes/admin_template', $data);
+    }
+
+    function update_trial_registration_status()
+    {
+        $this->_require_platform_admin(true);
+
+        $id = (int) $this->input->post('request_id');
+        $status = $this->input->post('status');
+
+        if (!$id || !$status) {
+            $this->_json_response(array('success' => false, 'error' => 'Invalid request.'), 400);
+            return;
+        }
+
+        if ($this->Trial_registration_request_model->update_status($id, $status)) {
+            $this->_json_response(array('success' => true));
+            return;
+        }
+
+        $this->_json_response(array('success' => false, 'error' => 'Status could not be updated.'), 400);
+    }
+
     function property_list()
     {
         $this->_require_platform_admin();
@@ -182,11 +219,73 @@ class Admin extends MY_Controller {
             $state = 'all';
         }
 
-        $data['properties'] = $this->Admin_model->get_tenant_list(array(
+        $properties = $this->Admin_model->get_tenant_list(array(
             'subscription_state' => $state,
             'search' => $this->input->get('search_query'),
             'include_deleted' => $this->input->get('include_deleted') === '1',
         ));
+
+        // SaaS pricing tiers (Starter/Growth/Professional/Enterprise).
+        $tiers = $this->Platform_settings_model->get_pricing_tiers(false);
+        foreach ($properties as &$property) {
+            $room_count = isset($property['number_of_rooms']) ? (int) $property['number_of_rooms'] : 0;
+            if ($room_count < 1 && isset($property['number_of_rooms_actual'])) {
+                $room_count = (int) $property['number_of_rooms_actual'];
+            }
+            if ($room_count < 1) {
+                $room_count = 1;
+            }
+
+            $meta = array();
+            if (!empty($property['meta_data'])) {
+                $decoded = json_decode($property['meta_data'], true);
+                if (is_array($decoded)) {
+                    $meta = $decoded;
+                }
+            }
+            $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+
+            $tier_name = '';
+            $tier_id_for_rooms = 0;
+            foreach ($tiers as $tier) {
+                $min = (int) $tier['min_rooms'];
+                $max = (isset($tier['max_rooms']) && $tier['max_rooms'] !== null && $tier['max_rooms'] !== '')
+                    ? (int) $tier['max_rooms']
+                    : null;
+                if ($room_count >= $min && ($max === null || $room_count <= $max)) {
+                    $tier_name = isset($tier['name']) ? (string) $tier['name'] : '';
+                    $tier_id_for_rooms = isset($tier['id']) ? (int) $tier['id'] : 0;
+                    break;
+                }
+            }
+            $property['pricing_tier_name'] = $tier_name !== '' ? $tier_name : '—';
+            // Prefer stored tier_id (chosen by admin / billing) else fall back to room-derived.
+            $property['pricing_tier_id'] = $selected_tier_id > 0 ? $selected_tier_id : $tier_id_for_rooms;
+
+            $trial_expiry = isset($property['trial_expiry_date']) ? trim((string) $property['trial_expiry_date']) : '';
+            $paid_expiry = isset($property['expiration_date']) ? trim((string) $property['expiration_date']) : '';
+            $state = isset($property['subscription_state']) ? (string) $property['subscription_state'] : '';
+            $plan_expiry = '';
+            if ($state === 'trialing') {
+                $plan_expiry = $trial_expiry;
+            } elseif ($paid_expiry !== '' && $paid_expiry !== '0000-00-00') {
+                $plan_expiry = $paid_expiry;
+            }
+            $property['plan_expiry_date'] = $plan_expiry;
+            $property['plan_expiry_days_left'] = null;
+            if ($plan_expiry !== '' && $plan_expiry !== '0000-00-00') {
+                $today = new DateTime(date('Y-m-d'));
+                $expiry = DateTime::createFromFormat('Y-m-d', $plan_expiry);
+                if ($expiry instanceof DateTime) {
+                    $diff_days = (int) $today->diff($expiry)->format('%r%a');
+                    $property['plan_expiry_days_left'] = $diff_days;
+                }
+            }
+        }
+        unset($property);
+
+        $data['properties'] = $properties;
+        $data['pricing_tiers'] = $tiers;
         $data['filter_state'] = $state;
         $data['search_query'] = $this->input->get('search_query');
         $data['default_trial_days'] = $this->Platform_settings_model->get_default_trial_days();
@@ -249,6 +348,7 @@ class Admin extends MY_Controller {
         $company_id = (int) $this->input->post('company_id');
         $subscription_state = $this->input->post('subscription_state');
         $subscription_level = $this->input->post('subscription_level');
+        $tier_id = (int) $this->input->post('tier_id');
 
         if (!$company_id) {
             $this->_json_response(array('success' => false, 'error' => 'company_id is required.'), 400);
@@ -260,7 +360,29 @@ class Admin extends MY_Controller {
         if ($subscription_state !== null && $subscription_state !== '' && in_array($subscription_state, $allowed_states, true)) {
             $update['subscription_state'] = $subscription_state;
         }
-        if ($subscription_level !== null && $subscription_level !== '') {
+        if ($tier_id > 0) {
+            $tier = $this->Platform_settings_model->get_pricing_tier($tier_id);
+            if (!$tier) {
+                $this->_json_response(array('success' => false, 'error' => 'Invalid pricing tier.'), 422);
+                return;
+            }
+
+            $update['subscription_level'] = resolve_subscription_level_for_tier($tier);
+            $update['limit_feature'] = 1;
+
+            $current = $this->Company_subscription_model->get_company_subscription($company_id);
+            $meta = array();
+            if ($current && !empty($current['meta_data'])) {
+                $decoded = json_decode($current['meta_data'], true);
+                if (is_array($decoded)) {
+                    $meta = $decoded;
+                }
+            }
+            $meta['tier_id'] = (int) $tier['id'];
+            $meta['tier_name'] = (string) $tier['name'];
+            $meta['tier_updated_at'] = gmdate('c');
+            $update['meta_data'] = json_encode($meta);
+        } elseif ($subscription_level !== null && $subscription_level !== '') {
             $update['subscription_level'] = (int) $subscription_level;
         }
 
@@ -405,6 +527,56 @@ class Admin extends MY_Controller {
         $this->_json_response(array(
             'success' => true,
             'trial_expiry_date' => $expiry,
+        ));
+    }
+
+    function update_plan_expiry()
+    {
+        $this->_require_platform_admin(true);
+
+        $company_id = (int) $this->input->post('company_id');
+        $plan_expiry_date = trim((string) $this->input->post('plan_expiry_date'));
+
+        if (!$company_id) {
+            $this->_json_response(array('success' => false, 'error' => 'company_id is required.'), 400);
+            return;
+        }
+        if ($plan_expiry_date === '') {
+            $this->_json_response(array('success' => false, 'error' => 'plan_expiry_date is required.'), 400);
+            return;
+        }
+
+        $expiry = DateTime::createFromFormat('Y-m-d', $plan_expiry_date);
+        if (!$expiry || $expiry->format('Y-m-d') !== $plan_expiry_date) {
+            $this->_json_response(array('success' => false, 'error' => 'Invalid date format. Use YYYY-MM-DD.'), 422);
+            return;
+        }
+
+        $current = $this->Company_subscription_model->get_company_subscription($company_id);
+        $state = $current && isset($current['subscription_state']) ? (string) $current['subscription_state'] : '';
+
+        if ($state === 'trialing') {
+            $panel = $this->Admin_model->get_single_company_admin_panel_info($company_id);
+            if ($panel) {
+                $this->Admin_model->update_company_admin_panel_info($company_id, array(
+                    'trial_expiry_date' => $plan_expiry_date,
+                ));
+            } else {
+                $this->Admin_model->insert_company_admin_panel_info(array(
+                    'company_id' => $company_id,
+                    'creation_date' => date('Y-m-d G:i'),
+                    'trial_expiry_date' => $plan_expiry_date,
+                ));
+            }
+        } else {
+            $this->Company_subscription_model->update_company_subscription($company_id, array(
+                'expiration_date' => $plan_expiry_date,
+            ));
+        }
+
+        $this->_json_response(array(
+            'success' => true,
+            'plan_expiry_date' => $plan_expiry_date,
         ));
     }
 

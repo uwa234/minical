@@ -42,7 +42,6 @@ class Admin_model extends CI_Model {
 					    c.time_zone, 
 					    cs.invoice_link,
 					    cs.balance,
-					    cs.chargify_subscription_link,
 					    cs.subscription_state,
 					    cs.renewal_cost,
 					    cs.renewal_period,
@@ -1333,7 +1332,7 @@ class Admin_model extends CI_Model {
     {
         $this->db->select(
             'c.company_id, c.name, c.email, c.number_of_rooms, c.country, capi.creation_date, c.is_deleted, c.last_login,
-            cs.subscription_state, cs.subscription_level, cs.subscription_type, cs.region,
+            cs.subscription_state, cs.subscription_level, cs.subscription_type, cs.region, cs.meta_data, cs.expiration_date,
             capi.trial_expiry_date,
             u.email AS owner_email, pf.first_name AS owner_first_name, pf.last_name AS owner_last_name',
             false

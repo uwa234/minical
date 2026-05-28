@@ -24,10 +24,10 @@
 	        			<th><?php echo l('Company Id', true);?></th>
 	        			<th><?php echo l('Company Name', true);?></th>
 	        			<th><?php echo l('Subscription Id', true);?></th>
-	        			<th><?php echo l('Veurion / Chargify Subscription Type', true);?></th>
-	        			<th><?php echo l('Veurion / Chargify Subscription State', true);?></th>
-	        			<th><?php echo l('Veurion / Chargify Renewal Period', true);?></th>
-	        			<th><?php echo l('Veurion / Chargify Renewal Cost', true);?></th>
+	        			<th><?php echo l('Subscription Type', true);?></th>
+	        			<th><?php echo l('Subscription State', true);?></th>
+	        			<th><?php echo l('Renewal Period', true);?></th>
+	        			<th><?php echo l('Renewal Cost', true);?></th>
 	        		</tr>
 
 	        		<?php foreach ($comp_list as $key => $value) { ?>
@@ -36,13 +36,13 @@
 	        				<td><?php echo $value['name']; ?></td>
 	        				<td><?php echo $value['subscription_id']; ?></td>
 	        				
-	        				<td><?php echo $value['subscription_level'].' / '.$value['chargify_subscription_type']; ?></td>
+	        				<td><?php echo $value['subscription_level']; ?></td>
 
-	        				<td><?php echo $value['subscription_state'].' / '.$value['chargify_subscription_state']; ?></td>
+	        				<td><?php echo $value['subscription_state']; ?></td>
 
-	        				<td><?php echo $value['renewal_period'].' / '.$value['chargify_renewal_period']; ?></td>
+	        				<td><?php echo $value['renewal_period']; ?></td>
 
-	        				<td><?php echo $value['renewal_cost'].' / '.$value['chargify_renewal_cost']; ?></td>
+	        				<td><?php echo $value['renewal_cost']; ?></td>
 	        			</tr>
 	        		<?php } ?>
 	        	</table>

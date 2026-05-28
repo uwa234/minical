@@ -87,11 +87,11 @@ class Company_charge_model extends CI_Model {
 		return null;
 	}
 	
-	function does_transaction_exist($company_id, $chargify_transaction_id)
+	function does_transaction_exist($company_id, $transaction_reference)
 	{
 		$this->db->from('company_charge');
 		$this->db->where('company_id', $company_id);
-		$this->db->where('description', $chargify_transaction_id);
+		$this->db->where('description', $transaction_reference);
 		
 		$q = $this->db->get();
 		

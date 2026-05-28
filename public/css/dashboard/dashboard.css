@@ -18,10 +18,26 @@
     color: #1f2937;
 }
 
-.dashboard-subtitle {
-    margin: 0;
-    color: #6b7280;
-    font-size: 0.95rem;
+.dashboard-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dashboard-page--trial-lockout .dashboard-header {
+    align-items: center;
+}
+
+.trial-lockout-notice {
+    margin-bottom: 1.25rem;
+}
+
+.dashboard-page--trial-lockout .app-main__outer,
+.dashboard-page--trial-lockout .app-main__inner,
+.dashboard-page--trial-lockout .main {
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .dashboard-metrics {
@@ -93,6 +109,12 @@ a.dashboard-metric-card--link:hover {
     font-weight: 700;
     color: #111827;
     line-height: 1.2;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.dashboard-metric-card--balance .dashboard-metric-value {
+    font-size: clamp(1rem, 2.2vw, 1.45rem);
 }
 
 .dashboard-metric-detail {

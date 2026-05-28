@@ -38,8 +38,8 @@
                 <th>Owner</th>
                 <th>Rooms</th>
                 <th>Subscription</th>
-                <th>Plan level</th>
-                <th>Trial expires</th>
+                <th>Pricing tier</th>
+                <th>Plan expires</th>
                 <th>Created</th>
                 <th>Actions</th>
             </tr>
@@ -84,28 +84,58 @@
                             </select>
                         </td>
                         <td>
-                            <select class="form-control input-sm saas-subscription-level" data-company-id="<?php echo (int) $property['company_id']; ?>">
-                                <option value="0" <?php echo (int) $property['subscription_level'] === 0 ? 'selected' : ''; ?>>Basic</option>
-                                <option value="1" <?php echo (int) $property['subscription_level'] === 1 ? 'selected' : ''; ?>>Premium</option>
+                            <select class="form-control input-sm saas-pricing-tier" data-company-id="<?php echo (int) $property['company_id']; ?>">
+                                <?php
+                                $tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_tiers : array();
+                                $selected_id = isset($property['pricing_tier_id']) ? (int) $property['pricing_tier_id'] : 0;
+                                foreach ($tiers as $tier) {
+                                    $id = (int) $tier['id'];
+                                    $name = isset($tier['name']) ? (string) $tier['name'] : '';
+                                    $sel = ($selected_id > 0 && $id === $selected_id) ? 'selected' : '';
+                                    echo '<option value="' . $id . '" ' . $sel . '>' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</option>';
+                                }
+                                ?>
                             </select>
                         </td>
                         <td class="saas-trial-cell">
                             <?php
-                            $exp = isset($property['trial_expiry_date']) ? $property['trial_expiry_date'] : '';
+                            $exp = isset($property['plan_expiry_date']) ? $property['plan_expiry_date'] : '';
+                            $days_left = isset($property['plan_expiry_days_left']) ? $property['plan_expiry_days_left'] : null;
                             if ($exp) {
                                 echo htmlspecialchars($exp, ENT_QUOTES, 'UTF-8');
+                                if ($days_left !== null) {
+                                    if ((int) $days_left < 0) {
+                                        echo ' <span class="pa-badge pa-badge-danger">Expired</span>';
+                                    } elseif ((int) $days_left === 0) {
+                                        echo ' <span class="pa-badge pa-badge-warning">Expires today</span>';
+                                    } else {
+                                        echo ' <span class="text-muted">(' . (int) $days_left . ' day' . ((int) $days_left === 1 ? '' : 's') . ' left)</span>';
+                                    }
+                                }
                             } else {
                                 echo '<span class="text-muted">—</span>';
                             }
                             ?>
-                            <div class="input-group input-group-sm" style="margin-top:4px; max-width:200px;">
-                                <input type="number" min="1" max="365" class="form-control saas-trial-days" placeholder="Days"
+                            <div class="input-group input-group-sm" style="margin-top:6px; max-width:280px;">
+                                <input type="date" class="form-control saas-plan-expiry-date"
+                                       value="<?php echo htmlspecialchars($exp, ENT_QUOTES, 'UTF-8'); ?>"
+                                       data-company-id="<?php echo (int) $property['company_id']; ?>"
+                                       title="Set exact plan expiry date" />
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default saas-plan-expiry-save-btn"
+                                            data-company-id="<?php echo (int) $property['company_id']; ?>">Save date</button>
+                                </span>
+                            </div>
+                            <?php if (isset($property['subscription_state']) && $property['subscription_state'] === 'trialing') { ?>
+                            <div class="input-group input-group-sm" style="margin-top:4px; max-width:220px;">
+                                <input type="number" min="1" max="365" class="form-control saas-trial-days" placeholder="Trial days"
                                        data-company-id="<?php echo (int) $property['company_id']; ?>" title="Extend trial from today" />
                                 <span class="input-group-btn">
                                     <button type="button" class="btn btn-default saas-trial-save-btn"
-                                            data-company-id="<?php echo (int) $property['company_id']; ?>">Set</button>
+                                            data-company-id="<?php echo (int) $property['company_id']; ?>">Set trial</button>
                                 </span>
                             </div>
+                            <?php } ?>
                         </td>
                         <td><?php echo htmlspecialchars($property['creation_date'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="pa-actions-cell">
@@ -172,11 +202,20 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-4 control-label">Pricing plan</label>
+                    <label class="col-sm-4 control-label">Pricing tier</label>
                     <div class="col-sm-8">
-                        <select name="saas_subscription_type" class="form-control">
-                            <option value="BASIC">Basic</option>
-                            <option value="PREMIUM">Premium</option>
+                        <select name="saas_tier_id" class="form-control" id="saas-add-tier-id">
+                            <?php
+                            $tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_tiers : array();
+                            foreach ($tiers as $tier) {
+                                $tier_id = (int) $tier['id'];
+                                $tier_name = isset($tier['name']) ? (string) $tier['name'] : '';
+                                $legacy_type = ((int) $tier['subscription_level'] <= 0) ? 'BASIC' : 'PREMIUM';
+                                echo '<option value="' . $tier_id . '" data-legacy-type="' . htmlspecialchars($legacy_type, ENT_QUOTES, 'UTF-8') . '">'
+                                    . htmlspecialchars($tier_name, ENT_QUOTES, 'UTF-8')
+                                    . '</option>';
+                            }
+                            ?>
                         </select>
                     </div>
                 </div>

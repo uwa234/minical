@@ -200,6 +200,10 @@ class Auth extends MY_Controller
                     redirect('/admin/dashboard');
                 }
 
+                if ($this->_redirect_trial_lockout_if_needed()) {
+                    return;
+                }
+
                 $is_db_name = getenv('DATABASE_NAME');
                 
                 if(
@@ -583,9 +587,12 @@ class Auth extends MY_Controller
     function register()
     {
         if ($this->tank_auth->is_logged_in()) {
-            // logged in
-            redirect('/dashboard');           
+            redirect('/dashboard');
+        }
 
+        if (is_hosted_prod_service()) {
+            $this->_trial_register();
+            return;
         }
 
         $host_name = $_SERVER['HTTP_HOST'];
@@ -683,6 +690,114 @@ class Auth extends MY_Controller
         $data['selected_submenu'] = 'Room View';
         $data['main_content']         = 'auth/new_register';
         $this->load->view('includes/bootstrapped_template', $data);
+    }
+
+    function register_success()
+    {
+        if ($this->tank_auth->is_logged_in()) {
+            redirect('/dashboard');
+        }
+
+        if (!is_hosted_prod_service()) {
+            redirect('auth/register');
+            return;
+        }
+
+        $submitted_email = $this->session->flashdata('trial_register_email');
+        if (!$submitted_email) {
+            redirect('auth/register');
+            return;
+        }
+
+        $data = $this->_trial_register_page_data();
+        $data['submitted_email'] = $submitted_email;
+        $data['main_content'] = 'auth/trial_register_success';
+        $data['css_files'] = array(
+            base_url() . auto_version('css/auth/login.css'),
+        );
+        $this->load->view('includes/bootstrapped_template', $data);
+    }
+
+    function _trial_register()
+    {
+        $this->load->model(array('Platform_settings_model', 'Trial_registration_request_model'));
+        $data = $this->_trial_register_page_data();
+        $data['errors'] = array();
+
+        if ($this->input->post('trial_register_submit')) {
+            $this->form_validation->set_rules('property_name', 'Property name', 'trim|required|max_length[255]|xss_clean');
+            $this->form_validation->set_rules('number_of_rooms', 'Number of rooms', 'trim|required|integer|greater_than[0]|less_than[10000]|xss_clean');
+            $this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]|xss_clean');
+            $this->form_validation->set_rules('phone', 'Phone number', 'trim|required|max_length[50]|min_length[7]|xss_clean');
+            $this->form_validation->set_rules('first_name', 'First name', 'trim|required|max_length[100]|xss_clean');
+            $this->form_validation->set_rules('last_name', 'Last name', 'trim|required|max_length[100]|xss_clean');
+
+            if ($this->form_validation->run()) {
+                $insert_id = $this->Trial_registration_request_model->create(array(
+                    'property_name' => $this->input->post('property_name'),
+                    'number_of_rooms' => $this->input->post('number_of_rooms'),
+                    'email' => strtolower(trim($this->input->post('email'))),
+                    'phone' => trim($this->input->post('phone')),
+                    'first_name' => $this->input->post('first_name'),
+                    'last_name' => $this->input->post('last_name'),
+                ));
+
+                if ($insert_id) {
+                    $this->session->set_flashdata('trial_register_email', strtolower(trim($this->input->post('email'))));
+                    redirect('auth/register_success');
+                    return;
+                }
+
+                $data['errors']['general'] = 'We could not save your request. Please try again in a moment.';
+            } else {
+                $data['errors']['general'] = validation_errors();
+            }
+        }
+
+        $data['main_content'] = 'auth/trial_register_form';
+        $data['css_files'] = array(
+            base_url() . auto_version('css/auth/login.css'),
+        );
+        $this->load->view('includes/bootstrapped_template', $data);
+    }
+
+    function _trial_register_page_data()
+    {
+        $host_name = $_SERVER['HTTP_HOST'];
+        $white_label_name = explode('.', $host_name);
+        if (count($white_label_name) > 0) {
+            $white_label_name = $white_label_name[0];
+        }
+        $data['whitelabel_detail'] = '';
+
+        $white_label_detail = $this->Whitelabel_partner_model->get_partner_by_username($white_label_name);
+        if ($white_label_detail) {
+            $white_label_detail = $white_label_detail[0];
+            $data['whitelabel_detail'] = $white_label_detail;
+        } else {
+            $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('domain' => $host_name));
+            if ($white_label_detail) {
+                $white_label_detail = $white_label_detail[0];
+                $data['whitelabel_detail'] = $white_label_detail;
+            }
+        }
+
+        if ($data['whitelabel_detail']) {
+            $data['whitelabel_detail'] = veurion_normalize_whitelabel_partner($data['whitelabel_detail']);
+            $this->session->set_userdata('white_label_information', $data['whitelabel_detail']);
+        } else {
+            $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => 0));
+            if ($white_label_detail) {
+                $white_label_detail = veurion_normalize_whitelabel_partner($white_label_detail[0]);
+                $data['whitelabel_detail'] = $white_label_detail;
+                $this->session->set_userdata('white_label_information', $white_label_detail);
+            }
+        }
+
+        $this->load->model('Platform_settings_model');
+        $data['default_trial_days'] = $this->Platform_settings_model->get_default_trial_days();
+
+        return $data;
     }
     
     // function terms_of_service()
@@ -1442,21 +1557,8 @@ class Auth extends MY_Controller
 
     function _create_customer($data)
     {
-        $customer_array = array(
-            'organization' => $data['company_name'],
-            'first_name'   => $data['first_name'],
-            'last_name'    => $data['last_name'],
-            'address'      => $data['cc_address1'],
-            'address_2'    => $data['cc_address2'],
-            'city'         => $data['cc_city'],
-            'state'        => $data['cc_province'],
-            'zip'          => $data['cc_postal_code'],
-            'country'      => $data['cc_country'],
-            'email'        => $data['email'],
-            'phone'        => $data['phone']
-        );
-
-        return $this->chargify->create_customer($customer_array);
+        log_message('error', 'Legacy _create_customer() called. Flow should use Paystack checkout.');
+        return null;
     }
 
     function _is_unused_email($email)
@@ -1944,7 +2046,6 @@ class Auth extends MY_Controller
         $this->load->model('Company_subscription_model');
         $whitelabelinfo = $this->session->userdata('white_label_information');
         $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
-        //$this->load->library('Chargify_wrapper');
         $subscription = null;
         $response     = array(
             'is_blocking' => 0,
@@ -1974,10 +2075,8 @@ class Auth extends MY_Controller
                     break;
                 case 'trial_ended':
                     $response = array(
-                        'is_blocking' => 0,
-                        'message'     => 'Thank you for trying Veurion! To set up your recurring subscription '.($is_manual
-                                ? 'please contact '.$reply_to_email
-                                : 'please update your payment details. '),
+                        'is_blocking' => 1,
+                        'message'     => 'Your free trial has ended. Choose a plan below to restore access to your account.',
                         'show_link'   => 1,
                         'state'       => $subscription['subscription_state']
                     );
@@ -2004,6 +2103,35 @@ class Auth extends MY_Controller
         }
         $this->session->set_flashdata('flash', 'value');
         echo json_encode($response);
+    }
+
+    /**
+     * Send trial-ended accounts straight to billing instead of the dashboard.
+     *
+     * @return bool True when a redirect was issued.
+     */
+    private function _redirect_trial_lockout_if_needed()
+    {
+        $company_id = (int) $this->session->userdata('current_company_id');
+        if ($company_id < 1) {
+            return false;
+        }
+
+        $company = $this->Company_model->get_company($company_id);
+        if (!$company) {
+            return false;
+        }
+
+        $user_id = (int) $this->session->userdata('user_id');
+        $user = $this->User_model->get_user_by_id($user_id);
+        $user_email = $user && isset($user['email']) ? $user['email'] : null;
+
+        if (!company_requires_trial_lockout($company, $user_id, $user_email)) {
+            return false;
+        }
+
+        redirect('/account_settings/subscription');
+        return true;
     }
 
     // show forbidden page

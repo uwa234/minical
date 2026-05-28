@@ -127,7 +127,7 @@ class Platform_settings_model extends CI_Model {
             'min_rooms' => (int) $data['min_rooms'],
             'max_rooms' => ($data['max_rooms'] === '' || $data['max_rooms'] === null) ? null : (int) $data['max_rooms'],
             'monthly_price' => (float) $data['monthly_price'],
-            'currency' => isset($data['currency']) ? $data['currency'] : 'USD',
+            'currency' => isset($data['currency']) ? $data['currency'] : saas_default_currency(),
             'subscription_level' => (int) $data['subscription_level'],
             'features_json' => json_encode($features),
             'sort_order' => isset($data['sort_order']) ? (int) $data['sort_order'] : 0,

@@ -86,7 +86,7 @@
                 <label class="col-sm-4 control-label">Currency</label>
                 <div class="col-sm-8">
                     <input type="text" class="form-control" name="tier_currency" maxlength="8"
-                           value="<?php echo $edit_tier ? htmlspecialchars($edit_tier['currency'], ENT_QUOTES, 'UTF-8') : 'USD'; ?>" />
+                           value="<?php echo $edit_tier ? htmlspecialchars($edit_tier['currency'], ENT_QUOTES, 'UTF-8') : saas_default_currency(); ?>" />
                 </div>
             </div>
             <div class="form-group">
@@ -160,8 +160,8 @@
                 <tr>
                     <td><?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo $room_range; ?></td>
-                    <td><?php echo htmlspecialchars($tier['currency'], ENT_QUOTES, 'UTF-8'); ?>
-                        <?php echo number_format((float) $tier['monthly_price'], 2); ?></td>
+                    <td><?php echo saas_currency_symbol($tier['currency']); ?>
+                        <?php echo format_saas_price_amount($tier['monthly_price'], 2); ?></td>
                     <td><?php echo (int) $tier['subscription_level']; ?></td>
                     <td><?php echo !empty($tier['is_active']) ? 'Yes' : 'No'; ?></td>
                     <td>

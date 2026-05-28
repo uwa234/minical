@@ -59,6 +59,11 @@ class Permission_model extends CI_Model {
             )
             ||
             (
+                $controller_name === "account_settings" &&
+                $function_name === 'paystack_webhook'
+            )
+            ||
+            (
                 $controller_name === "nexio_integration" && 
                 (
                     $function_name === 'forward_encrypt_card'

@@ -1454,7 +1454,7 @@ var bookingModalInvoker = function ($) {
 
                                         })
                                     ).on("click", function () {
-                                    if ($('#companyFeatureLimit').val() == 1 && $('#companySubscriptionLevel').val() == STARTER && $('#companySubscriptionState').val() != 'trialing') {
+                                    if ($('#companyFeatureLimit').val() == 1 && $('#companySubscriptionLevel').val() == STARTER) {
                                         $("#access-restriction-message").modal("show");
                                         $('#access-restriction-message .restriction_message').html('This feature is not active for your current subscription. \n\nPlease upgrade your subscrition to use this feature.');
                                         return false;

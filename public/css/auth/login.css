@@ -467,8 +467,38 @@ body.auth-login-page .container-fluid > .alert-danger {
     }
 }
 
+.auth-login-card-wide {
+    max-width: 440px;
+}
+
+.auth-login-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.auth-trial-success-note {
+    margin: 0 0 20px;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--al-muted, #64748b);
+}
+
+a.auth-login-submit-link {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    line-height: 1.25;
+    padding-top: 14px;
+    padding-bottom: 14px;
+}
+
 @media (max-width: 480px) {
     .auth-login-card-header h2 {
         font-size: 1.5rem;
+    }
+
+    .auth-login-field-row {
+        grid-template-columns: 1fr;
     }
 }
