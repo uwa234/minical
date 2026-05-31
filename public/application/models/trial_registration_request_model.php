@@ -36,6 +36,22 @@ class Trial_registration_request_model extends CI_Model {
         return false;
     }
 
+    function get_by_id($id)
+    {
+        if (!$this->table_exists()) {
+            return null;
+        }
+
+        $this->db->where('trial_registration_request_id', (int) $id);
+        $query = $this->db->get('trial_registration_request', 1);
+
+        if ($query->num_rows() < 1) {
+            return null;
+        }
+
+        return $query->row_array();
+    }
+
     function get_all($options = array())
     {
         if (!$this->table_exists()) {
@@ -44,16 +60,36 @@ class Trial_registration_request_model extends CI_Model {
 
         $search = isset($options['search']) ? trim($options['search']) : '';
         if ($search !== '') {
-            $this->db->group_start();
-            $this->db->like('property_name', $search);
-            $this->db->or_like('email', $search);
-            $this->db->or_like('phone', $search);
-            $this->db->or_like('first_name', $search);
-            $this->db->or_like('last_name', $search);
-            $this->db->group_end();
+            $term = '%' . $this->db->escape_like_str($search) . '%';
+            $this->db->where(
+                '(property_name LIKE ' . $this->db->escape($term)
+                . ' OR email LIKE ' . $this->db->escape($term)
+                . ' OR phone LIKE ' . $this->db->escape($term)
+                . ' OR first_name LIKE ' . $this->db->escape($term)
+                . ' OR last_name LIKE ' . $this->db->escape($term) . ')',
+                null,
+                false
+            );
+        }
+
+        if (!empty($options['statuses']) && is_array($options['statuses'])) {
+            $this->db->where_in('status', $options['statuses']);
+        }
+
+        if (!empty($options['unlinked_only'])) {
+            if ($this->db->field_exists('company_id', 'trial_registration_request')) {
+                $this->db->where('(company_id IS NULL OR company_id = 0)', null, false);
+            } else {
+                $this->db->where('status !=', 'converted');
+            }
         }
 
         $this->db->order_by('created_at', 'DESC');
+
+        if (!empty($options['limit'])) {
+            $this->db->limit((int) $options['limit']);
+        }
+
         $query = $this->db->get('trial_registration_request');
 
         if ($query->num_rows() < 1) {
@@ -61,6 +97,30 @@ class Trial_registration_request_model extends CI_Model {
         }
 
         return $query->result_array();
+    }
+
+    function link_to_company($id, $company_id)
+    {
+        if (!$this->table_exists()) {
+            return false;
+        }
+
+        $lead = $this->get_by_id($id);
+        if (!$lead) {
+            return false;
+        }
+
+        if (!empty($lead['company_id'])) {
+            return (int) $lead['company_id'] === (int) $company_id;
+        }
+
+        $this->db->where('trial_registration_request_id', (int) $id);
+        $this->db->update('trial_registration_request', array(
+            'company_id' => (int) $company_id,
+            'status' => 'converted',
+        ));
+
+        return $this->db->affected_rows() > 0;
     }
 
     function count_new()

@@ -50,6 +50,22 @@ class AutomatedNightAuditTest extends TestCase
         $this->assertFalse(automated_night_audit_needs_roll($local, '2026-05-17', true));
     }
 
+    public function testNeedsRollSkippedWhenSellingDateMatchesCalendar()
+    {
+        $tz = new DateTimeZone('Africa/Lagos');
+        $local = new DateTime('2026-05-30 04:30:00', $tz);
+
+        $this->assertFalse(automated_night_audit_needs_roll($local, '2026-05-30', false));
+    }
+
+    public function testNeedsRollAtScheduledTimeWhenSellingDateIsPreviousDay()
+    {
+        $tz = new DateTimeZone('Africa/Lagos');
+        $local = new DateTime('2026-05-30 04:30:00', $tz);
+
+        $this->assertTrue(automated_night_audit_needs_roll($local, '2026-05-29', false));
+    }
+
     public function testOverdueWhenBehindCalendarPastGrace()
     {
         $tz = new DateTimeZone('UTC');

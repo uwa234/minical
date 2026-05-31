@@ -15,8 +15,12 @@ class Menu extends MY_Controller
 	
 	function select_hotel($company_id = null)
 	{
-		// if company isn't set, then set company_id as the first company that user has access to
-		if (!isset($company_id))
+		// if company isn't set, use session or the first company the user has access to
+		if (empty($company_id))
+		{
+			$company_id = $this->session->userdata('current_company_id');
+		}
+		if (empty($company_id))
 		{
 			$companies = $this->Company_model->get_companies($this->user_id);
 			foreach ($companies as $key => $value) {
@@ -92,7 +96,20 @@ class Menu extends MY_Controller
 	 	else 
 		{
             if (company_requires_trial_lockout($company, $this->user_id, $this->user_email)) {
-                redirect('/account_settings/subscription');
+                if (user_can_manage_billing(
+                    $this->user_id,
+                    $this->company_id,
+                    $this->session->userdata('user_role'),
+                    $this->session->userdata('permissions')
+                )) {
+                    redirect('/account_settings/subscription');
+                } else {
+                    $this->session->set_flashdata(
+                        'flash_warning_message',
+                        'Your trial has ended. Please ask your account owner to renew the subscription.'
+                    );
+                    redirect('/auth/forbidden');
+                }
                 return;
             }
 

@@ -1,0 +1,525 @@
+/**
+ * Hotelier app sidebar — dark navigation shell (aligned with Platform Admin)
+ */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap");
+
+:root {
+    --hs-sidebar-w: 260px;
+    --hs-bg: #0f1419;
+    --hs-surface: #161b22;
+    --hs-ink: #f1f5f9;
+    --hs-ink-muted: rgba(255, 255, 255, 0.62);
+    --hs-ink-faint: rgba(255, 255, 255, 0.35);
+    --hs-accent: #6366f1;
+    --hs-accent-hover: #4f46e5;
+    --hs-accent-soft: rgba(99, 102, 241, 0.22);
+    --hs-accent-glow: rgba(99, 102, 241, 0.35);
+    --hs-hover: rgba(255, 255, 255, 0.07);
+    --hs-border: rgba(255, 255, 255, 0.08);
+    --hs-radius: 10px;
+    --hs-font: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* —— Shell —— */
+.app-sidebar.hotelier-sidebar {
+    width: var(--hs-sidebar-w);
+    min-width: var(--hs-sidebar-w);
+    flex: 0 0 var(--hs-sidebar-w);
+    font-family: var(--hs-font);
+    -webkit-font-smoothing: antialiased;
+    background: var(--hs-bg) !important;
+    border-right: 1px solid var(--hs-border);
+    box-shadow: none !important;
+    color: var(--hs-ink);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-theme-white .app-sidebar.hotelier-sidebar {
+    background: var(--hs-bg) !important;
+}
+
+.fixed-sidebar .app-sidebar.hotelier-sidebar {
+    height: 100vh;
+}
+
+.fixed-sidebar .app-main .app-main__outer {
+    padding-left: var(--hs-sidebar-w);
+}
+
+.fixed-sidebar .app-main .app_outer {
+    padding-left: var(--hs-sidebar-w);
+}
+
+.fixed-sidebar:not(.fixed-header) .app-header {
+    margin-left: var(--hs-sidebar-w);
+}
+
+.closed-sidebar:not(.fixed-header) .app-header {
+    margin-left: 56px;
+}
+
+/* —— Property header —— */
+.hotelier-sidebar .sidebar__logo {
+    padding: 18px 14px 14px;
+    height: auto;
+    min-height: 56px;
+    border-bottom: 1px solid var(--hs-border);
+    background: var(--hs-surface);
+}
+
+.hotelier-sidebar .sidebar__logo .multi-properties {
+    padding: 0 !important;
+    margin: 0;
+    list-style: none;
+    width: 100%;
+}
+
+.hotelier-sidebar #myPropertyMenu.btn-light {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px 10px 14px;
+    font-family: var(--hs-font);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--hs-ink);
+    background: var(--hs-hover);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.hotelier-sidebar #myPropertyMenu.btn-light::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--hs-accent) 0%, #a855f7 100%);
+    border-radius: var(--hs-radius) 0 0 var(--hs-radius);
+}
+
+.hotelier-sidebar #myPropertyMenu.btn-light:hover,
+.hotelier-sidebar #myPropertyMenu.btn-light:focus {
+    background: var(--hs-accent-soft);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--hs-ink);
+    outline: none;
+    box-shadow: none;
+}
+
+.hotelier-sidebar #myPropertyMenu b {
+    font-size: 14px !important;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 4px;
+}
+
+.hotelier-sidebar #myPropertyMenu .caret {
+    border-top-color: var(--hs-ink-muted);
+}
+
+.hotelier-sidebar .property-menu {
+    width: calc(var(--hs-sidebar-w) - 28px) !important;
+    max-height: 280px !important;
+    margin-top: 6px;
+    padding: 6px;
+    background: var(--hs-surface);
+    border: 1px solid var(--hs-border);
+    border-radius: var(--hs-radius);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.hotelier-sidebar .property-menu li a {
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--hs-ink-muted);
+}
+
+.hotelier-sidebar .property-menu li a:hover {
+    background: var(--hs-accent-soft);
+    color: var(--hs-ink);
+}
+
+/* —— Toggle buttons —— */
+.hotelier-sidebar .openbtn {
+    margin-left: calc(var(--hs-sidebar-w) - 52px);
+    margin-top: 12px;
+}
+
+.hotelier-sidebar .openbtn .fa,
+.hotelier-sidebar .m-54 .fa {
+    font-size: 18px !important;
+    color: var(--hs-ink) !important;
+}
+
+.hotelier-sidebar .openbtn button,
+.hotelier-sidebar .m-54 button {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--hs-surface);
+    border: 1px solid var(--hs-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+
+.hotelier-sidebar .openbtn button:hover,
+.hotelier-sidebar .m-54 button:hover {
+    background: var(--hs-hover);
+}
+
+/* —— Section labels —— */
+.hotelier-sidebar .sidebar-nav-section {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+}
+
+.hotelier-sidebar .sidebar-nav-section span {
+    display: block;
+    padding: 14px 14px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--hs-ink-faint);
+}
+
+.hotelier-sidebar .sidebar-nav-section:first-child span {
+    padding-top: 8px;
+}
+
+.hotelier-sidebar .sidebar-nav-section + .sidebar-nav-section span {
+    padding-top: 18px;
+}
+
+/* —— Scrollable nav (footer must not overlap Configure / Settings) —— */
+.hotelier-sidebar .scrollbar-sidebar {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+}
+
+/* —— Nav menu —— */
+.hotelier-sidebar .app-sidebar__inner {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 4px 10px 16px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.hotelier-sidebar .vertical-nav-menu {
+    padding: 0 4px;
+}
+
+.hotelier-sidebar .vertical-nav-menu li a {
+    display: flex;
+    align-items: center;
+    height: auto;
+    min-height: 40px;
+    line-height: 1.35;
+    padding: 9px 12px 9px 44px;
+    margin: 2px 0;
+    border-radius: var(--hs-radius);
+    color: var(--hs-ink-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hotelier-sidebar .vertical-nav-menu li a:hover {
+    background: var(--hs-hover);
+    color: var(--hs-ink);
+    text-decoration: none;
+}
+
+.hotelier-sidebar .vertical-nav-menu li a.mm-active,
+.hotelier-sidebar .vertical-nav-menu li.mm-active > a {
+    color: #fff !important;
+    background: var(--hs-accent) !important;
+    font-weight: 600;
+    box-shadow: 0 4px 14px var(--hs-accent-glow);
+}
+
+.hotelier-sidebar .vertical-nav-menu i.metismenu-icon,
+.hotelier-sidebar .vertical-nav-menu i.metismenu-state-icon {
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    left: 10px;
+    margin-top: -14px;
+    font-size: 1.15rem;
+    opacity: 0.7;
+    transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.hotelier-sidebar .vertical-nav-menu li a:hover i.metismenu-icon {
+    opacity: 1;
+    color: var(--hs-ink);
+}
+
+.hotelier-sidebar .vertical-nav-menu li a.mm-active i.metismenu-icon,
+.hotelier-sidebar .vertical-nav-menu li.mm-active > a i.metismenu-icon {
+    opacity: 1;
+    color: #fff;
+}
+
+.hotelier-sidebar .vertical-nav-menu i.metismenu-state-icon {
+    right: 8px;
+    left: auto;
+    font-size: 1rem;
+    opacity: 0.5;
+}
+
+.hotelier-sidebar .vertical-nav-menu li.mm-active > a i.metismenu-state-icon,
+.hotelier-sidebar .vertical-nav-menu li a.mm-active i.metismenu-state-icon {
+    opacity: 1;
+    color: #fff;
+}
+
+/* Submenus */
+.hotelier-sidebar .vertical-nav-menu ul {
+    padding: 4px 0 6px 12px;
+    margin-left: 8px;
+}
+
+.hotelier-sidebar .vertical-nav-menu ul::before {
+    left: 0;
+    width: 2px;
+    background: var(--hs-border);
+    border-radius: 2px;
+    opacity: 1;
+}
+
+.hotelier-sidebar .vertical-nav-menu ul > li > a {
+    padding: 7px 12px 7px 14px;
+    min-height: 34px;
+    font-size: 13px;
+    color: var(--hs-ink-muted);
+    border-radius: 8px;
+}
+
+.hotelier-sidebar .vertical-nav-menu ul > li > a:hover {
+    color: var(--hs-ink);
+    background: var(--hs-hover);
+}
+
+.hotelier-sidebar .vertical-nav-menu ul > li > a.mm-active {
+    color: #fff !important;
+    background: var(--hs-accent) !important;
+    font-weight: 600;
+    box-shadow: 0 2px 10px var(--hs-accent-glow);
+}
+
+/* Icon font overrides (legacy pe-7s black icons) */
+.hotelier-sidebar .pe-7s-date:before,
+.hotelier-sidebar .pe-7s-users:before,
+.hotelier-sidebar .pe-7s-home:before,
+.hotelier-sidebar .pe-7s-graph1:before,
+.hotelier-sidebar .pe-7s-menu:before,
+.hotelier-sidebar .pe-7s-keypad:before,
+.hotelier-sidebar .pe-7s-settings:before,
+.hotelier-sidebar .pe-7s-display1:before,
+.hotelier-sidebar .pe-7s-credit:before,
+.hotelier-sidebar .pe-7s-share:before {
+    color: inherit !important;
+    font-weight: normal !important;
+}
+
+/* —— Footer: language & account —— */
+.hotelier-sidebar .ui-theme-settings {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    flex-shrink: 0;
+    width: 100%;
+    padding: 12px 14px 16px;
+    background: var(--hs-surface);
+    border-top: 1px solid var(--hs-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 2;
+}
+
+.hotelier-sidebar .ui-theme-settings > li {
+    list-style: none;
+    margin: 0;
+}
+
+.hotelier-sidebar .ui-theme-settings .nav-link,
+.hotelier-sidebar .ui-theme-settings .dropdown > a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--hs-radius);
+    color: var(--hs-ink-muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.hotelier-sidebar .ui-theme-settings .nav-link:hover,
+.hotelier-sidebar .ui-theme-settings .dropdown > a:hover {
+    background: var(--hs-hover);
+    color: var(--hs-ink);
+    text-decoration: none;
+}
+
+.hotelier-sidebar .ui-theme-settings .menu-title {
+    font-size: 13px;
+    color: var(--hs-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+}
+
+.hotelier-sidebar .profile-setting {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    line-height: 24px;
+    font-size: 12px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--hs-accent) 0%, #a855f7 100%);
+    box-shadow: 0 2px 10px var(--hs-accent-glow);
+}
+
+.hotelier-sidebar .ui-theme-settings .rounded-circle {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border: 1px solid var(--hs-border);
+}
+
+.hotelier-sidebar .ui-theme-settings .dropdown-menu {
+    border-radius: var(--hs-radius);
+    background: var(--hs-surface);
+    border: 1px solid var(--hs-border);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    padding: 6px;
+}
+
+.hotelier-sidebar .dropdown-menu-header-inner.bg-dark {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important;
+    border-radius: var(--hs-radius) var(--hs-radius) 0 0;
+}
+
+.hotelier-sidebar .dropdown-menu-header .menu-header-title {
+    color: var(--hs-ink);
+}
+
+.hotelier-sidebar .dropdown-item {
+    border-radius: 8px;
+    padding: 4px;
+    background: transparent;
+}
+
+.hotelier-sidebar .dropdown-item a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--hs-ink);
+    text-decoration: none;
+    border-radius: 8px;
+}
+
+.hotelier-sidebar .dropdown-item:hover {
+    background: var(--hs-hover);
+}
+
+.hotelier-sidebar .dropdown-item:hover a {
+    color: var(--hs-ink);
+}
+
+/* Scrollbar */
+.hotelier-sidebar .ps__thumb-y {
+    background: rgba(255, 255, 255, 0.18);
+    width: 5px;
+}
+
+.hotelier-sidebar .ps__rail-y:hover .ps__thumb-y {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+/* Configure section: keep visible above footer when scrolling */
+.hotelier-sidebar .sidebar-nav-section--configure span {
+    padding-top: 20px;
+}
+
+/* —— Collapsed sidebar —— */
+.closed-sidebar:not(.sidebar-mobile-open) .app-sidebar.hotelier-sidebar {
+    width: 56px;
+    min-width: 56px;
+    flex: 0 0 56px;
+}
+
+.closed-sidebar.fixed-sidebar .app-main__outer {
+    padding-left: 56px;
+}
+
+.closed-sidebar.fixed-sidebar .app_outer {
+    padding-left: 56px;
+}
+
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar .openbtn {
+    margin-left: 10px !important;
+}
+
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar .sidebar-nav-section {
+    display: none;
+}
+
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar .sidebar__logo {
+    padding: 12px 8px;
+}
+
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar #myPropertyMenu.btn-light {
+    padding: 8px;
+    min-height: 36px;
+}
+
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar #myPropertyMenu b,
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar #myPropertyMenu .caret {
+    display: none;
+}
+
+.closed-sidebar:not(.sidebar-mobile-open) .hotelier-sidebar #myPropertyMenu.btn-light::before {
+    width: 100%;
+    border-radius: var(--hs-radius);
+}
+
+@media (max-width: 991.98px) {
+    .app-sidebar.hotelier-sidebar {
+        box-shadow: 4px 0 32px rgba(0, 0, 0, 0.35) !important;
+    }
+}

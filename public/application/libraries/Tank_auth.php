@@ -65,7 +65,14 @@ class Tank_auth
 				
 				$profile = $this->ci->users->get_profile($user->id); //load profile TO DO: add error checking / verification
 				$company_id = $profile->current_company_id;
-				
+
+				if (empty($company_id)) {
+					$companies = $this->ci->Company_model->get_companies($user->id);
+					if (count($companies) === 1) {
+						$company = reset($companies);
+						$company_id = $company['company_id'];
+					}
+				}
 
 				// Does password match hash in database?
 				$hasher = new PasswordHash(

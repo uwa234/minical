@@ -221,6 +221,13 @@ class Company extends MY_Controller
         $this->form_validation->set_rules('employee_first_name', 'First Name', 'required|trim');
         $this->form_validation->set_rules('employee_last_name', 'Last Name', 'required|trim');
         $this->form_validation->set_rules('employee_email', 'Email', 'required|trim|email');
+        if (trim($this->input->post('employee_password')) !== '') {
+            $this->form_validation->set_rules(
+                'employee_password',
+                'Password',
+                'trim|min_length['.$this->config->item('password_min_length', 'tank_auth').']|max_length['.$this->config->item('password_max_length', 'tank_auth').']|alpha_dash'
+            );
+        }
 
         //Add employee
         if ($this->form_validation->run() == true) {
@@ -228,9 +235,9 @@ class Company extends MY_Controller
             $email      = $this->input->post('employee_email');
             $first_name = $this->input->post('employee_first_name');
             $last_name  = $this->input->post('employee_last_name');
+            $password   = trim($this->input->post('employee_password'));
 
-            // $this->_add_employee($this->company_id, $email, $first_name, $last_name);
-            $user_id = $this->_add_employee($this->company_id, $email, $first_name, $last_name);
+            $user_id = $this->_add_employee($this->company_id, $email, $first_name, $last_name, $password !== '' ? $password : null);
 
             $this->User_model->update_user($user_id, array('partner_id' => $this->vendor_id));
             redirect('settings/company/employees');
@@ -264,29 +271,32 @@ class Company extends MY_Controller
 
     }
 
-    function _add_employee($company_id, $email, $first_name, $last_name)
+    function _add_employee($company_id, $email, $first_name, $last_name, $password = null)
     {
         //Create user if user doesn't exist, otherwise get user info
 
         // if  user doesn't exist in company
         if (!$this->User_model->user_exists_in_company($email, $company_id)) {
 
+            $admin_set_password = !empty($password);
+            $hashed_password = $admin_set_password
+                ? $this->_hash_employee_password($password)
+                : md5(rand().microtime()); // random password to prevent login when password hasn't been set yet
+
             // if user doesn't exist in Veurion, create a new user
             if (is_null($user = $this->users->get_user_by_email($email)))
             {
 
-                echo l("email doesn't exist in Veurion. creating a new user",true);
-                //Note: password is not set for employees until they register
                 $data = array(
                     'email'              => $email,
                     'current_company_id' => $company_id,
                     'first_name'         => $first_name,
                     'last_name'          => $last_name,
-                    'password'           => md5(rand().microtime()) //random password to prevent login when password hasn't been set yet
+                    'password'           => $hashed_password
                 );
 
                 //Create user
-                if (!is_null($user = $this->users->create_user($data, false)))
+                if (!is_null($user = $this->users->create_user($data, $admin_set_password)))
                 {
 
                 } else {
@@ -294,19 +304,26 @@ class Company extends MY_Controller
                 }
 
 
+            } elseif ($admin_set_password) {
+                $this->User_model->update_user($user->id, array(
+                    'password'  => $hashed_password,
+                    'activated' => 1,
+                ));
             }
 
-            //Email employee activation form
-            $employee_email = $this->form_validation->set_value('employee_email');
+            // Email employee activation form only when admin did not set a password
+            if (!$admin_set_password) {
+                $employee_email = $this->form_validation->set_value('employee_email');
 
-            // to avoid sending emails to test accounts
-            if (
-                $employee_email != "testAdmin@innGrid.net" &&
-                $employee_email != "testOwner@innGrid.net" &&
-                $employee_email != "testEmployee@innGrid.net"
-            ) {
-                //echo "sending activation email to ".$employee_email;
-                $this->_email_employee_activation($employee_email);
+                // to avoid sending emails to test accounts
+                if (
+                    $employee_email != "testAdmin@innGrid.net" &&
+                    $employee_email != "testOwner@innGrid.net" &&
+                    $employee_email != "testEmployee@innGrid.net"
+                ) {
+                    //echo "sending activation email to ".$employee_email;
+                    $this->_email_employee_activation($employee_email);
+                }
             }
 
             //The above functions return user id in different forms.
@@ -325,10 +342,22 @@ class Company extends MY_Controller
                 $this->User_model->add_user_permission($company_id, $user_id, 'is_employee', $add_default_permissions = true);
             }
 
+            $this->User_model->update_user_profile($user_id, array('current_company_id' => $company_id));
+
             return $user_id;
 
         }
 
+    }
+
+    function _hash_employee_password($password)
+    {
+        require_once(APPPATH.'libraries/phpass-0.1/PasswordHash.php');
+        $hasher = new PasswordHash(
+            $this->config->item('phpass_hash_strength', 'tank_auth'),
+            $this->config->item('phpass_hash_portable', 'tank_auth')
+        );
+        return $hasher->HashPassword($password);
     }
 
     function _email_employee_activation($employee_email)
@@ -358,8 +387,6 @@ class Company extends MY_Controller
      */
     function _send_email($type, $email, &$data)
     {
-        echo "_send_email to ". $email;
-
         $whitelabelinfo = $this->session->userdata('white_label_information');
 
         $from_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : $this->config->item('webmaster_email', 'tank_auth');

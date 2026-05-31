@@ -14,6 +14,11 @@ class Extensions extends MY_Controller
         $this->load->vars($view_data);
     }
 
+    private function extension_route_link($link)
+    {
+        return !empty($link) ? base_url($link) : '';
+    }
+
     function index(){
         $this->get_all_extensions();
     }
@@ -61,6 +66,10 @@ class Extensions extends MY_Controller
 
         $company_id = $this->company_id;
 
+        if ($modules_name && $company_id) {
+            $this->Extension_model->ensure_company_extension_rows($modules_name, $company_id);
+        }
+
         $extensions = $this->Extension_model->get_extensions($modules_name, $company_id);
 
         // echo $this->user_id; echo '<br/>';
@@ -77,9 +86,7 @@ class Extensions extends MY_Controller
         $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
         $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
 
-        if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
-
-            if($extensions && count($extensions) > 0) {
+        if($extensions && count($extensions) > 0) {
                 foreach ($extensions as $e => $ext) {
                     if($installed_extensions && count($extensions) == count($installed_extensions)){
                         foreach ($installed_extensions as $ie => $in_ext) {
@@ -122,9 +129,8 @@ class Extensions extends MY_Controller
                 }
             }
 
-            if($temp_ext)
-                $extensions = $temp_ext;
-        }
+        if($temp_ext)
+            $extensions = $temp_ext;
 
         $final_modules = array();
 
@@ -148,8 +154,8 @@ class Extensions extends MY_Controller
                             $extension['logo'] = "";
                         }
 
-                        $extension['setting_link']= isset($module['setting_link'])?$module['setting_link']:"";
-                        $extension['view_link']= isset($module['view_link'])?$module['view_link']:"";
+                        $extension['setting_link'] = $this->extension_route_link(isset($module['setting_link']) ? $module['setting_link'] : '');
+                        $extension['view_link'] = $this->extension_route_link(isset($module['view_link']) ? $module['view_link'] : '');
                         $extension['marketplace_product_link']= isset($module['marketplace_product_link'])?$module['marketplace_product_link']:"";
                         $extension['is_vendor_module'] = isset($module['is_vendor_module']) && $module['is_vendor_module'] ? true : false;
                         $extension['is_admin_module'] = isset($module['is_admin_module']) && $module['is_admin_module'] ? true : false;
@@ -171,6 +177,8 @@ class Extensions extends MY_Controller
                     $module['extension_name'] = $module['name'];
                     unset($module['name']);
                     unset($module['is_default_active']);
+                    $module['setting_link'] = $this->extension_route_link(isset($module['setting_link']) ? $module['setting_link'] : '');
+                    $module['view_link'] = $this->extension_route_link(isset($module['view_link']) ? $module['view_link'] : '');
                     $final_modules[] = $module;
                 }
             }
@@ -274,8 +282,8 @@ class Extensions extends MY_Controller
                         $extension['logo'] = "";
                     }
 
-                    $extension['setting_link']= isset($module['setting_link'])?$module['setting_link']:"";
-                    $extension['view_link']= isset($module['view_link'])?$module['view_link']:"";
+                    $extension['setting_link'] = $this->extension_route_link(isset($module['setting_link']) ? $module['setting_link'] : '');
+                    $extension['view_link'] = $this->extension_route_link(isset($module['view_link']) ? $module['view_link'] : '');
                     $extension['marketplace_product_link']= isset($module['marketplace_product_link'])?$module['marketplace_product_link']:"";
                     $extension['is_vendor_module'] = isset($module['is_vendor_module']) && $module['is_vendor_module'] ?true : false;
                     $extension['is_admin_module'] = isset($module['is_admin_module']) && $module['is_admin_module'] ?true : false;
@@ -378,8 +386,8 @@ class Extensions extends MY_Controller
                             $extension['logo'] = "";
                         }
 
-                        $extension['setting_link']= isset($module['setting_link'])?$module['setting_link']:"";
-                        $extension['view_link']= isset($module['view_link'])?$module['view_link']:"";
+                        $extension['setting_link'] = $this->extension_route_link(isset($module['setting_link']) ? $module['setting_link'] : '');
+                        $extension['view_link'] = $this->extension_route_link(isset($module['view_link']) ? $module['view_link'] : '');
                         $extension['marketplace_product_link']= isset($module['marketplace_product_link'])?$module['marketplace_product_link']:"";
                         $extension['is_vendor_module'] = isset($module['is_vendor_module']) && $module['is_vendor_module'] ?true : false;
                         $extension['is_admin_module'] = isset($module['is_admin_module']) && $module['is_admin_module'] ?true : false;
@@ -494,8 +502,8 @@ class Extensions extends MY_Controller
                     $extension['logo'] = "";
                 }
                         
-                $extension['setting_link']= isset($module['setting_link'])?$module['setting_link']:"";
-                $extension['view_link']= isset($module['view_link'])?$module['view_link']:"";
+                $extension['setting_link'] = $this->extension_route_link(isset($module['setting_link']) ? $module['setting_link'] : '');
+                $extension['view_link'] = $this->extension_route_link(isset($module['view_link']) ? $module['view_link'] : '');
                 $extension['marketplace_product_link']= isset($module['marketplace_product_link'])?$module['marketplace_product_link']:"";
                 $extension['is_vendor_module'] = isset($module['is_vendor_module']) && $module['is_vendor_module'] ?true : false;
                 $extension['is_admin_module'] = isset($module['is_admin_module']) && $module['is_admin_module'] ?true : false;
@@ -664,8 +672,8 @@ class Extensions extends MY_Controller
                             $extension['logo'] = "";
                         }
 
-                        $extension['setting_link']= isset($module['setting_link'])?$module['setting_link']:"";
-                        $extension['view_link']= isset($module['view_link'])?$module['view_link']:"";
+                        $extension['setting_link'] = $this->extension_route_link(isset($module['setting_link']) ? $module['setting_link'] : '');
+                        $extension['view_link'] = $this->extension_route_link(isset($module['view_link']) ? $module['view_link'] : '');
                         $extension['marketplace_product_link']= isset($module['marketplace_product_link'])?$module['marketplace_product_link']:"";
                         $extension['is_vendor_module'] = isset($module['is_vendor_module']) && $module['is_vendor_module'] ?true : false;
                         $extension['is_admin_module'] = isset($module['is_admin_module']) && $module['is_admin_module'] ?true : false;

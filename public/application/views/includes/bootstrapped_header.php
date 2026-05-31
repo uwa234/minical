@@ -32,7 +32,8 @@ $whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userda
 	
 	<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap.min.css"  />	
 	<!-- <link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap-theme.min.css"  />	 -->
-	<link rel="stylesheet" type="text/css" href="<?php echo base_url() . auto_version('css/bootstrap-override.css');?>"  />	
+	<link rel="stylesheet" type="text/css" href="<?php echo base_url() . auto_version('css/bootstrap-override.css');?>"  />
+	<link rel="stylesheet" type="text/css" href="<?php echo base_url() . auto_version('css/hotelier-sidebar.css');?>"  />
 
 	<?php if(end($this->uri->segments) == 'room_types'){ ?>
 		<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/smoothness/jquery-ui-1.12.1/jquery-ui.min.css" />	

@@ -11,6 +11,8 @@ class Admin extends MY_Controller {
         $this->load->model(array(
             'Admin_model',
             'Company_model',
+            'Company_charge_model',
+            'Company_payment_model',
             'Company_subscription_model',
             'User_model',
             'Platform_settings_model',
@@ -71,10 +73,17 @@ class Admin extends MY_Controller {
         $monthly = $this->Admin_model->get_monthly_report($from_date, $to_date);
 
         $data['state_counts'] = $this->Admin_model->get_subscription_state_counts();
-        $data['mrr'] = $this->Admin_model->get_mrr_estimate();
+        $data['subscription_revenue_lifetime'] = $this->Admin_model->get_subscription_revenue_lifetime_summary();
+        $data['saas_currency_symbol'] = saas_currency_symbol();
         $data['trials_expiring'] = $this->Admin_model->get_trials_expiring_within_days(7);
         $data['monthly_summary'] = is_array($monthly) ? $monthly : array();
         $data['default_trial_days'] = $this->Platform_settings_model->get_default_trial_days();
+        $data['new_trial_leads_count'] = $this->Trial_registration_request_model->count_new();
+        $data['recent_trial_leads'] = $this->Trial_registration_request_model->get_all(array(
+            'statuses' => array('new', 'contacted'),
+            'unlinked_only' => true,
+            'limit' => 5,
+        ));
         $data['main_content'] = 'admin/dashboard';
         $data['js_files'] = array();
         $data['css_files'] = array();
@@ -99,11 +108,260 @@ class Admin extends MY_Controller {
         $data['to_date'] = $to_date;
         $data['monthly_rows'] = $this->Admin_model->get_monthly_report();
         $data['range_summary'] = $this->Admin_model->get_monthly_report($from_date, $to_date);
+        $data['subscription_payments'] = $this->Admin_model->get_saas_subscription_payments($from_date, $to_date);
+        $data['subscription_revenue_summary'] = $this->Admin_model->get_subscription_revenue_summary_for_range($from_date, $to_date);
+        $data['subscription_revenue_lifetime'] = $this->Admin_model->get_subscription_revenue_lifetime_summary();
+        $data['saas_currency_symbol'] = saas_currency_symbol();
         $data['main_content'] = 'admin/revenue';
         $data['js_files'] = array();
         $data['css_files'] = array();
 
         $this->load->view('includes/admin_template', $data);
+    }
+
+    function debtors()
+    {
+        $this->_require_platform_admin();
+
+        $filter = $this->input->get('filter');
+        if (!$filter || !in_array($filter, array('overdue', 'due_soon', 'all'), true)) {
+            $filter = 'overdue';
+        }
+
+        $debtors = $this->Admin_model->get_subscription_debtors(array(
+            'filter' => $filter,
+            'search' => $this->input->get('search_query'),
+            'include_deleted' => $this->input->get('include_deleted') === '1',
+        ));
+
+        $tiers = $this->Platform_settings_model->get_pricing_tiers(false);
+        foreach ($debtors as &$row) {
+            $room_count = isset($row['number_of_rooms']) ? (int) $row['number_of_rooms'] : 1;
+            if ($room_count < 1) {
+                $room_count = 1;
+            }
+
+            $tier_name = '—';
+            $amount_due = isset($row['renewal_cost']) ? (float) $row['renewal_cost'] : 0;
+            $meta = array();
+            if (!empty($row['meta_data'])) {
+                $decoded = json_decode($row['meta_data'], true);
+                if (is_array($decoded)) {
+                    $meta = $decoded;
+                }
+            }
+            $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+            foreach ($tiers as $tier) {
+                if ($selected_tier_id > 0) {
+                    if ((int) $tier['id'] === $selected_tier_id) {
+                        $tier_name = isset($tier['name']) ? (string) $tier['name'] : '—';
+                        if ($amount_due <= 0 && isset($tier['monthly_price'])) {
+                            $amount_due = (float) $tier['monthly_price'];
+                        }
+                        break;
+                    }
+                } else {
+                    $min = (int) $tier['min_rooms'];
+                    $max = (isset($tier['max_rooms']) && $tier['max_rooms'] !== null && $tier['max_rooms'] !== '')
+                        ? (int) $tier['max_rooms']
+                        : null;
+                    if ($room_count >= $min && ($max === null || $room_count <= $max)) {
+                        $tier_name = isset($tier['name']) ? (string) $tier['name'] : '—';
+                        if ($amount_due <= 0 && isset($tier['monthly_price'])) {
+                            $amount_due = (float) $tier['monthly_price'];
+                        }
+                        break;
+                    }
+                }
+            }
+            $row['pricing_tier_name'] = $tier_name;
+            $row['amount_due'] = $amount_due;
+        }
+        unset($row);
+
+        $data['filter'] = $filter;
+        $data['debtors'] = $debtors;
+        $data['debtor_counts'] = $this->Admin_model->get_subscription_debtor_counts();
+        $data['search_query'] = $this->input->get('search_query');
+        $data['saas_currency_symbol'] = saas_currency_symbol();
+        $data['pricing_tiers'] = $tiers;
+        $data['default_grace_days'] = saas_paid_plan_grace_days();
+        $data['main_content'] = 'admin/debtors';
+        $data['js_files'] = array(base_url() . auto_version('js/admin/debtors.js'));
+        $data['css_files'] = array();
+
+        $this->load->view('includes/admin_template', $data);
+    }
+
+    function record_subscription_payment()
+    {
+        $this->_require_platform_admin(true);
+
+        $company_id = (int) $this->input->post('company_id');
+        $amount = round((float) $this->input->post('amount'), 2);
+        $renewal_period = $this->input->post('renewal_period');
+        $tier_id = (int) $this->input->post('tier_id');
+        $payment_date = trim((string) $this->input->post('payment_date'));
+        $notes = trim((string) $this->input->post('notes'));
+
+        if (!$company_id) {
+            $this->_json_response(array('success' => false, 'error' => 'company_id is required.'), 400);
+            return;
+        }
+
+        $options = array(
+            'company_id' => $company_id,
+            'amount' => $amount,
+            'renewal_period' => $renewal_period ?: '1 month',
+            'payment_date' => $payment_date !== '' ? $payment_date : gmdate('Y-m-d'),
+            'notes' => $notes,
+            'recorded_by' => $this->session->userdata('email'),
+        );
+        if ($tier_id > 0) {
+            $options['tier_id'] = $tier_id;
+        }
+
+        $result = record_saas_subscription_payment($options);
+        if (empty($result['success'])) {
+            $this->_json_response(array(
+                'success' => false,
+                'error' => !empty($result['error']) ? $result['error'] : 'Payment could not be recorded.',
+            ), 422);
+            return;
+        }
+
+        $log_msg = 'Recorded manual subscription payment of '
+            . saas_currency_symbol() . format_saas_price_amount($result['amount'])
+            . ' (ref ' . $result['reference'] . ', expires ' . $result['expiration_date'] . ')';
+        if ($notes !== '') {
+            $log_msg .= '. Note: ' . $notes;
+        }
+        $this->_log_admin_action($company_id, $log_msg);
+
+        $this->_json_response(array(
+            'success' => true,
+            'reference' => $result['reference'],
+            'expiration_date' => $result['expiration_date'],
+            'amount' => $result['amount'],
+        ));
+    }
+
+    function extend_subscription_grace()
+    {
+        $this->_require_platform_admin(true);
+
+        $company_id = (int) $this->input->post('company_id');
+        $grace_days = $this->input->post('grace_days');
+
+        if (!$company_id) {
+            $this->_json_response(array('success' => false, 'error' => 'company_id is required.'), 400);
+            return;
+        }
+
+        $days = ($grace_days !== null && $grace_days !== '') ? (int) $grace_days : null;
+        $result = extend_subscription_grace_period($company_id, $days);
+        if (empty($result['success'])) {
+            $this->_json_response(array(
+                'success' => false,
+                'error' => !empty($result['error']) ? $result['error'] : 'Grace period could not be extended.',
+            ), 422);
+            return;
+        }
+
+        $this->_log_admin_action(
+            $company_id,
+            'Extended grace by ' . (int) $result['grace_days'] . ' day'
+            . ((int) $result['grace_days'] === 1 ? '' : 's')
+            . ' — new expiry ' . $result['new_expiry_date']
+        );
+
+        $this->_json_response(array(
+            'success' => true,
+            'new_expiry_date' => $result['new_expiry_date'],
+            'subscription_state' => $result['subscription_state'],
+        ));
+    }
+
+    function send_payment_reminder()
+    {
+        $this->_require_platform_admin(true);
+
+        $company_id = (int) $this->input->post('company_id');
+        if (!$company_id) {
+            $this->_json_response(array('success' => false, 'error' => 'company_id is required.'), 400);
+            return;
+        }
+
+        $company = $this->Company_model->get_company($company_id);
+        if (!$company || !isset($company['company_id'])) {
+            $this->_json_response(array('success' => false, 'error' => 'Property not found.'), 404);
+            return;
+        }
+
+        $recipient = !empty($company['owner_email']) ? trim((string) $company['owner_email']) : '';
+        if ($recipient === '' && !empty($company['email'])) {
+            $recipient = trim((string) $company['email']);
+        }
+        if ($recipient === '') {
+            $this->_json_response(array('success' => false, 'error' => 'No owner or property email on file.'), 422);
+            return;
+        }
+
+        if (!minical_env('SMTP_USER', '')) {
+            $this->_json_response(array(
+                'success' => false,
+                'error' => 'Email is not configured (SMTP_USER missing in .env).',
+            ), 503);
+            return;
+        }
+
+        $tiers = $this->Platform_settings_model->get_pricing_tiers(false);
+        $tier_id = resolve_company_pricing_tier_id($company, $tiers);
+        $amount_due = isset($company['renewal_cost']) ? (float) $company['renewal_cost'] : 0;
+        if ($amount_due <= 0 && $tier_id > 0) {
+            $tier = $this->Platform_settings_model->get_pricing_tier($tier_id);
+            if ($tier && isset($tier['monthly_price'])) {
+                $amount_due = (float) $tier['monthly_price'];
+            }
+        }
+
+        $due_date = '';
+        $state = isset($company['subscription_state']) ? (string) $company['subscription_state'] : '';
+        if (in_array($state, array('trialing', 'trial_ended'), true) && !empty($company['trial_expiry_date'])) {
+            $due_date = (string) $company['trial_expiry_date'];
+        } elseif (!empty($company['expiration_date']) && $company['expiration_date'] !== '0000-00-00') {
+            $due_date = (string) $company['expiration_date'];
+        }
+
+        $email_content = build_subscription_payment_reminder_email($company, array(
+            'property_name' => isset($company['name']) ? $company['name'] : '',
+            'amount_due' => $amount_due,
+            'due_date' => $due_date,
+        ));
+
+        $this->load->library('email');
+        $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+        $from_name = 'Veurion';
+
+        $this->email->from($from_email, $from_name);
+        $this->email->to($recipient);
+        $this->email->subject($email_content['subject']);
+        $this->email->message($email_content['body']);
+        $this->email->set_mailtype('html');
+
+        if (!$this->email->send()) {
+            log_message('error', 'Payment reminder email failed for company ' . $company_id . ': '
+                . $this->email->print_debugger(array('headers')));
+            $this->_json_response(array('success' => false, 'error' => 'Reminder email could not be sent.'), 502);
+            return;
+        }
+
+        $this->_log_admin_action($company_id, 'Sent payment reminder email to ' . $recipient);
+
+        $this->_json_response(array(
+            'success' => true,
+            'recipient' => $recipient,
+        ));
     }
 
     function settings()
@@ -183,8 +441,21 @@ class Admin extends MY_Controller {
         $data['registrations'] = $this->Trial_registration_request_model->get_all(array(
             'search' => $search_query,
         ));
+        $data['default_trial_days'] = $this->Platform_settings_model->get_default_trial_days();
+        $data['pricing_tiers'] = $this->Platform_settings_model->get_pricing_tiers(false);
+        $open_lead_id = (int) $this->input->get('from_lead');
+        $data['open_lead_id'] = 0;
+        if ($open_lead_id > 0) {
+            $lead = $this->Trial_registration_request_model->get_by_id($open_lead_id);
+            if ($lead && empty($lead['company_id'])) {
+                $data['open_lead_id'] = $open_lead_id;
+            }
+        }
         $data['main_content'] = 'admin/trial_registrations';
-        $data['js_files'] = array(base_url() . auto_version('js/admin/trial-registrations.js'));
+        $data['js_files'] = array(
+            base_url() . auto_version('js/admin/saas-admin.js'),
+            base_url() . auto_version('js/admin/trial-registrations.js'),
+        );
         $data['css_files'] = array();
 
         $this->load->view('includes/admin_template', $data);
@@ -225,62 +496,9 @@ class Admin extends MY_Controller {
             'include_deleted' => $this->input->get('include_deleted') === '1',
         ));
 
-        // SaaS pricing tiers (Starter/Growth/Professional/Enterprise).
         $tiers = $this->Platform_settings_model->get_pricing_tiers(false);
         foreach ($properties as &$property) {
-            $room_count = isset($property['number_of_rooms']) ? (int) $property['number_of_rooms'] : 0;
-            if ($room_count < 1 && isset($property['number_of_rooms_actual'])) {
-                $room_count = (int) $property['number_of_rooms_actual'];
-            }
-            if ($room_count < 1) {
-                $room_count = 1;
-            }
-
-            $meta = array();
-            if (!empty($property['meta_data'])) {
-                $decoded = json_decode($property['meta_data'], true);
-                if (is_array($decoded)) {
-                    $meta = $decoded;
-                }
-            }
-            $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
-
-            $tier_name = '';
-            $tier_id_for_rooms = 0;
-            foreach ($tiers as $tier) {
-                $min = (int) $tier['min_rooms'];
-                $max = (isset($tier['max_rooms']) && $tier['max_rooms'] !== null && $tier['max_rooms'] !== '')
-                    ? (int) $tier['max_rooms']
-                    : null;
-                if ($room_count >= $min && ($max === null || $room_count <= $max)) {
-                    $tier_name = isset($tier['name']) ? (string) $tier['name'] : '';
-                    $tier_id_for_rooms = isset($tier['id']) ? (int) $tier['id'] : 0;
-                    break;
-                }
-            }
-            $property['pricing_tier_name'] = $tier_name !== '' ? $tier_name : '—';
-            // Prefer stored tier_id (chosen by admin / billing) else fall back to room-derived.
-            $property['pricing_tier_id'] = $selected_tier_id > 0 ? $selected_tier_id : $tier_id_for_rooms;
-
-            $trial_expiry = isset($property['trial_expiry_date']) ? trim((string) $property['trial_expiry_date']) : '';
-            $paid_expiry = isset($property['expiration_date']) ? trim((string) $property['expiration_date']) : '';
-            $state = isset($property['subscription_state']) ? (string) $property['subscription_state'] : '';
-            $plan_expiry = '';
-            if ($state === 'trialing') {
-                $plan_expiry = $trial_expiry;
-            } elseif ($paid_expiry !== '' && $paid_expiry !== '0000-00-00') {
-                $plan_expiry = $paid_expiry;
-            }
-            $property['plan_expiry_date'] = $plan_expiry;
-            $property['plan_expiry_days_left'] = null;
-            if ($plan_expiry !== '' && $plan_expiry !== '0000-00-00') {
-                $today = new DateTime(date('Y-m-d'));
-                $expiry = DateTime::createFromFormat('Y-m-d', $plan_expiry);
-                if ($expiry instanceof DateTime) {
-                    $diff_days = (int) $today->diff($expiry)->format('%r%a');
-                    $property['plan_expiry_days_left'] = $diff_days;
-                }
-            }
+            $this->_enrich_tenant_subscription_fields($property, $tiers);
         }
         unset($property);
 
@@ -294,6 +512,135 @@ class Admin extends MY_Controller {
         $data['css_files'] = array();
 
         $this->load->view('includes/admin_template', $data);
+    }
+
+    function property_detail($company_id = null)
+    {
+        $this->_require_platform_admin();
+
+        $company_id = (int) $company_id;
+        if ($company_id < 1) {
+            show_404();
+            return;
+        }
+
+        $tenant = $this->Admin_model->get_tenant_detail($company_id);
+        if (!$tenant) {
+            show_404();
+            return;
+        }
+
+        $tiers = $this->Platform_settings_model->get_pricing_tiers(false);
+        $this->_enrich_tenant_subscription_fields($tenant, $tiers);
+
+        $tier_id = resolve_company_pricing_tier_id($tenant, $tiers);
+        $default_payment_amount = isset($tenant['renewal_cost']) ? (float) $tenant['renewal_cost'] : 0;
+        if ($default_payment_amount <= 0 && $tier_id > 0) {
+            $tier_row = $this->Platform_settings_model->get_pricing_tier($tier_id);
+            if ($tier_row && isset($tier_row['monthly_price'])) {
+                $default_payment_amount = (float) $tier_row['monthly_price'];
+            }
+        }
+
+        $payments = $this->Admin_model->get_saas_subscription_payments_for_company($company_id);
+        $payment_total = 0.0;
+        foreach ($payments as $payment) {
+            $payment_total += isset($payment['amount']) ? (float) $payment['amount'] : 0;
+        }
+
+        $data['tenant'] = $tenant;
+        $data['company_id'] = $company_id;
+        $data['pricing_tiers'] = $tiers;
+        $data['default_payment_amount'] = $default_payment_amount;
+        $data['default_grace_days'] = saas_paid_plan_grace_days();
+        $data['default_trial_days'] = $this->Platform_settings_model->get_default_trial_days();
+        $data['subscription_payments'] = $payments;
+        $data['payment_total'] = $payment_total;
+        $data['activity_log'] = $this->Admin_model->get_company_log($company_id, 100);
+        $data['booking_stats'] = $this->Admin_model->get_tenant_booking_stats($company_id);
+        $data['setup_progress'] = $this->Admin_model->get_tenant_setup_progress($company_id);
+        $data['extensions'] = $this->Admin_model->get_tenant_active_extensions($company_id);
+        $data['channels'] = $this->Admin_model->get_tenant_channel_summary($company_id);
+        $data['activity_log_enabled'] = $this->db->table_exists('company_log');
+        $data['saas_currency_symbol'] = saas_currency_symbol();
+        $data['main_content'] = 'admin/property_detail';
+        $data['js_files'] = array(base_url() . auto_version('js/admin/tenant-detail.js'));
+        $data['css_files'] = array();
+
+        $this->load->view('includes/admin_template', $data);
+    }
+
+    function save_admin_comment()
+    {
+        $this->_require_platform_admin(true);
+
+        $company_id = (int) $this->input->post('company_id');
+        $comment = trim((string) $this->input->post('admin_comment'));
+
+        if (!$company_id) {
+            $this->_json_response(array('success' => false, 'error' => 'company_id is required.'), 400);
+            return;
+        }
+
+        $tenant = $this->Admin_model->get_tenant_detail($company_id);
+        if (!$tenant) {
+            $this->_json_response(array('success' => false, 'error' => 'Property not found.'), 404);
+            return;
+        }
+
+        $panel = $this->Admin_model->get_single_company_admin_panel_info($company_id);
+        if ($panel) {
+            $this->Admin_model->update_company_admin_panel_info($company_id, array(
+                'admin_comment' => $comment,
+            ));
+        } else {
+            $this->Admin_model->insert_company_admin_panel_info(array(
+                'company_id' => $company_id,
+                'creation_date' => date('Y-m-d G:i'),
+                'admin_comment' => $comment,
+            ));
+        }
+
+        $this->_log_admin_action($company_id, 'Updated internal admin notes.', 'action');
+        $this->_json_response(array('success' => true));
+    }
+
+    function add_activity_note()
+    {
+        $this->_require_platform_admin(true);
+
+        $company_id = (int) $this->input->post('company_id');
+        $note = trim((string) $this->input->post('note'));
+
+        if (!$company_id || $note === '') {
+            $this->_json_response(array('success' => false, 'error' => 'company_id and note are required.'), 400);
+            return;
+        }
+
+        $tenant = $this->Admin_model->get_tenant_detail($company_id);
+        if (!$tenant) {
+            $this->_json_response(array('success' => false, 'error' => 'Property not found.'), 404);
+            return;
+        }
+
+        if (!$this->db->table_exists('company_log')) {
+            $this->_json_response(array(
+                'success' => false,
+                'error' => 'Activity log is unavailable until database migrations are run.',
+            ), 503);
+            return;
+        }
+
+        $log_id = $this->Admin_model->add_company_log_entry($company_id, $note, 'note');
+        if (!$log_id) {
+            $this->_json_response(array('success' => false, 'error' => 'Note could not be saved.'), 500);
+            return;
+        }
+
+        $this->_json_response(array(
+            'success' => true,
+            'log_id' => (int) $log_id,
+        ));
     }
 
     function assign_owner()
@@ -332,6 +679,8 @@ class Admin extends MY_Controller {
             $profile_update['last_name'] = $owner_last_name;
         }
         $this->User_model->update_user_profile($owner_user_id, $profile_update);
+
+        $this->_log_admin_action($company_id, 'Assigned owner: ' . $owner_email);
 
         $this->_json_response(array(
             'success' => true,
@@ -392,6 +741,18 @@ class Admin extends MY_Controller {
         }
 
         $this->Company_subscription_model->update_company_subscription($company_id, $update);
+
+        $log_parts = array();
+        if (isset($update['subscription_state'])) {
+            $log_parts[] = 'state → ' . $update['subscription_state'];
+        }
+        if ($tier_id > 0 && isset($tier['name'])) {
+            $log_parts[] = 'tier → ' . $tier['name'];
+        }
+        if (!empty($log_parts)) {
+            $this->_log_admin_action($company_id, 'Updated subscription: ' . implode(', ', $log_parts));
+        }
+
         $this->_json_response(array('success' => true));
     }
 
@@ -441,6 +802,7 @@ class Admin extends MY_Controller {
             ), 500);
             return;
         }
+        $this->_log_admin_action($company_id, 'Updated property details.');
         $this->_json_response(array('success' => true, 'company_id' => $company_id));
     }
 
@@ -524,6 +886,8 @@ class Admin extends MY_Controller {
             'subscription_state' => 'trialing',
         ));
 
+        $this->_log_admin_action($company_id, 'Set trial expiry to ' . $expiry);
+
         $this->_json_response(array(
             'success' => true,
             'trial_expiry_date' => $expiry,
@@ -574,10 +938,76 @@ class Admin extends MY_Controller {
             ));
         }
 
+        $this->_log_admin_action($company_id, 'Set plan expiry to ' . $plan_expiry_date);
+
         $this->_json_response(array(
             'success' => true,
             'plan_expiry_date' => $plan_expiry_date,
         ));
+    }
+
+    function _enrich_tenant_subscription_fields(&$property, $tiers)
+    {
+        $room_count = isset($property['number_of_rooms']) ? (int) $property['number_of_rooms'] : 0;
+        if ($room_count < 1 && isset($property['number_of_rooms_actual'])) {
+            $room_count = (int) $property['number_of_rooms_actual'];
+        }
+        if ($room_count < 1) {
+            $room_count = 1;
+        }
+
+        $meta = array();
+        if (!empty($property['meta_data'])) {
+            $decoded = json_decode($property['meta_data'], true);
+            if (is_array($decoded)) {
+                $meta = $decoded;
+            }
+        }
+        $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+
+        $tier_name = '';
+        $tier_id_for_rooms = 0;
+        foreach ($tiers as $tier) {
+            $min = (int) $tier['min_rooms'];
+            $max = (isset($tier['max_rooms']) && $tier['max_rooms'] !== null && $tier['max_rooms'] !== '')
+                ? (int) $tier['max_rooms']
+                : null;
+            if ($room_count >= $min && ($max === null || $room_count <= $max)) {
+                $tier_name = isset($tier['name']) ? (string) $tier['name'] : '';
+                $tier_id_for_rooms = isset($tier['id']) ? (int) $tier['id'] : 0;
+                break;
+            }
+        }
+        $property['pricing_tier_name'] = $tier_name !== '' ? $tier_name : '—';
+        $property['pricing_tier_id'] = $selected_tier_id > 0 ? $selected_tier_id : $tier_id_for_rooms;
+
+        $trial_expiry = isset($property['trial_expiry_date']) ? trim((string) $property['trial_expiry_date']) : '';
+        $paid_expiry = isset($property['expiration_date']) ? trim((string) $property['expiration_date']) : '';
+        $state = isset($property['subscription_state']) ? (string) $property['subscription_state'] : '';
+        $plan_expiry = '';
+        if ($state === 'trialing') {
+            $plan_expiry = $trial_expiry;
+        } elseif ($paid_expiry !== '' && $paid_expiry !== '0000-00-00') {
+            $plan_expiry = $paid_expiry;
+        }
+        $property['plan_expiry_date'] = $plan_expiry;
+        $property['plan_expiry_days_left'] = null;
+        if ($plan_expiry !== '' && $plan_expiry !== '0000-00-00') {
+            $today = new DateTime(date('Y-m-d'));
+            $expiry = DateTime::createFromFormat('Y-m-d', $plan_expiry);
+            if ($expiry instanceof DateTime) {
+                $diff_days = (int) $today->diff($expiry)->format('%r%a');
+                $property['plan_expiry_days_left'] = $diff_days;
+            }
+        }
+    }
+
+    function _log_admin_action($company_id, $message, $log_type = 'action')
+    {
+        if (!$this->db->table_exists('company_log')) {
+            return;
+        }
+        $this->Admin_model->add_company_log_entry((int) $company_id, (string) $message, $log_type);
     }
 
     function _require_platform_admin($json = false)

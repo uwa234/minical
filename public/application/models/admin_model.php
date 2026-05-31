@@ -417,6 +417,231 @@ class Admin_model extends CI_Model {
 	}
 	
 	
+	/**
+	 * SQL fragment matching SaaS subscription charges in company_charge.
+	 *
+	 * @return string
+	 */
+	private function _saas_subscription_charge_where()
+	{
+		return "cc.is_deleted = 0 AND (cc.charge_type = 'subscription' OR cc.description LIKE 'saas\\_%')";
+	}
+
+	/**
+	 * Individual SaaS subscription payments for platform admin revenue.
+	 *
+	 * @param string $from_date Y-m-d
+	 * @param string $to_date Y-m-d
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_saas_subscription_payments($from_date, $to_date)
+	{
+		$from_date = $this->db->escape_str($from_date);
+		$to_date = $this->db->escape_str($to_date);
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT
+				cc.company_charge_id,
+				cc.company_id,
+				CASE
+					WHEN c.company_id IS NULL THEN 'Unknown property'
+					WHEN c.is_deleted = 1 THEN CONCAT(COALESCE(NULLIF(TRIM(c.name), ''), 'Property'), ' (deleted)')
+					ELSE COALESCE(NULLIF(TRIM(c.name), ''), CONCAT('Property #', cc.company_id))
+				END AS property_name,
+				CASE
+					WHEN c.company_id IS NULL THEN 'missing'
+					WHEN c.is_deleted = 1 THEN 'deleted'
+					ELSE 'active'
+				END AS property_status,
+				cc.amount,
+				cc.date AS paid_date,
+				cc.description AS reference,
+				(
+					SELECT COUNT(*)
+					FROM company_charge AS prior
+					WHERE prior.company_id = cc.company_id
+						AND prior.is_deleted = 0
+						AND (prior.charge_type = 'subscription' OR prior.description LIKE 'saas\\_%')
+						AND prior.date < cc.date
+				) AS prior_payment_count
+			FROM company_charge AS cc
+			LEFT JOIN company AS c ON c.company_id = cc.company_id
+			WHERE {$where}
+				AND cc.date >= DATE('{$from_date}')
+				AND cc.date <= DATE('{$to_date}')
+			ORDER BY cc.date DESC, cc.company_charge_id DESC
+		";
+
+		$query = $this->db->query($sql);
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		$rows = $query->result_array();
+		foreach ($rows as &$row) {
+			$row['payment_type'] = classify_saas_subscription_payment_type(isset($row['prior_payment_count']) ? $row['prior_payment_count'] : 0);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
+	 * Total SaaS subscription revenue in a date range.
+	 *
+	 * @param string $from_date Y-m-d
+	 * @param string $to_date Y-m-d
+	 * @return array{total_revenue: float, payment_count: int}
+	 */
+	function get_subscription_revenue_summary_for_range($from_date, $to_date)
+	{
+		$from_date = $this->db->escape_str($from_date);
+		$to_date = $this->db->escape_str($to_date);
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT COALESCE(SUM(cc.amount), 0) AS total_revenue, COUNT(*) AS payment_count
+			FROM company_charge AS cc
+			WHERE {$where}
+				AND cc.date >= DATE('{$from_date}')
+				AND cc.date <= DATE('{$to_date}')
+		";
+
+		$query = $this->db->query($sql);
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		$row = $query->row_array();
+
+		return array(
+			'total_revenue' => isset($row['total_revenue']) ? (float) $row['total_revenue'] : 0.0,
+			'payment_count' => isset($row['payment_count']) ? (int) $row['payment_count'] : 0,
+		);
+	}
+
+	/**
+	 * All-time SaaS subscription revenue (no date filter).
+	 *
+	 * @return array{total_revenue: float, payment_count: int, first_payment_date: string|null, last_payment_date: string|null}
+	 */
+	function get_subscription_revenue_lifetime_summary()
+	{
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT
+				COALESCE(SUM(cc.amount), 0) AS total_revenue,
+				COUNT(*) AS payment_count,
+				MIN(cc.date) AS first_payment_date,
+				MAX(cc.date) AS last_payment_date
+			FROM company_charge AS cc
+			WHERE {$where}
+		";
+
+		$query = $this->db->query($sql);
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		$row = $query->row_array();
+
+		return array(
+			'total_revenue' => isset($row['total_revenue']) ? (float) $row['total_revenue'] : 0.0,
+			'payment_count' => isset($row['payment_count']) ? (int) $row['payment_count'] : 0,
+			'first_payment_date' => !empty($row['first_payment_date']) ? (string) $row['first_payment_date'] : null,
+			'last_payment_date' => !empty($row['last_payment_date']) ? (string) $row['last_payment_date'] : null,
+		);
+	}
+
+	/**
+	 * SaaS subscription revenue grouped by calendar month.
+	 *
+	 * @param string|null $from_date Y-m-d
+	 * @param string|null $to_date Y-m-d
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_subscription_revenue_by_month($from_date = null, $to_date = null)
+	{
+		$where = $this->_saas_subscription_charge_where();
+		if ($from_date && $to_date) {
+			$from_date = $this->db->escape_str($from_date);
+			$to_date = $this->db->escape_str($to_date);
+			$where .= " AND cc.date >= DATE('{$from_date}') AND cc.date <= DATE('{$to_date}')";
+		}
+
+		$sql = "
+			SELECT
+				YEAR(cc.date) AS year,
+				MONTH(cc.date) AS month,
+				SUM(cc.amount) AS subscription_revenue,
+				COUNT(*) AS payment_count
+			FROM company_charge AS cc
+			WHERE {$where}
+			GROUP BY YEAR(cc.date), MONTH(cc.date)
+			ORDER BY year DESC, month DESC
+		";
+
+		$query = $this->db->query($sql);
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		return $query->result_array();
+	}
+
+	/**
+	 * Merge actual subscription payment totals into monthly report rows.
+	 *
+	 * @param array<int, array<string, mixed>> $monthly_rows
+	 * @return array<int, array<string, mixed>>
+	 */
+	function merge_subscription_revenue_into_monthly_report($monthly_rows)
+	{
+		$by_key = array();
+		foreach ($monthly_rows as $row) {
+			$key = (int) $row['year'] . '-' . (int) $row['month'];
+			$row['subscription_revenue'] = 0.0;
+			$row['payment_count'] = 0;
+			$by_key[$key] = $row;
+		}
+
+		foreach ($this->get_subscription_revenue_by_month() as $rev) {
+			$key = (int) $rev['year'] . '-' . (int) $rev['month'];
+			if (!isset($by_key[$key])) {
+				$by_key[$key] = array(
+					'year' => (int) $rev['year'],
+					'month' => (int) $rev['month'],
+					'creation_count' => 0,
+					'conversion_count' => 0,
+					'churn_count' => 0,
+					'active_trial_count' => 0,
+					'renewal_cost' => 0,
+					'subscription_revenue' => 0.0,
+					'payment_count' => 0,
+				);
+			}
+			$by_key[$key]['subscription_revenue'] = (float) $rev['subscription_revenue'];
+			$by_key[$key]['payment_count'] = (int) $rev['payment_count'];
+		}
+
+		$merged = array_values($by_key);
+		usort($merged, function ($a, $b) {
+			if ((int) $a['year'] !== (int) $b['year']) {
+				return (int) $b['year'] - (int) $a['year'];
+			}
+
+			return (int) $b['month'] - (int) $a['month'];
+		});
+
+		return $merged;
+	}
+
 	//Returns array of objects where each object represents a row from query
 	function get_monthly_report($from_date = null, $to_date = null)
 	{
@@ -496,7 +721,20 @@ class Admin_model extends CI_Model {
             $query5 = $this->db->query($sql5);
             $result5 =  $query5->result_array();
             
-            $final_result = array('active_trial_count' => $result5[0], 'creation_count' => $result1[0], 'conversion_count' => $result2[0], 'bw_conversion_count' => $result4[0], 'churn_count' => $result3[0]);
+            $subscription_summary = $this->get_subscription_revenue_summary_for_range($from_date, $to_date);
+            $final_result = array(
+                'active_trial_count' => $result5[0],
+                'creation_count' => $result1[0],
+                'conversion_count' => $result2[0],
+                'bw_conversion_count' => $result4[0],
+                'churn_count' => $result3[0],
+                'subscription_revenue' => array(
+                    array(
+                        'total_revenue' => $subscription_summary['total_revenue'],
+                        'payment_count' => $subscription_summary['payment_count'],
+                    ),
+                ),
+            );
             return $final_result;
         }
         
@@ -585,8 +823,8 @@ class Admin_model extends CI_Model {
 			show_error($this->db->_error_message());
 
 		$result =  $query->result_array();
-		
-		return $result;
+
+		return $this->merge_subscription_revenue_into_monthly_report($result);
 	}	
 	
 	function get_regional_report($from_date = null, $to_date = null)
@@ -1061,30 +1299,421 @@ class Admin_model extends CI_Model {
 		echo $this->db->last_query();
     }
 	
-	// what he said
-	// return row_limit number of rows. if row_limit is 0, then there is no cap.
-	function get_company_log($company_id)	
-    {		
+	/**
+	 * Activity log entries for a tenant (platform admin support notes and actions).
+	 *
+	 * @param int $company_id
+	 * @param int $limit
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_company_log($company_id, $limit = 50)
+    {
+		if (!$this->db->table_exists('company_log')) {
+			return array();
+		}
+
+		$company_id = (int) $company_id;
+		$limit = max(1, min(200, (int) $limit));
+
         $sql = "
-			SELECT * 
-			FROM company_log as cl
-			WHERE 
-				cl.company_id = '$company_id'
-			ORDER BY date_time DESC			
+			SELECT
+				cl.company_log_id,
+				cl.company_id,
+				cl.date_time,
+				cl.user_id,
+				cl.log,
+				cl.log_type,
+				u.email AS user_email,
+				up.first_name,
+				up.last_name
+			FROM company_log AS cl
+			LEFT JOIN users AS u ON u.id = cl.user_id
+			LEFT JOIN user_profiles AS up ON up.user_id = cl.user_id
+			WHERE cl.company_id = ?
+			ORDER BY cl.date_time DESC
+			LIMIT {$limit}
 		";
-		$q = $this->db->query($sql);
-		
-		if ($this->db->_error_message()) // error checking
+		$q = $this->db->query($sql, array($company_id));
+
+		if ($this->db->_error_message()) {
 			show_error($this->db->_error_message());
-		
-		$result = $q->result_array();
-		if ($this->db->_error_message()) // error checking
-				show_error($this->db->_error_message());
-		
-		//echo $this->db->last_query();
-		
-		return $result;
+		}
+
+		return $q->result_array();
     }
+
+	/**
+	 * Record a platform admin note or action on a tenant.
+	 *
+	 * @param int $company_id
+	 * @param string $log
+	 * @param string $log_type note|action
+	 * @param int|null $user_id
+	 * @return int|null
+	 */
+	function add_company_log_entry($company_id, $log, $log_type = 'note', $user_id = null)
+	{
+		if (!$this->db->table_exists('company_log')) {
+			return null;
+		}
+
+		$company_id = (int) $company_id;
+		$log = trim((string) $log);
+		if ($company_id < 1 || $log === '') {
+			return null;
+		}
+
+		$allowed_types = array('note', 'action');
+		if (!in_array($log_type, $allowed_types, true)) {
+			$log_type = 'note';
+		}
+
+		if ($user_id === null) {
+			$user_id = (int) $this->session->userdata('user_id');
+		}
+		if ($user_id < 1) {
+			$user_id = null;
+		}
+
+		$data = array(
+			'company_id' => $company_id,
+			'date_time' => date('Y-m-d H:i:s'),
+			'user_id' => $user_id,
+			'log' => $log,
+			'log_type' => $log_type,
+		);
+
+		return $this->create_company_log($data);
+	}
+
+	/**
+	 * SaaS subscription payments for one tenant (all time, most recent first).
+	 *
+	 * @param int $company_id
+	 * @param int $limit
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_saas_subscription_payments_for_company($company_id, $limit = 100)
+	{
+		$company_id = (int) $company_id;
+		$limit = max(1, min(500, (int) $limit));
+		if ($company_id < 1) {
+			return array();
+		}
+
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT
+				cc.company_charge_id,
+				cc.company_id,
+				cc.amount,
+				cc.date AS paid_date,
+				cc.description AS reference,
+				(
+					SELECT COUNT(*)
+					FROM company_charge AS prior
+					WHERE prior.company_id = cc.company_id
+						AND prior.is_deleted = 0
+						AND (prior.charge_type = 'subscription' OR prior.description LIKE 'saas\\_%')
+						AND prior.date < cc.date
+				) AS prior_payment_count
+			FROM company_charge AS cc
+			WHERE {$where}
+				AND cc.company_id = ?
+			ORDER BY cc.date DESC, cc.company_charge_id DESC
+			LIMIT {$limit}
+		";
+
+		$query = $this->db->query($sql, array($company_id));
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		$rows = $query->result_array();
+		foreach ($rows as &$row) {
+			$row['payment_type'] = classify_saas_subscription_payment_type(
+				isset($row['prior_payment_count']) ? $row['prior_payment_count'] : 0
+			);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
+	 * Booking volume summary for platform admin tenant detail.
+	 *
+	 * @param int $company_id
+	 * @return array<string, mixed>
+	 */
+	function get_tenant_booking_stats($company_id)
+	{
+		$company_id = (int) $company_id;
+		$empty = array(
+			'total_bookings' => 0,
+			'bookings_last_30_days' => 0,
+			'last_booking_date' => null,
+		);
+		if ($company_id < 1) {
+			return $empty;
+		}
+
+		$sql = "
+			SELECT
+				COUNT(DISTINCT b.booking_id) AS total_bookings,
+				COUNT(DISTINCT CASE
+					WHEN bl.date_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN b.booking_id
+				END) AS bookings_last_30_days,
+				MAX(DATE(bl.date_time)) AS last_booking_date
+			FROM booking AS b
+			LEFT JOIN (
+				SELECT booking_id, MIN(date_time) AS date_time
+				FROM booking_log
+				GROUP BY booking_id
+			) AS bl ON bl.booking_id = b.booking_id
+			WHERE b.company_id = ?
+				AND b.is_deleted = 0
+		";
+		$query = $this->db->query($sql, array($company_id));
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		$row = $query->row_array();
+		if (!$row) {
+			return $empty;
+		}
+
+		return array(
+			'total_bookings' => isset($row['total_bookings']) ? (int) $row['total_bookings'] : 0,
+			'bookings_last_30_days' => isset($row['bookings_last_30_days']) ? (int) $row['bookings_last_30_days'] : 0,
+			'last_booking_date' => !empty($row['last_booking_date']) ? (string) $row['last_booking_date'] : null,
+		);
+	}
+
+	/**
+	 * Active extensions for a tenant (excludes internal platform extensions).
+	 *
+	 * @param int $company_id
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_tenant_active_extensions($company_id)
+	{
+		$company_id = (int) $company_id;
+		if ($company_id < 1 || !$this->db->table_exists('extensions_x_company')) {
+			return array();
+		}
+
+		$skip = array('subscription', 'reseller_package', 'vendor_monthly_report');
+		$this->db->select('extension_name, is_active, is_favourite');
+		$this->db->from('extensions_x_company');
+		$this->db->where('company_id', $company_id);
+		$this->db->where('is_active', 1);
+		$this->db->where_not_in('extension_name', $skip);
+		$this->db->order_by('extension_name', 'ASC');
+		$query = $this->db->get();
+
+		if ($query->num_rows() < 1) {
+			return array();
+		}
+
+		return $query->result_array();
+	}
+
+	/**
+	 * Connected channels summary for platform admin tenant detail.
+	 *
+	 * @param int $company_id
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_tenant_channel_summary($company_id)
+	{
+		$company_id = (int) $company_id;
+		if ($company_id < 1) {
+			return array();
+		}
+
+		$this->load->model('Company_model');
+		$company = $this->Company_model->get_company($company_id);
+		if (!$company) {
+			return array();
+		}
+
+		$channels = array();
+		$website_enabled = !empty($company['website_is_taking_online_reservation']);
+		$channels[] = array(
+			'key' => 'website',
+			'label' => 'Website / OBE',
+			'connected' => $website_enabled,
+			'detail' => $website_enabled ? 'Online reservations enabled' : 'Not accepting online reservations',
+		);
+
+		if (!$this->db->table_exists('channel_ical_mapping')) {
+			return $channels;
+		}
+
+		$labels = array(
+			'booking_dot_com' => 'Booking.com',
+			'airbnb' => 'Airbnb',
+			'expedia' => 'Expedia',
+		);
+
+		foreach ($labels as $key => $label) {
+			$this->db->from('channel_ical_mapping');
+			$this->db->where('company_id', $company_id);
+			$this->db->where('channel_key', $key);
+			$query = $this->db->get();
+			$mappings = $query->result_array();
+
+			$import_count = 0;
+			$export_count = 0;
+			foreach ($mappings as $mapping) {
+				if (!empty($mapping['import_enabled']) && !empty($mapping['import_url'])) {
+					$import_count++;
+				}
+				if (!empty($mapping['export_enabled'])) {
+					$export_count++;
+				}
+			}
+
+			$connected = ($import_count + $export_count) > 0;
+			$detail_parts = array();
+			if ($import_count > 0) {
+				$detail_parts[] = $import_count . ' import' . ($import_count === 1 ? '' : 's');
+			}
+			if ($export_count > 0) {
+				$detail_parts[] = $export_count . ' export' . ($export_count === 1 ? '' : 's');
+			}
+
+			$channels[] = array(
+				'key' => $key,
+				'label' => $label,
+				'connected' => $connected,
+				'detail' => $connected ? implode(', ', $detail_parts) : 'Not connected',
+			);
+		}
+
+		return $channels;
+	}
+
+	/**
+	 * Setup checklist items for platform admin tenant detail.
+	 *
+	 * @param int $company_id
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_tenant_setup_progress($company_id)
+	{
+		$company_id = (int) $company_id;
+		if ($company_id < 1) {
+			return array();
+		}
+
+		$this->load->model('Company_model');
+		$company = $this->Company_model->get_company($company_id);
+		if (!$company) {
+			return array();
+		}
+
+		$room_count = isset($company['number_of_rooms_actual']) ? (int) $company['number_of_rooms_actual'] : 0;
+		$booking_stats = $this->get_tenant_booking_stats($company_id);
+		$channels = $this->get_tenant_channel_summary($company_id);
+		$channel_connected = false;
+		foreach ($channels as $channel) {
+			if (!empty($channel['connected']) && $channel['key'] !== 'website') {
+				$channel_connected = true;
+				break;
+			}
+		}
+
+		$has_payment_gateway = !empty($company['selected_payment_gateway'])
+			&& strtolower((string) $company['selected_payment_gateway']) !== 'none';
+
+		return array(
+			array(
+				'label' => 'Setup wizard completed',
+				'done' => !empty($company['is_setup']),
+			),
+			array(
+				'label' => 'Rooms configured',
+				'done' => $room_count > 0,
+				'detail' => $room_count > 0 ? $room_count . ' room' . ($room_count === 1 ? '' : 's') : null,
+			),
+			array(
+				'label' => 'First booking created',
+				'done' => $booking_stats['total_bookings'] > 0,
+				'detail' => $booking_stats['total_bookings'] > 0 ? (int) $booking_stats['total_bookings'] . ' total' : null,
+			),
+			array(
+				'label' => 'Online reservations enabled',
+				'done' => !empty($company['website_is_taking_online_reservation']),
+			),
+			array(
+				'label' => 'OTA channel connected',
+				'done' => $channel_connected,
+			),
+			array(
+				'label' => 'Payment gateway configured',
+				'done' => $has_payment_gateway,
+				'detail' => $has_payment_gateway ? (string) $company['selected_payment_gateway'] : null,
+			),
+		);
+	}
+
+	/**
+	 * Single tenant row for platform admin detail page.
+	 *
+	 * @param int $company_id
+	 * @return array|null
+	 */
+	function get_tenant_detail($company_id)
+	{
+		$company_id = (int) $company_id;
+		if ($company_id < 1) {
+			return null;
+		}
+
+		$rows = $this->get_tenant_list(array(
+			'company_id' => $company_id,
+			'subscription_state' => 'all',
+			'include_deleted' => true,
+		));
+
+		if (empty($rows)) {
+			return null;
+		}
+
+		$row = $rows[0];
+		$panel = $this->get_single_company_admin_panel_info($company_id);
+		if ($panel) {
+			$row['admin_comment'] = isset($panel['admin_comment']) ? (string) $panel['admin_comment'] : '';
+			$row['conversion_date'] = isset($panel['conversion_date']) ? $panel['conversion_date'] : null;
+			$row['churn_date'] = isset($panel['churn_date']) ? $panel['churn_date'] : null;
+			$row['utm_source'] = isset($panel['utm_source']) ? $panel['utm_source'] : null;
+		} else {
+			$row['admin_comment'] = '';
+		}
+
+		$this->load->model('Company_model');
+		$company = $this->Company_model->get_company($company_id);
+		if ($company) {
+			$row['number_of_rooms_actual'] = isset($company['number_of_rooms_actual'])
+				? (int) $company['number_of_rooms_actual']
+				: 0;
+			$row['city'] = isset($company['city']) ? $company['city'] : '';
+			$row['country'] = isset($company['country']) ? $company['country'] : '';
+			$row['time_zone'] = isset($company['time_zone']) ? $company['time_zone'] : '';
+			$row['balance'] = isset($company['balance']) ? $company['balance'] : 0;
+			$row['renewal_cost'] = isset($company['renewal_cost']) ? $company['renewal_cost'] : null;
+			$row['renewal_period'] = isset($company['renewal_period']) ? $company['renewal_period'] : null;
+			$row['payment_method'] = isset($company['payment_method']) ? $company['payment_method'] : null;
+			$row['partner_name'] = isset($company['partner_name']) ? $company['partner_name'] : null;
+		}
+
+		return $row;
+	}
 
     function import_company($data)
     {
@@ -1363,6 +1992,10 @@ class Admin_model extends CI_Model {
             $this->db->where('c.is_deleted', 0);
         }
 
+        if (!empty($filters['company_id'])) {
+            $this->db->where('c.company_id', (int) $filters['company_id']);
+        }
+
         $state = isset($filters['subscription_state']) ? $filters['subscription_state'] : 'all';
         if ($state !== '' && $state !== 'all') {
             $this->db->where('cs.subscription_state', $state);
@@ -1420,6 +2053,196 @@ class Admin_model extends CI_Model {
             return $query->result_array();
         }
         return null;
+    }
+
+    /**
+     * Properties with subscription payment due or overdue (platform admin debtors list).
+     *
+     * @param array $filters filter (overdue|due_soon|all), search, include_deleted
+     * @return array<int, array<string, mixed>>
+     */
+    function get_subscription_debtors($filters = array())
+    {
+        $today = date('Y-m-d');
+        $due_soon_end = date('Y-m-d', strtotime('+7 days'));
+        $filter = isset($filters['filter']) ? (string) $filters['filter'] : 'overdue';
+        if (!in_array($filter, array('overdue', 'due_soon', 'all'), true)) {
+            $filter = 'overdue';
+        }
+
+        $overdue_sql = "
+            cs.subscription_state IN ('trial_ended', 'unpaid')
+            OR (
+                cs.subscription_state = 'trialing'
+                AND capi.trial_expiry_date IS NOT NULL
+                AND capi.trial_expiry_date != ''
+                AND capi.trial_expiry_date != '0000-00-00'
+                AND capi.trial_expiry_date < DATE('{$today}')
+            )
+            OR (
+                cs.subscription_state = 'active'
+                AND cs.expiration_date IS NOT NULL
+                AND cs.expiration_date != ''
+                AND cs.expiration_date != '0000-00-00'
+                AND cs.expiration_date < DATE('{$today}')
+            )
+        ";
+
+        $due_soon_sql = "
+            (
+                cs.subscription_state = 'trialing'
+                AND capi.trial_expiry_date IS NOT NULL
+                AND capi.trial_expiry_date != ''
+                AND capi.trial_expiry_date != '0000-00-00'
+                AND capi.trial_expiry_date >= DATE('{$today}')
+                AND capi.trial_expiry_date <= DATE('{$due_soon_end}')
+            )
+            OR (
+                cs.subscription_state = 'active'
+                AND cs.expiration_date IS NOT NULL
+                AND cs.expiration_date != ''
+                AND cs.expiration_date != '0000-00-00'
+                AND cs.expiration_date >= DATE('{$today}')
+                AND cs.expiration_date <= DATE('{$due_soon_end}')
+            )
+        ";
+
+        if ($filter === 'overdue') {
+            $status_where = '(' . $overdue_sql . ')';
+        } elseif ($filter === 'due_soon') {
+            $status_where = '(' . $due_soon_sql . ')';
+        } else {
+            $status_where = '((' . $overdue_sql . ') OR (' . $due_soon_sql . '))';
+        }
+
+        $search = isset($filters['search']) ? trim((string) $filters['search']) : '';
+        $search_where = '';
+        if ($search !== '') {
+            $q = $this->db->escape_like_str($search);
+            $search_where = " AND (c.name LIKE '%{$q}%' OR c.email LIKE '%{$q}%' OR u.email LIKE '%{$q}%')";
+        }
+
+        $deleted_where = empty($filters['include_deleted']) ? ' AND c.is_deleted = 0' : '';
+
+        $sql = "
+            SELECT
+                c.company_id,
+                c.name,
+                c.email,
+                c.number_of_rooms,
+                c.is_deleted,
+                c.last_login,
+                capi.creation_date,
+                capi.trial_expiry_date,
+                cs.subscription_state,
+                cs.expiration_date,
+                cs.renewal_cost,
+                cs.renewal_period,
+                cs.balance,
+                cs.meta_data,
+                u.email AS owner_email,
+                pf.first_name AS owner_first_name,
+                pf.last_name AS owner_last_name,
+                CASE
+                    WHEN cs.subscription_state = 'unpaid' THEN 'unpaid'
+                    WHEN cs.subscription_state = 'trial_ended' THEN 'trial_ended'
+                    WHEN cs.subscription_state = 'trialing'
+                        AND capi.trial_expiry_date IS NOT NULL
+                        AND capi.trial_expiry_date != ''
+                        AND capi.trial_expiry_date != '0000-00-00'
+                        AND capi.trial_expiry_date < DATE('{$today}')
+                        THEN 'trial_overdue'
+                    WHEN cs.subscription_state = 'active'
+                        AND cs.expiration_date IS NOT NULL
+                        AND cs.expiration_date != ''
+                        AND cs.expiration_date != '0000-00-00'
+                        AND cs.expiration_date < DATE('{$today}')
+                        THEN 'plan_overdue'
+                    ELSE 'due_soon'
+                END AS debtor_reason,
+                CASE
+                    WHEN cs.subscription_state IN ('trial_ended', 'trialing')
+                        AND capi.trial_expiry_date IS NOT NULL
+                        AND capi.trial_expiry_date != ''
+                        AND capi.trial_expiry_date != '0000-00-00'
+                        THEN capi.trial_expiry_date
+                    WHEN cs.expiration_date IS NOT NULL
+                        AND cs.expiration_date != ''
+                        AND cs.expiration_date != '0000-00-00'
+                        THEN cs.expiration_date
+                    ELSE NULL
+                END AS due_date,
+                CASE
+                    WHEN cs.subscription_state IN ('trial_ended', 'trialing')
+                        AND capi.trial_expiry_date IS NOT NULL
+                        AND capi.trial_expiry_date != ''
+                        AND capi.trial_expiry_date != '0000-00-00'
+                        THEN DATEDIFF(DATE('{$today}'), capi.trial_expiry_date)
+                    WHEN cs.expiration_date IS NOT NULL
+                        AND cs.expiration_date != ''
+                        AND cs.expiration_date != '0000-00-00'
+                        THEN DATEDIFF(DATE('{$today}'), cs.expiration_date)
+                    ELSE 0
+                END AS days_overdue
+            FROM company AS c
+            INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+            LEFT JOIN company_admin_panel_info AS capi ON capi.company_id = c.company_id
+            LEFT JOIN (
+                SELECT up1.company_id, up1.user_id
+                FROM user_permissions AS up1
+                INNER JOIN (
+                    SELECT company_id, MIN(user_id) AS user_id
+                    FROM user_permissions
+                    WHERE permission = 'is_owner'
+                    GROUP BY company_id
+                ) AS owner_pick ON owner_pick.company_id = up1.company_id
+                    AND owner_pick.user_id = up1.user_id
+                WHERE up1.permission = 'is_owner'
+            ) AS up ON up.company_id = c.company_id
+            LEFT JOIN users AS u ON u.id = up.user_id
+            LEFT JOIN user_profiles AS pf ON pf.user_id = u.id
+            WHERE {$status_where}
+                {$deleted_where}
+                {$search_where}
+            GROUP BY c.company_id
+            ORDER BY days_overdue DESC, due_date ASC, c.name ASC
+        ";
+
+        $query = $this->db->query($sql);
+
+        if ($this->db->_error_message()) {
+            show_error($this->db->_error_message());
+        }
+
+        if ($query->num_rows() < 1) {
+            return array();
+        }
+
+        $rows = $query->result_array();
+        foreach ($rows as &$row) {
+            $row['debtor_reason_label'] = subscription_debtor_reason_label($row['debtor_reason']);
+            $row['days_overdue'] = (int) $row['days_overdue'];
+            if ($row['days_overdue'] < 0) {
+                $row['days_overdue'] = 0;
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * Counts for subscription debtors dashboard cards.
+     *
+     * @return array{overdue: int, due_soon: int, all: int}
+     */
+    function get_subscription_debtor_counts()
+    {
+        return array(
+            'overdue' => count($this->get_subscription_debtors(array('filter' => 'overdue'))),
+            'due_soon' => count($this->get_subscription_debtors(array('filter' => 'due_soon'))),
+            'all' => count($this->get_subscription_debtors(array('filter' => 'all'))),
+        );
     }
 }
 	

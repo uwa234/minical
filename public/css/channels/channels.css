@@ -67,6 +67,12 @@
     color: #111827;
 }
 
+.sync-ical-channel {
+    border-radius: 8px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 .channel-card-desc {
     color: #4b5563;
     margin-bottom: 1rem;

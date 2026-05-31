@@ -19,6 +19,11 @@ $lang['my_account'] = 'My Account';
 $lang['my_properties'] = 'My Properties';
 $lang['my_subscription'] = 'My Subscription';
 
+$lang['sidebar_section_overview'] = 'Overview';
+$lang['sidebar_section_distribution'] = 'Distribution';
+$lang['sidebar_section_operations'] = 'Operations';
+$lang['sidebar_section_configure'] = 'Configure';
+
 $lang['status'] = 'Status';
 $lang['inventory'] = 'Inventory';
 $lang['date_manager'] = 'Date Manager';

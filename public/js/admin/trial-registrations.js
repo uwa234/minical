@@ -39,5 +39,32 @@
         $('.trial-registration-status').each(function () {
             $(this).data('previous-status', $(this).val());
         });
+
+        $('.trial-create-property-btn').on('click', function () {
+            var $btn = $(this);
+            if (typeof window.saasOpenAddPropertyModal !== 'function') {
+                alert('Property creation is unavailable. Please refresh the page.');
+                return;
+            }
+
+            window.saasOpenAddPropertyModal({
+                trial_registration_request_id: $btn.data('request-id'),
+                name: $btn.data('property-name'),
+                number_of_rooms: $btn.data('number-of-rooms'),
+                owner_email: $btn.data('owner-email'),
+                owner_first_name: $btn.data('owner-first-name'),
+                owner_last_name: $btn.data('owner-last-name'),
+                subscription_state: 'trialing',
+                trial_days: window.saasDefaultTrialDays || 14
+            });
+        });
+
+        if (window.saasOpenTrialLeadId) {
+            var $leadRow = $('tr[data-request-id="' + window.saasOpenTrialLeadId + '"]');
+            var $leadBtn = $leadRow.find('.trial-create-property-btn');
+            if ($leadBtn.length) {
+                $leadBtn.trigger('click');
+            }
+        }
     });
 }(jQuery));

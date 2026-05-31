@@ -1,6 +1,8 @@
 $(function () {
     var $editModal = $('#saas-edit-property-modal');
     var $assignModal = $('#saas-assign-owner-modal');
+    var $addModal = $('#saas-add-property-modal');
+    var defaultTrialDays = window.saasDefaultTrialDays || 14;
 
     function baseUrl() {
         return typeof getBaseURL === 'function' ? getBaseURL() : ($('#project_url').val() || '/');
@@ -55,6 +57,70 @@ $(function () {
         });
     }
 
+    function resetAddPropertyModal() {
+        if (!$addModal.length) {
+            return;
+        }
+        $addModal.find('[name="saas_trial_registration_request_id"]').val('');
+        $addModal.find('[name="saas_property_name"]').val('');
+        $addModal.find('[name="saas_number_of_rooms"]').val(10);
+        $addModal.find('[name="saas_owner_email"]').val('');
+        $addModal.find('[name="saas_owner_first_name"]').val('');
+        $addModal.find('[name="saas_owner_last_name"]').val('');
+        $addModal.find('[name="saas_subscription_state"]').val('trialing');
+        $addModal.find('[name="saas_trial_days"]').val(defaultTrialDays);
+        $('#saas-add-property-modal-title').text('Add property (tenant)');
+        $('#saas-add-property-lead-note').hide();
+        $('#saas-add-property-lead-id').text('');
+    }
+
+    function openAddPropertyModal(prefill) {
+        if (!$addModal.length) {
+            return;
+        }
+        resetAddPropertyModal();
+        prefill = prefill || {};
+
+        if (prefill.name) {
+            $addModal.find('[name="saas_property_name"]').val(prefill.name);
+        }
+        if (prefill.number_of_rooms) {
+            $addModal.find('[name="saas_number_of_rooms"]').val(prefill.number_of_rooms);
+        }
+        if (prefill.owner_email) {
+            $addModal.find('[name="saas_owner_email"]').val(prefill.owner_email);
+        }
+        if (prefill.owner_first_name) {
+            $addModal.find('[name="saas_owner_first_name"]').val(prefill.owner_first_name);
+        }
+        if (prefill.owner_last_name) {
+            $addModal.find('[name="saas_owner_last_name"]').val(prefill.owner_last_name);
+        }
+        if (prefill.trial_days) {
+            $addModal.find('[name="saas_trial_days"]').val(prefill.trial_days);
+        }
+        $addModal.find('[name="saas_subscription_state"]').val(prefill.subscription_state || 'trialing');
+
+        if (prefill.trial_registration_request_id) {
+            $addModal.find('[name="saas_trial_registration_request_id"]').val(prefill.trial_registration_request_id);
+            $('#saas-add-property-modal-title').text('Create property from trial sign-up');
+            $('#saas-add-property-lead-id').text(prefill.trial_registration_request_id);
+            $('#saas-add-property-lead-note').show();
+        }
+
+        $addModal.modal('show');
+    }
+
+    window.saasOpenAddPropertyModal = openAddPropertyModal;
+
+    $addModal.on('hidden.bs.modal', function () {
+        resetAddPropertyModal();
+    });
+
+    $('[data-target="#saas-add-property-modal"]').on('click', function () {
+        resetAddPropertyModal();
+    });
+
     $('#saas-add-property-submit').on('click', function () {
         var $btn = $(this);
         var name = $.trim($('[name="saas_property_name"]').val());
@@ -66,25 +132,32 @@ $(function () {
         var $tierSelect = $('[name="saas_tier_id"]');
         var tierId = parseInt($tierSelect.val(), 10) || 0;
         var legacyType = ($tierSelect.find('option:selected').data('legacy-type') || 'BASIC') + '';
+        var trialLeadId = parseInt($('[name="saas_trial_registration_request_id"]').val(), 10) || 0;
+        var payload = {
+            name: name,
+            number_of_rooms: $('[name="saas_number_of_rooms"]').val() || 1,
+            region: $('[name="saas_region"]').val(),
+            subscription_type: legacyType,
+            subscription_state: $('[name="saas_subscription_state"]').val(),
+            trial_days: $('[name="saas_trial_days"]').val(),
+            created_by: 'admin',
+            owner_email: $.trim($('[name="saas_owner_email"]').val()),
+            owner_first_name: $('[name="saas_owner_first_name"]').val(),
+            owner_last_name: $('[name="saas_owner_last_name"]').val()
+        };
+        if (trialLeadId) {
+            payload.trial_registration_request_id = trialLeadId;
+        }
 
         postAdminJson(
             baseUrl() + 'auth/create_company/',
-            {
-                name: name,
-                number_of_rooms: $('[name="saas_number_of_rooms"]').val() || 1,
-                region: $('[name="saas_region"]').val(),
-                // Keep legacy subscription_type for older signup logic, but drive pricing with tier_id.
-                subscription_type: legacyType,
-                subscription_state: $('[name="saas_subscription_state"]').val(),
-                trial_days: $('[name="saas_trial_days"]').val(),
-                created_by: 'admin',
-                owner_email: $.trim($('[name="saas_owner_email"]').val()),
-                owner_first_name: $('[name="saas_owner_first_name"]').val(),
-                owner_last_name: $('[name="saas_owner_last_name"]').val()
-            },
+            payload,
             function (resp) {
-                // After creating the tenant, store the actual SaaS pricing tier selection.
                 if (!tierId || !resp || !resp.company_id) {
+                    if (trialLeadId && resp && resp.company_id) {
+                        window.location.href = baseUrl() + 'admin/property_detail/' + resp.company_id;
+                        return;
+                    }
                     window.location.reload();
                     return;
                 }
@@ -92,8 +165,20 @@ $(function () {
                 postAdminJson(
                     baseUrl() + 'admin/update_subscription/',
                     { company_id: resp.company_id, tier_id: tierId },
-                    function () { window.location.reload(); },
-                    function () { window.location.reload(); }
+                    function () {
+                        if (trialLeadId) {
+                            window.location.href = baseUrl() + 'admin/property_detail/' + resp.company_id;
+                            return;
+                        }
+                        window.location.reload();
+                    },
+                    function () {
+                        if (trialLeadId && resp.company_id) {
+                            window.location.href = baseUrl() + 'admin/property_detail/' + resp.company_id;
+                            return;
+                        }
+                        window.location.reload();
+                    }
                 );
             },
             function (msg) {

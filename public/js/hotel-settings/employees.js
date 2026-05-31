@@ -194,7 +194,8 @@ function validateUserRestriction()
 }
 
 function warnSuperAdmin() {
-    if(is_current_user_superadmin) {
+    if (is_current_user_superadmin === true) {
         alert(l('Superadmin Alert: Please make sure the hotel owner is aware of this new user, this could be a hacking attempt.', true));
     }
+    return true;
 }

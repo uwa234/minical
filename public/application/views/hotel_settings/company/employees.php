@@ -56,9 +56,13 @@
 			<label class="sr-only" for="employee_email"><?php echo l('email'); ?></label>
 			<input type="email" name="employee_email" class="form-control" value="<?php echo set_value('employee_email');?>" autocomplete="off" placeholder="<?php echo l('Email', true); ?>" />
 		</div>
+		<div class="form-group">
+			<label class="sr-only" for="employee_password"><?php echo l('Password', true); ?></label>
+			<input type="password" name="employee_password" class="form-control" value="<?php echo set_value('employee_password');?>" autocomplete="new-password" placeholder="<?php echo l('Password (optional)', true); ?>" />
+		</div>
 		<input type="submit" class="btn btn-light" value="<?php echo l('Add User', true); ?>" />
 		<p class="help-block">
-			* <?php echo l("You do not need to assign the user's password here. Users will receive an email containing instruction on how to setup their password.", true); ?>
+			* <?php echo l("Set a password to let the user log in immediately without email confirmation. Leave blank to send an activation email so they can set their own password.", true); ?>
 		</p>
 		
 	</form>
@@ -90,6 +94,7 @@
 				Array("title" => l("Access to Reports", true), "value" => "can_view_reports"),
 				Array("title" => l("Access to Ledger Reports (Must also have access to reports)", true), "value" => "access_to_ledger_reports"),
                 Array("title" => l("Can change Settings", true), "value" => "can_change_settings"),
+                Array("title" => l("Access to Billing", true), "value" => "access_to_billing"),
 				Array("title" => l("Access to Integrations (Must also have access to settings)", true), "value" => "access_to_integrations"),
                 Array("title" => l("Can post charges & payments", true), "value" => "can_post_charges_payments"),
                 Array("title" => l("Can modify charges", true), "value" => "can_modify_charges"),

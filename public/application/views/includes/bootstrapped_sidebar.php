@@ -29,11 +29,11 @@
     $my_companies = $this->Company_model->get_companies($this->user_id);
     
     ?>
-<div class="app-sidebar sidebar-shadow m-038">
+<div class="app-sidebar sidebar-shadow hotelier-sidebar m-038">
     <?php if($menus) {?>
     <div class="openbtn">
      <button type="button" id="hamburger-02" class="hamburger hamburger--elastic desktop-toggle-nav">
-       <i class="fa fa-bars" style="font-size: 26px;color: #3f6ad8;"></i>
+       <i class="fa fa-bars" aria-hidden="true"></i>
      </button>
     </div>
     <?php }?>
@@ -46,7 +46,7 @@
                 }
             </script> -->
 
-            <ul style="padding-left: 2px;" class="multi-properties hide_properties ">
+            <ul class="multi-properties hide_properties">
 
                 <?php if(count($my_companies) > 1){ ?>
                 <button type="button" class="btn btn-light" id="myPropertyMenu"  data-toggle="dropdown" aria-expanded="true" tabindex="-1" title="<?php echo $this->company_name; ?>">
@@ -54,7 +54,7 @@
                     <button type="button" class="btn btn-light" id="myPropertyMenu" title="<?php echo $this->company_name; ?>">
                         <?php } ?>
 
-                        <b style="font-size: medium;"><?php echo substr($this->company_name, 0, 10).((strlen($this->company_name)>10)?'...':''); ?></b>
+                        <b><?php echo htmlspecialchars(substr($this->company_name, 0, 18).((strlen($this->company_name)>18)?'…':''), ENT_QUOTES, 'UTF-8'); ?></b>
 
                         <?php if(count($my_companies) > 1) { ?><span class="caret multi-prop <?=$this->session->userdata('user_role') == "is_housekeeping" ? "hidden" : "";?>"></span> <?php } ?>
 
@@ -87,11 +87,12 @@
         </div>
         <div class="m-54">
         <button type="button" id="hamburger-01" class="hamburger hamburger--elastic mobile-toggle-nav">
-            <i class="fa fa-times"  style="font-size: 26px;color: #3f6ad8;"></i>
+            <i class="fa fa-times" aria-hidden="true"></i>
         </button>
     </div>
         <div class="app-sidebar__inner">
             <ul class="vertical-nav-menu metismenu">
+                <li class="sidebar-nav-section" aria-hidden="true"><span><?php echo l('sidebar_section_overview', true); ?></span></li>
                 <li class="<?php if ($first_segment == 'dashboard') echo 'mm-active'; ?>">
                     <a class="<?php if ($first_segment == 'dashboard') echo 'mm-active'; ?>" href="<?php echo base_url('dashboard'); ?>">
                         <i class="metismenu-icon pe-7s-display1"></i>
@@ -106,7 +107,7 @@
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if ($this->session->userdata('user_role') != 'is_housekeeping'): ?>
+                <?php if (user_can_manage_billing($this->user_id, $this->company_id, $this->session->userdata('user_role'), $this->session->userdata('permissions'))): ?>
                 <li class="<?php if ($first_segment == 'account_settings' && $second_segment == 'subscription') echo 'mm-active'; ?>">
                     <a class="<?php if ($first_segment == 'account_settings' && $second_segment == 'subscription') echo 'mm-active'; ?>" href="<?php echo base_url('account_settings/subscription'); ?>">
                         <i class="metismenu-icon pe-7s-credit"></i>
@@ -115,6 +116,7 @@
                 </li>
                 <?php endif; ?>
                 <?php if (!isset($this->company_subscription_level) || (string) $this->company_subscription_level !== (string) STARTER): ?>
+                <li class="sidebar-nav-section" aria-hidden="true"><span><?php echo l('sidebar_section_distribution', true); ?></span></li>
                 <li class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>">
                     <a class="<?php if ($first_segment == 'channels') echo 'mm-active'; ?>" href="<?php echo base_url('channels'); ?>">
                         <i class="metismenu-icon pe-7s-share"></i>
@@ -128,6 +130,7 @@
                     </a>
                 </li>
                 <?php endif; ?>
+                <li class="sidebar-nav-section" aria-hidden="true"><span><?php echo l('sidebar_section_operations', true); ?></span></li>
                 <?php foreach($primary_menus as $m_menu){ ?>
 
                     <?php  
@@ -313,6 +316,17 @@
 
 
                 <!-- Only for extensions and settings menus -->
+                <?php
+                $has_configure_section = false;
+                foreach ($primary_menus as $_cfg_menu) {
+                    if (in_array($_cfg_menu['link'], array('settings', 'extensions'), true)) {
+                        $has_configure_section = true;
+                        break;
+                    }
+                }
+                if ($has_configure_section) { ?>
+                <li class="sidebar-nav-section sidebar-nav-section--configure" aria-hidden="true"><span><?php echo l('sidebar_section_configure', true); ?></span></li>
+                <?php } ?>
                 <?php foreach($primary_menus as $m_menu){ ?>
 
                     <?php  
@@ -347,7 +361,7 @@
                         }
                     }
 
-                    if(count($sub_menus) > 0 && $m_menu['link'] == 'settings'){
+                    if ($m_menu['link'] == 'settings' && count($sub_menus) > 0) {
                         ?>
                         <li class="<?php if ($first_segment == $m_menu['link']) echo 'mm-active'; ?>">
                             <a href="#" >
@@ -360,6 +374,7 @@
                                 $unique_submenu = array_unique($sub_menus,SORT_REGULAR);
 
                                 foreach($unique_submenu as $m_menu_one) {
+                                    $sidebar_menus = array();
                                     if(isset($m_menu_one['id']) && $m_menu_one['id']){
                                             
                                         if ($menus && isset($menus['sidebar_menus'][$m_menu_one['id']])) {
@@ -459,6 +474,15 @@
                                         } } ?>
                             </ul>
                         </li>
+                    <?php } elseif ($m_menu['link'] == 'settings') { ?>
+
+                        <li class="<?php if ($first_segment == $m_menu['link']) echo 'mm-active'; ?>">
+                            <a class="<?php if ($first_segment == $m_menu['link']) echo 'mm-active'; ?>" href="<?php echo base_url('settings/company/general'); ?>">
+                                <i class="<?php echo $m_menu['icon']; ?>"></i>
+                                <?php echo ucwords(l($m_menu['name'])); ?>
+                            </a>
+                        </li>
+
                     <?php } elseif($m_menu['link'] == 'extensions') { ?>
 
                         <li class="<?php if ($first_segment == $m_menu['link']) echo 'mm-active'; ?>">

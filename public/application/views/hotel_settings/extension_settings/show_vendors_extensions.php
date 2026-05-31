@@ -24,18 +24,11 @@
     <?php if($this->is_super_admin || $this->user_permission == 'is_admin'){ ?>
         <h2 class="extensions-section-title"><?php echo l('Installed Extensions', true); ?></h2>
     <?php } ?>
-    <div class="extension-card">
-
-        <?php
-            $numOfCols = 3;
-            $rowCount = 0;
-            $bootstrapColWidth = 12 / $numOfCols;
-        ?>
-        <div class="row">
+    <div class="row extensions-grid">
             <?php if(isset($extensions) && $extensions) :
                 foreach ($extensions as $extension) { 
                     if((isset($extension['is_installed']) && $extension['is_installed'])) { ?>  
-                        <div class="col-md-<?php echo $bootstrapColWidth; ?>" style="padding-right: 0px">
+                        <div class="extensions-grid-item">
                             <div class="extension_block">
                                 <div class="main-extension">
                                     <div class="icon">
@@ -96,31 +89,20 @@
                             </div>
                         </div>
                         <?php
-                            $rowCount++;
-                            if($rowCount % $numOfCols == 0) echo '</div><div class="row">';
                     }
                 } ?>
                 <?php else : ?> 
-                <h4><?php echo l('No extensions found!', true); ?></h4>
+                <div class="extensions-empty"><h4><?php echo l('No extensions found!', true); ?></h4></div>
             <?php endif; ?>
-            
-        </div>
     </div>
 
     <?php if($this->is_super_admin || $this->user_permission == 'is_admin'){ ?>
         <h2 class="extensions-section-title"><?php echo l('All Extensions', true); ?></h2>
-        <div class="extension-card">
-
-            <?php
-                $numOfCols = 3;
-                $rowCount = 0;
-                $bootstrapColWidth = 12 / $numOfCols;
-            ?>
-            <div class="row">
+        <div class="row extensions-grid">
                 <?php if(isset($extensions) && $extensions) :
                     foreach ($extensions as $extension) { 
                         if(isset($extension['is_installed']) && !$extension['is_installed']) { ?>  
-                            <div class="col-md-<?php echo $bootstrapColWidth; ?>" style="padding-right: 0px">
+                            <div class="extensions-grid-item">
                                 <div class="extension_block">
                                     <div class="main-extension">
                                         <div class="icon">
@@ -179,16 +161,12 @@
                                 </div>
                             </div>
                             <?php
-                                $rowCount++;
-                                if($rowCount % $numOfCols == 0) echo '</div><div class="row">';
                         }
                     }
                     ?>
                     <?php else : ?> 
-                    <h4><?php echo l('No extensions found!', true); ?></h4>
+                    <div class="extensions-empty"><h4><?php echo l('No extensions found!', true); ?></h4></div>
                 <?php endif; ?>
-                
-            </div>
         </div>
     <?php } ?>
 </div>

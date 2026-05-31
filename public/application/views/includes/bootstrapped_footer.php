@@ -91,7 +91,7 @@
 
 <script type="text/javascript">
     var is_current_user_admin = "<?php echo $this->session->userdata('is_current_user_admin'); ?>" ;
-    var is_current_user_superadmin = "<?php echo $this->user_id === SUPER_ADMIN_USER_ID; ?>" ;
+    var is_current_user_superadmin = <?php echo is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null) ? 'true' : 'false'; ?>;
     var is_current_user_activated = "<?=$this->ci->session->userdata('status');?>";
 
     var innGrid = innGrid || {};

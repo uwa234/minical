@@ -204,7 +204,11 @@ class MY_Controller extends CI_Controller {
         
         require APPPATH."config/routes.php";
 
-        if (isset($module_permission) && count($module_permission) > 0) {
+        if (
+            isset($module_permission) &&
+            count($module_permission) > 0 &&
+            !$this->permission->is_route_public($this->uri->segment(1))
+        ) {
             foreach ($module_permission as $key => $module) {
 
                 if ($this->router->fetch_module() && strpos($module, $this->router->fetch_module()) !== FALSE) {
@@ -384,20 +388,43 @@ class MY_Controller extends CI_Controller {
                 $this->user_id,
                 $this->user_email
             );
+            $billing_lockout_reason = company_billing_lockout_reason($company);
 
             if (
                 $this->trial_lockout_active &&
                 !is_trial_lockout_allowed_route($this->controller_name, $this->function_name)
             ) {
                 if ($this->input->is_ajax_request()) {
+                    $billing_denied = !user_can_manage_billing(
+                        $this->user_id,
+                        $this->company_id,
+                        $this->session->userdata('user_role'),
+                        $this->session->userdata('permissions')
+                    );
+                    $lockout_msgs = billing_lockout_messages($billing_lockout_reason, $billing_denied);
                     $this->output
                         ->set_status_header(403)
                         ->set_content_type('application/json')
                         ->set_output(json_encode(array(
                             'success' => false,
-                            'error' => 'Your trial has ended. Choose a plan to restore access.',
-                            'redirect' => trial_lockout_subscription_url(),
+                            'error' => $billing_denied ? $lockout_msgs['employee'] : $lockout_msgs['owner'],
+                            'redirect' => $billing_denied ? base_url('auth/forbidden') : trial_lockout_subscription_url(),
                         )));
+                    exit;
+                }
+
+                if (!user_can_manage_billing(
+                    $this->user_id,
+                    $this->company_id,
+                    $this->session->userdata('user_role'),
+                    $this->session->userdata('permissions')
+                )) {
+                    $lockout_msgs = billing_lockout_messages($billing_lockout_reason, true);
+                    $this->session->set_flashdata(
+                        'flash_warning_message',
+                        $lockout_msgs['employee']
+                    );
+                    redirect('/auth/forbidden');
                     exit;
                 }
 
@@ -491,6 +518,23 @@ class MY_Controller extends CI_Controller {
                 is_trial_lockout_allowed_route($this->controller_name, $this->function_name)
             )
             {
+                if (
+                    $this->controller_name === 'account_settings' &&
+                    in_array($this->function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'), true) &&
+                    !user_can_manage_billing(
+                        $this->user_id,
+                        $this->company_id,
+                        $this->session->userdata('user_role'),
+                        $this->session->userdata('permissions')
+                    )
+                ) {
+                    $this->session->set_flashdata(
+                        'flash_warning_message',
+                        'You do not have permission to manage billing. Please ask your account owner.'
+                    );
+                    redirect('/auth/forbidden');
+                    exit;
+                }
                 return;
             }
             elseif (

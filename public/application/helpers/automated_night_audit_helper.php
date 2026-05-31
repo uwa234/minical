@@ -37,7 +37,11 @@ function automated_night_audit_is_run_window(DateTime $local_now, $run_time_hms,
 }
 
 /**
- * True when the property has not rolled the selling date for the current calendar day yet.
+ * True when the selling date is still behind the property's local calendar date.
+ *
+ * When selling_date equals the calendar date the property is already on the correct
+ * business day (e.g. all of May 30 after the 4am roll). Do not roll again until
+ * the calendar advances (4am on May 31 closes May 30).
  */
 function automated_night_audit_needs_roll(DateTime $local_now, $selling_date, $has_log_for_selling_date)
 {
@@ -47,7 +51,7 @@ function automated_night_audit_needs_roll(DateTime $local_now, $selling_date, $h
 
     $calendar_date = $local_now->format('Y-m-d');
 
-    return $selling_date < $calendar_date || $selling_date === $calendar_date;
+    return $selling_date < $calendar_date;
 }
 
 /**

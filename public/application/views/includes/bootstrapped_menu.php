@@ -271,7 +271,9 @@ if(
                         </p>
                         </br></br>
                         <p>
+                            <?php if (user_can_manage_billing($this->user_id, $this->company_id, $this->session->userdata('user_role'), $this->session->userdata('permissions'))): ?>
                             <a href="<?php echo base_url(); ?>account_settings/subscription" class="btn btn-lg btn-primary"><?php echo l('Upgrade Now'); ?></a>
+                            <?php endif; ?>
                         </p>
                     </div>
                 </div>
@@ -292,7 +294,7 @@ if(
 
 <script type="text/javascript">
     var is_current_user_admin = "<?php echo $is_current_user_admin; ?>" ;
-    var is_current_user_superadmin = "<?php echo $this->user_id === SUPER_ADMIN_USER_ID; ?>" ;
+    var is_current_user_superadmin = <?php echo is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null) ? 'true' : 'false'; ?>;
     var is_current_user_activated = "<?=$user_activated;?>";
 
     var innGrid = innGrid || {};

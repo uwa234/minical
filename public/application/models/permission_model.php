@@ -127,7 +127,10 @@ class Permission_model extends CI_Model {
     {
         if (
             $controller_name === "auth" ||
-            ($controller_name === 'account_settings') ||
+            (
+                $controller_name === 'account_settings' &&
+                in_array($function_name, array('password', 'language', 'change_language', 'index'), true)
+            ) ||
             ($controller_name === 'menu' && $function_name === 'select_hotel') ||
             $controller_name === "properties" ||
             (
@@ -136,6 +139,18 @@ class Permission_model extends CI_Model {
             )
         ) {
             return true;
+        }
+
+        if (
+            $controller_name === 'account_settings' &&
+            in_array($function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'), true)
+        ) {
+            return user_can_manage_billing(
+                $user_id,
+                $company_id,
+                null,
+                null
+            );
         }
 
 
@@ -147,7 +162,10 @@ class Permission_model extends CI_Model {
             if (
                 ($controller_name === "wizard") ||
                 ($controller_name === "menu") ||
-                ($controller_name === "account_settings") ||
+                (
+                    $controller_name === 'account_settings' &&
+                    in_array($function_name, array('index', 'password', 'language', 'change_language'), true)
+                ) ||
                 ($controller_name === "rate_plan") ||
                 ($controller_name === "booking" &&
                     (
@@ -319,6 +337,11 @@ class Permission_model extends CI_Model {
                 ) ||
                 ($permission == 'access_to_integrations' && $controller_name == 'integrations') ||
                 ($permission == 'access_to_ledger_reports' && $controller_name == 'ledger') ||
+                (
+                    $permission == 'access_to_billing' &&
+                    $controller_name === 'account_settings' &&
+                    in_array($function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'), true)
+                ) ||
 
                 ($permission == 'can_edit_invoices' && $controller_name == 'invoice' && (
                         $function_name == 'refund_payment_JSON' || 

@@ -13,7 +13,6 @@ $mappings_by_room = isset($mappings_by_room) ? $mappings_by_room : array();
 $lang_keys = isset($channel_ui['lang']) ? $channel_ui['lang'] : array();
 $title_key = isset($lang_keys['title']) ? $lang_keys['title'] : 'channels';
 $desc_key = isset($lang_keys['desc']) ? $lang_keys['desc'] : 'channels_subtitle';
-$limitations_key = isset($lang_keys['limitations']) ? $lang_keys['limitations'] : 'ical_limitations_body';
 $import_url_key = isset($lang_keys['import_url']) ? $lang_keys['import_url'] : 'ical_import_url';
 $export_url_key = isset($lang_keys['export_url']) ? $lang_keys['export_url'] : 'ical_export_url';
 $enable_import_key = isset($lang_keys['enable_import']) ? $lang_keys['enable_import'] : 'enable_import';
@@ -25,19 +24,13 @@ $regenerate_hint_key = isset($lang_keys['regenerate_hint']) ? $lang_keys['regene
     <div class="channel-card-head">
         <div>
             <h2><?php echo l($title_key, true); ?></h2>
-            <span class="channel-badge channel-badge--limited"><?php echo l('channel_status_limited', true); ?></span>
         </div>
-        <button type="button" class="btn btn-default sync-ical-channel"
+        <button type="button" class="btn btn-primary sync-ical-channel"
                 data-channel-key="<?php echo htmlspecialchars($channel_key); ?>">
             <?php echo l('sync_now', true); ?>
         </button>
     </div>
     <p class="channel-card-desc"><?php echo l($desc_key, true); ?></p>
-
-    <div class="alert alert-warning channel-limitations">
-        <strong><?php echo l('ical_limitations_title', true); ?></strong>
-        <p><?php echo l($limitations_key, true); ?></p>
-    </div>
 
     <?php if (empty($room_types)) : ?>
         <p class="text-muted"><?php echo l('no_room_types_ical', true); ?></p>

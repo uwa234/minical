@@ -127,7 +127,7 @@ class Account_settings extends MY_Controller {
 
 	function subscription()
 	{
-		if ($this->_deny_billing_for_housekeeping()) {
+		if ($this->_deny_billing_without_permission()) {
 			return;
 		}
 
@@ -135,21 +135,26 @@ class Account_settings extends MY_Controller {
 		$this->lang->load('dashboard', $language ? $language : 'english');
 
 		$trial_lockout_mode = !empty($this->trial_lockout_active);
+		$billing_lockout_reason = company_billing_lockout_reason($this->company_data);
 		$trial_context = build_trial_subscription_context($this->company_data);
 		$plan_expiry_context = build_paid_plan_expiry_context($this->company_data);
+		$room_count = $trial_context
+			? $trial_context['room_count']
+			: (isset($this->company_data['number_of_rooms_actual']) ? (int) $this->company_data['number_of_rooms_actual'] : 1);
+		$current_saas_tier = resolve_company_saas_tier($this->company_data, $room_count);
 
 		$data = array(
 			'selected_submenu' => 'subscription',
 			'trial_lockout_mode' => $trial_lockout_mode,
+			'billing_lockout_reason' => $billing_lockout_reason,
 			'trial_context' => $trial_context,
 			'subscription_state' => $this->company_subscription_state,
 			'current_plan_name' => $trial_context
 				? $trial_context['current_plan_name']
-				: subscription_level_display_name($this->company_subscription_level),
+				: resolve_company_plan_display_name($this->company_data, $room_count),
 			'pricing_tiers' => $this->Platform_settings_model->get_pricing_tiers(true),
-			'room_count' => $trial_context
-				? $trial_context['room_count']
-				: (isset($this->company_data['number_of_rooms_actual']) ? (int) $this->company_data['number_of_rooms_actual'] : 1),
+			'current_saas_tier' => $current_saas_tier,
+			'room_count' => $room_count,
 			'paystack_configured' => $this->_paystack_secret_key() !== '',
 			'subscription_flash' => $this->session->flashdata('subscription_flash'),
 			'plan_expiry_context' => $plan_expiry_context,
@@ -174,7 +179,7 @@ class Account_settings extends MY_Controller {
 		if (!$this->tank_auth->is_logged_in()) {
 			return $this->_json_response(array('success' => false, 'error' => 'Please log in to continue.'), 401);
 		}
-		if ($this->_deny_billing_for_housekeeping(true)) {
+		if ($this->_deny_billing_without_permission(true)) {
 			return;
 		}
 
@@ -256,7 +261,7 @@ class Account_settings extends MY_Controller {
 
 	function paystack_callback()
 	{
-		if ($this->_deny_billing_for_housekeeping()) {
+		if ($this->_deny_billing_without_permission()) {
 			return;
 		}
 
@@ -287,7 +292,7 @@ class Account_settings extends MY_Controller {
 		if (!$this->tank_auth->is_logged_in()) {
 			return $this->_json_response(array('success' => false, 'error' => 'Please log in to continue.'), 401);
 		}
-		if ($this->_deny_billing_for_housekeeping(true)) {
+		if ($this->_deny_billing_without_permission(true)) {
 			return;
 		}
 
@@ -393,23 +398,21 @@ class Account_settings extends MY_Controller {
 			return array('success' => true, 'already_processed' => true);
 		}
 
-		$today = gmdate('Y-m-d');
-		$expiry_date = $renewal_period === '1 year'
-			? gmdate('Y-m-d', strtotime($today . ' +1 year'))
-			: gmdate('Y-m-d', strtotime($today . ' +1 month'));
+		$company = $this->Company_model->get_company($company_id);
+		$expiry_date = compute_subscription_expiry_after_renewal($renewal_period, $company);
 		$charge = array(array(
 			'company_id' => $company_id,
 			'description' => $reference,
 			'amount' => $amount_major,
 			'charge_type' => 'subscription',
-			'date' => $today,
+			'date' => gmdate('Y-m-d'),
 			'is_deleted' => 0,
 		));
 		$payment = array(array(
 			'company_id' => $company_id,
 			'description' => $reference,
 			'amount' => $amount_major,
-			'date' => $today,
+			'date' => gmdate('Y-m-d'),
 			'is_deleted' => 0,
 		));
 
@@ -439,9 +442,17 @@ class Account_settings extends MY_Controller {
 			'meta_data' => json_encode($meta),
 		));
 		$this->Company_subscription_model->update_company_balance($company_id);
-		$this->Company_model->update_company_admin_panel_info($company_id, array(
-			'conversion_date' => $today,
-		));
+
+		$this->db->select('conversion_date');
+		$this->db->from('company_admin_panel_info');
+		$this->db->where('company_id', $company_id);
+		$panel_row = $this->db->get()->row_array();
+		$existing_conversion = $panel_row ? $panel_row['conversion_date'] : null;
+		if (should_set_subscription_conversion_date($existing_conversion)) {
+			$this->Company_model->update_company_admin_panel_info($company_id, array(
+				'conversion_date' => gmdate('Y-m-d'),
+			));
+		}
 
 		return array('success' => true);
 	}
@@ -468,18 +479,19 @@ class Account_settings extends MY_Controller {
 			->set_output(json_encode($payload));
 	}
 
-	private function _is_housekeeping_user()
+	private function _can_manage_billing()
 	{
-		if ($this->session->userdata('user_role') === 'is_housekeeping') {
-			return true;
-		}
-		$permissions = $this->session->userdata('permissions');
-		return is_array($permissions) && in_array('is_housekeeping', $permissions, true);
+		return user_can_manage_billing(
+			(int) $this->user_id,
+			(int) $this->company_id,
+			$this->session->userdata('user_role'),
+			$this->session->userdata('permissions')
+		);
 	}
 
-	private function _deny_billing_for_housekeeping($json = false)
+	private function _deny_billing_without_permission($json = false)
 	{
-		if (!$this->_is_housekeeping_user()) {
+		if ($this->_can_manage_billing()) {
 			return false;
 		}
 		if ($json) {

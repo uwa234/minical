@@ -1,7 +1,7 @@
 <div class="pa-page-header">
     <div>
         <h1>Trial registrations</h1>
-        <p>Free trial sign-ups from the marketing homepage.</p>
+        <p>Free trial sign-ups from the marketing homepage. Convert a lead into a trialing property in one step.</p>
     </div>
 </div>
 
@@ -27,19 +27,23 @@
                     <th>Phone</th>
                     <th>Status</th>
                     <th>Submitted</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($registrations)) { ?>
                     <tr>
-                        <td colspan="8" class="text-muted">No trial registrations yet.</td>
+                        <td colspan="9" class="text-muted">No trial registrations yet.</td>
                     </tr>
                 <?php } else {
                     foreach ($registrations as $row) {
                         $contact = trim($row['first_name'] . ' ' . $row['last_name']);
+                        $lead_id = (int) $row['trial_registration_request_id'];
+                        $linked_company_id = !empty($row['company_id']) ? (int) $row['company_id'] : 0;
                         ?>
-                        <tr data-request-id="<?php echo (int) $row['trial_registration_request_id']; ?>">
-                            <td><?php echo (int) $row['trial_registration_request_id']; ?></td>
+                        <tr data-request-id="<?php echo $lead_id; ?>"
+                            data-company-id="<?php echo $linked_company_id; ?>">
+                            <td><?php echo $lead_id; ?></td>
                             <td><strong><?php echo htmlspecialchars($row['property_name'], ENT_QUOTES, 'UTF-8'); ?></strong></td>
                             <td><?php echo (int) $row['number_of_rooms']; ?></td>
                             <td><?php echo htmlspecialchars($contact, ENT_QUOTES, 'UTF-8'); ?></td>
@@ -59,7 +63,8 @@
                             </td>
                             <td>
                                 <select class="form-control input-sm trial-registration-status"
-                                        data-request-id="<?php echo (int) $row['trial_registration_request_id']; ?>">
+                                        data-request-id="<?php echo $lead_id; ?>"
+                                        <?php echo $linked_company_id ? 'disabled title="Linked to property #' . $linked_company_id . '"' : ''; ?>>
                                     <?php
                                     $statuses = array(
                                         'new' => 'New',
@@ -76,6 +81,25 @@
                                 </select>
                             </td>
                             <td><?php echo htmlspecialchars($row['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td class="pa-actions-cell">
+                                <?php if ($linked_company_id) { ?>
+                                    <a class="pa-btn pa-btn-primary pa-btn-sm"
+                                       href="<?php echo base_url('admin/property_detail/' . $linked_company_id); ?>">
+                                        View property
+                                    </a>
+                                <?php } else { ?>
+                                    <button type="button"
+                                            class="pa-btn pa-btn-primary pa-btn-sm trial-create-property-btn"
+                                            data-request-id="<?php echo $lead_id; ?>"
+                                            data-property-name="<?php echo htmlspecialchars($row['property_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-number-of-rooms="<?php echo (int) $row['number_of_rooms']; ?>"
+                                            data-owner-email="<?php echo htmlspecialchars($row['email'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-owner-first-name="<?php echo htmlspecialchars($row['first_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-owner-last-name="<?php echo htmlspecialchars($row['last_name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        Create property
+                                    </button>
+                                <?php } ?>
+                            </td>
                         </tr>
                     <?php }
                 } ?>
@@ -83,3 +107,15 @@
         </table>
     </div>
 </div>
+
+<?php $this->load->view('admin/_add_property_modal', array(
+    'default_trial_days' => $default_trial_days,
+    'pricing_tiers' => isset($pricing_tiers) ? $pricing_tiers : array(),
+)); ?>
+
+<script type="text/javascript">
+    window.saasDefaultTrialDays = <?php echo (int) $default_trial_days; ?>;
+    <?php if (!empty($open_lead_id)) { ?>
+    window.saasOpenTrialLeadId = <?php echo (int) $open_lead_id; ?>;
+    <?php } ?>
+</script>

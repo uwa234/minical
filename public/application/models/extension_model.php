@@ -251,6 +251,27 @@ class Extension_model extends CI_Model {
 	}
 
 	/**
+	 * Ensure each installed extension has a row for this company (inactive until toggled on).
+	 */
+	function ensure_company_extension_rows($extension_names, $company_id)
+	{
+		if (!$extension_names || !$company_id) {
+			return;
+		}
+
+		foreach ($extension_names as $extension_name) {
+			$existing = $this->get_extensions(array($extension_name), $company_id);
+			if (!$existing) {
+				$this->update_extension(array(
+					'extension_name' => $extension_name,
+					'company_id' => $company_id,
+					'is_active' => 0,
+				));
+			}
+		}
+	}
+
+	/**
 	 * Register filesystem extensions marked is_default_active in config.php.
 	 */
 	function ensure_default_extensions_registered($modules, $company_id, $vendor_id = 0)

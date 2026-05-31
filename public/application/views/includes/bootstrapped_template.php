@@ -316,9 +316,11 @@ data-keyboard="false" style="z-index: 9999;"
           <?php echo l('Dear customer', true); ?>, 
         <p class="message"></p>
       </div>
+      <?php if (user_can_manage_billing($this->user_id, $this->company_id, $this->session->userdata('user_role'), $this->session->userdata('permissions'))): ?>
       <div class="modal-footer">
         <a class="btn btn-success" href="<?php echo base_url(); ?>account_settings/subscription"><?php echo l('Update payment details', true); ?></a>
       </div>
+      <?php endif; ?>
       
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->

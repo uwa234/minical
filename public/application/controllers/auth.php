@@ -138,7 +138,7 @@ class Auth extends MY_Controller
         $data['message'] = ($this->session->flashdata('message')) ? $this->session->flashdata('message') : "";
 
         if ($this->tank_auth->is_logged_in()) { // if user is already logged in
-            redirect('/menu/select_hotel/'.$this->company_id);
+            $this->_redirect_to_property_dashboard();
         }
         else 
         { // time to authenticate!
@@ -206,10 +206,10 @@ class Auth extends MY_Controller
 
                 $is_db_name = getenv('DATABASE_NAME');
                 
-                if(
-                    $is_db_name != 'minical-prod'
-                ){
-                    redirect('/dashboard');
+                if($is_db_name != 'minical-prod')
+                {
+                    $this->_redirect_to_property_dashboard();
+                    return;
                 } 
 
                 $admin_user_ids = $this->Whitelabel_partner_model->get_whitelabel_admin_ids($this->session->userdata('user_id'));
@@ -232,7 +232,7 @@ class Auth extends MY_Controller
                 }
                 else
                 {
-					redirect('/menu/select_hotel/'.$this->company_id);
+					$this->_redirect_to_property_dashboard();
                 }
             } else { 
                 $errors = $this->tank_auth->get_error_message();
@@ -956,6 +956,24 @@ class Auth extends MY_Controller
             $subscription_state_override,
             $trial_days !== null && $trial_days !== '' ? (int) $trial_days : null
         );
+
+        $trial_lead_id = (int) $this->input->post('trial_registration_request_id');
+        if ($created_by === 'admin' && $trial_lead_id > 0 && $company_id > 0) {
+            $this->load->model('Trial_registration_request_model');
+            $lead = $this->Trial_registration_request_model->get_by_id($trial_lead_id);
+            if ($lead && empty($lead['company_id'])) {
+                $this->Trial_registration_request_model->link_to_company($trial_lead_id, $company_id);
+            } elseif ($lead && !empty($lead['company_id']) && (int) $lead['company_id'] !== (int) $company_id) {
+                $this->output
+                    ->set_status_header(409)
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode(array(
+                        'success' => false,
+                        'error' => 'This trial sign-up is already linked to another property.',
+                    )));
+                return;
+            }
+        }
 
         echo json_encode(array(
             'success' => 'true',
@@ -1818,7 +1836,7 @@ class Auth extends MY_Controller
                     1
                 );
 
-                redirect('/menu/select_hotel/'.$user_data['company_id']);
+                $this->_redirect_to_property_dashboard();
             } else {
                 // fail
                 $this->_show_message($this->lang->line('auth_message_new_employee_failed'));
@@ -2100,9 +2118,88 @@ class Auth extends MY_Controller
                 //     );
                 //     break;
             }
+
+            if ((int) $response['is_blocking'] === 0 && $this->company_id) {
+                $company = $this->Company_model->get_company($this->company_id);
+                if ($company) {
+                    $lockout_reason = company_billing_lockout_reason($company);
+                    if ($lockout_reason === 'plan_past_grace') {
+                        $lockout_msgs = billing_lockout_messages('plan_past_grace');
+                        $response = array(
+                            'is_blocking' => 1,
+                            'message'     => $lockout_msgs['owner'],
+                            'show_link'   => 1,
+                            'state'       => 'plan_past_grace',
+                        );
+                    } else {
+                        $plan_ctx = build_paid_plan_expiry_context($company);
+                        if ($plan_ctx && !empty($plan_ctx['is_in_grace'])) {
+                            $response = array(
+                                'is_blocking' => 0,
+                                'message'     => 'Your plan expired on ' . date('M j, Y', strtotime($plan_ctx['expiration_date']))
+                                    . '. Renew within ' . (int) $plan_ctx['grace_days_remaining'] . ' day'
+                                    . ((int) $plan_ctx['grace_days_remaining'] === 1 ? '' : 's')
+                                    . ' to keep access.',
+                                'show_link'   => 1,
+                                'state'       => 'grace_period',
+                            );
+                        }
+                    }
+                }
+            }
         }
         $this->session->set_flashdata('flash', 'value');
         echo json_encode($response);
+    }
+
+    /**
+     * Resolve the user's property in session and go straight to its dashboard.
+     * Only sends users to My Properties when they have no property or multiple with none selected.
+     */
+    private function _redirect_to_property_dashboard()
+    {
+        $user_id = (int) $this->session->userdata('user_id');
+        $company_id = (int) $this->session->userdata('current_company_id');
+
+        if ($company_id < 1) {
+            $companies = $this->Company_model->get_companies($user_id);
+            if (count($companies) >= 1) {
+                $company = reset($companies);
+                $company_id = (int) $company['company_id'];
+            } else {
+                redirect('/properties/my_properties');
+                return;
+            }
+        }
+
+        $user_role = $this->User_model->get_user_role($user_id, $company_id);
+        if (is_null($user_role)) {
+            redirect('/properties/my_properties');
+            return;
+        }
+
+        $company = $this->Company_model->get_company($company_id);
+        if (!$company || !isset($company['company_id'])) {
+            redirect('/properties/my_properties');
+            return;
+        }
+
+        $this->User_model->update_user_profile($user_id, array('current_company_id' => $company_id));
+
+        $this->session->set_userdata(array(
+            'current_company_id' => $company_id,
+            'current_selling_date' => $company['selling_date'],
+            'is_paying_customer' => $this->Company_model->has_tag($company_id, 'PAYING_CUSTOMER'),
+            'user_role' => $user_role,
+            'property_type' => $company['property_type'],
+            'permissions' => $this->Employee_log_model->get_user_permission($company_id, $user_id),
+        ));
+
+        if ($this->_redirect_trial_lockout_if_needed()) {
+            return;
+        }
+
+        redirect('/dashboard/');
     }
 
     /**
@@ -2128,6 +2225,22 @@ class Auth extends MY_Controller
 
         if (!company_requires_trial_lockout($company, $user_id, $user_email)) {
             return false;
+        }
+
+        $lockout_reason = company_billing_lockout_reason($company);
+        if (!user_can_manage_billing(
+            $user_id,
+            $company_id,
+            $this->session->userdata('user_role'),
+            $this->session->userdata('permissions')
+        )) {
+            $lockout_msgs = billing_lockout_messages($lockout_reason, true);
+            $this->session->set_flashdata(
+                'flash_warning_message',
+                $lockout_msgs['employee']
+            );
+            redirect('/auth/forbidden');
+            return true;
         }
 
         redirect('/account_settings/subscription');

@@ -8,7 +8,12 @@ $paystack_configured = !empty($paystack_configured);
 $subscription_flash = isset($subscription_flash) && is_array($subscription_flash) ? $subscription_flash : null;
 $plan_expiry_context = isset($plan_expiry_context) && is_array($plan_expiry_context) ? $plan_expiry_context : null;
 $trial_lockout_mode = !empty($trial_lockout_mode);
+$billing_lockout_reason = isset($billing_lockout_reason) ? $billing_lockout_reason : null;
+$plan_past_grace_lockout = ($billing_lockout_reason === 'plan_past_grace');
 $trial_expired = ($subscription_state === 'trial_ended') || ($trial_context && !empty($trial_context['is_expired']));
+$current_saas_tier = isset($current_saas_tier) ? $current_saas_tier : null;
+$paid_plan_active = is_array($plan_expiry_context) && (int) $plan_expiry_context['days_left'] > 0;
+$paid_plan_in_grace = is_array($plan_expiry_context) && !empty($plan_expiry_context['is_in_grace']);
 $trial_expiry_label = '';
 if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
     $trial_expiry_label = date('F j, Y', strtotime($trial_context['trial_expiry_date']));
@@ -23,8 +28,12 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
             </h1>
             <?php if ($subscription_state === 'trialing'): ?>
                 <p class="dashboard-subtitle"><?php echo l('trial_banner_subtitle', true); ?></p>
-            <?php elseif ($trial_expired): ?>
+            <?php elseif ($trial_expired && !$plan_past_grace_lockout): ?>
                 <p class="dashboard-subtitle">Your free trial has ended. Choose a plan and pay to restore full access.</p>
+            <?php elseif ($plan_past_grace_lockout): ?>
+                <p class="dashboard-subtitle">Your paid plan expired. Renew below to restore full access to your account.</p>
+            <?php elseif ($paid_plan_in_grace): ?>
+                <p class="dashboard-subtitle">Your plan has expired. You have a grace period to renew before access is paused.</p>
             <?php endif; ?>
         </div>
         <?php if ($trial_lockout_mode): ?>
@@ -37,8 +46,25 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
     <?php if ($trial_lockout_mode): ?>
         <div class="alert alert-danger trial-lockout-notice" role="alert">
             <strong>Account access paused.</strong>
-            Your trial<?php echo $trial_expiry_label ? ' ended on ' . htmlspecialchars($trial_expiry_label, ENT_QUOTES, 'UTF-8') : ' has ended'; ?>.
-            Select a plan below to continue using Veurion.
+            <?php if ($plan_past_grace_lockout && $plan_expiry_context): ?>
+                Your subscription expired on <?php echo htmlspecialchars(date('F j, Y', strtotime($plan_expiry_context['expiration_date'])), ENT_QUOTES, 'UTF-8'); ?>.
+                The <?php echo (int) $plan_expiry_context['grace_days']; ?>-day grace period ended on
+                <?php echo htmlspecialchars(date('F j, Y', strtotime($plan_expiry_context['grace_ends_date'])), ENT_QUOTES, 'UTF-8'); ?>.
+                Pay below to restore access immediately.
+            <?php else: ?>
+                Your trial<?php echo $trial_expiry_label ? ' ended on ' . htmlspecialchars($trial_expiry_label, ENT_QUOTES, 'UTF-8') : ' has ended'; ?>.
+                Select a plan below to continue using Veurion.
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!$trial_lockout_mode && $paid_plan_in_grace && $plan_expiry_context): ?>
+        <div class="alert alert-warning" role="alert">
+            <strong>Grace period:</strong>
+            Your plan expired on <?php echo htmlspecialchars(date('F j, Y', strtotime($plan_expiry_context['expiration_date'])), ENT_QUOTES, 'UTF-8'); ?>.
+            You have <?php echo (int) $plan_expiry_context['grace_days_remaining']; ?> day<?php echo (int) $plan_expiry_context['grace_days_remaining'] === 1 ? '' : 's'; ?>
+            left to renew (until <?php echo htmlspecialchars(date('F j, Y', strtotime($plan_expiry_context['grace_ends_date'])), ENT_QUOTES, 'UTF-8'); ?>).
+            After that, access will be paused until payment is received.
         </div>
     <?php endif; ?>
 
@@ -48,7 +74,15 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
         </div>
     <?php endif; ?>
 
-    <?php if (!$trial_lockout_mode && $plan_expiry_context && !empty($plan_expiry_context['is_within_warning'])): ?>
+    <?php if (!$trial_lockout_mode && $paid_plan_active && empty($plan_expiry_context['is_within_warning'])): ?>
+        <div class="alert alert-info">
+            Your plan is active until <?php echo htmlspecialchars(date('F j, Y', strtotime($plan_expiry_context['expiration_date'])), ENT_QUOTES, 'UTF-8'); ?>
+            (<?php echo (int) $plan_expiry_context['days_left']; ?> day<?php echo (int) $plan_expiry_context['days_left'] === 1 ? '' : 's'; ?> remaining).
+            Paying again adds one billing period from that expiry date.
+        </div>
+    <?php endif; ?>
+
+    <?php if (!$trial_lockout_mode && !$paid_plan_in_grace && $plan_expiry_context && !empty($plan_expiry_context['is_within_warning'])): ?>
         <div class="alert alert-warning">
             <?php
             $days_left = (int) $plan_expiry_context['days_left'];
@@ -80,7 +114,15 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
     <div class="dashboard-trial-plans">
         <header class="dashboard-trial-plans-header">
             <h3><?php echo $trial_lockout_mode ? 'Choose a plan to continue' : 'Choose a plan'; ?></h3>
-            <p><?php echo $trial_lockout_mode ? 'Payment unlocks your account immediately after confirmation.' : 'Start or update recurring billing with Paystack.'; ?></p>
+            <p>
+                <?php if ($trial_lockout_mode): ?>
+                    Payment unlocks your account immediately after confirmation.
+                <?php elseif ($paid_plan_active): ?>
+                    Your subscription is active. You can extend it anytime — each payment adds one billing period from your current expiry date.
+                <?php else: ?>
+                    Choose a plan and pay to start or renew your subscription.
+                <?php endif; ?>
+            </p>
         </header>
 
         <?php if (!$paystack_configured): ?>
@@ -96,11 +138,21 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
                 <?php foreach ($pricing_tiers as $tier):
                     $max_rooms = ($tier['max_rooms'] === null || $tier['max_rooms'] === '') ? '' : (int) $tier['max_rooms'];
                     $tier_room_range = $max_rooms === '' ? ((int) $tier['min_rooms']) . '+ rooms' : ((int) $tier['min_rooms']) . '-' . $max_rooms . ' rooms';
-                    $is_current = $room_count >= (int) $tier['min_rooms'] && ($max_rooms === '' || $room_count <= $max_rooms);
+                    $fits_room_count = $room_count >= (int) $tier['min_rooms'] && ($max_rooms === '' || $room_count <= $max_rooms);
+                    $is_subscribed_tier = $current_saas_tier && (int) $tier['id'] === (int) $current_saas_tier['id'];
+                    $tier_button_label = resolve_subscription_tier_button_label(
+                        $tier,
+                        $current_saas_tier,
+                        $subscription_state,
+                        $plan_expiry_context,
+                        $trial_expired
+                    );
                 ?>
-                    <article class="dashboard-trial-plan-card<?php echo $is_current ? ' dashboard-trial-plan-card--current' : ''; ?>">
-                        <?php if ($is_current): ?>
-                            <span class="dashboard-trial-plan-tag dashboard-trial-plan-tag--current">Recommended for your property</span>
+                    <article class="dashboard-trial-plan-card<?php echo $is_subscribed_tier ? ' dashboard-trial-plan-card--current' : ''; ?>">
+                        <?php if ($is_subscribed_tier): ?>
+                            <span class="dashboard-trial-plan-tag dashboard-trial-plan-tag--current">Current plan</span>
+                        <?php elseif ($fits_room_count): ?>
+                            <span class="dashboard-trial-plan-tag">Recommended for your property</span>
                         <?php endif; ?>
                         <h4><?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?></h4>
                         <p class="dashboard-trial-plan-rooms"><?php echo htmlspecialchars($tier_room_range, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -123,7 +175,7 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
                             data-tier-name="<?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-renewal-period="month"
                         >
-                            Pay with Paystack
+                            <?php echo htmlspecialchars($tier_button_label, ENT_QUOTES, 'UTF-8'); ?>
                         </button>
                     </article>
                 <?php endforeach; ?>

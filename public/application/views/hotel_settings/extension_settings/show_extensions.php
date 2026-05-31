@@ -22,25 +22,32 @@
 
     <div class="extensions-toolbar">
         <div class="extensions-toolbar-filters extension-filter">
-            <label for="status"><?php echo l('status');?></label>
-            <select name="status" id="status" class="form-control" onchange="getval(this);">
-                <option value="all"><?php echo l('All');?></option>
-                <option value="active"><?php echo l('Active');?></option>
-                <option value="not_active"><?php echo l('not-Active');?></option>
-            </select>
-            <label for="category"><?php echo l('categories');?></label>
-            <select name="category" id="category" class="form-control" onchange="getcat(this);">
-                <option value="all"><?php echo l('All');?></option>
-                <option value="channel_manager"><?php echo l('Channel Manager');?></option>
-                <option value="check_in_automation"><?php echo l('Check-in Automation');?></option>
-                <option value="marketing"><?php echo l('Marketing');?></option>
-                <option value="online_booking_engine"><?php echo l('Online Booking Engine');?></option>
-                <option value="payment_process"><?php echo l('Payment Process');?></option>
-                <option value="pos"><?php echo l('POS');?></option>
-                <option value="promo_discount"><?php echo l('Promo/Discount');?></option>
-                <option value="yield_management"><?php echo l('Yield Management');?></option>
-            </select>
-            <input type="text" name="search_pos" placeholder="<?php echo l('Search Extensions', true); ?>" class="form-control search_ext">
+            <div class="extensions-filter-field">
+                <label for="status"><?php echo l('status');?></label>
+                <select name="status" id="status" class="form-control" onchange="getval(this);">
+                    <option value="all"><?php echo l('All');?></option>
+                    <option value="active"><?php echo l('Active');?></option>
+                    <option value="not_active"><?php echo l('not-Active');?></option>
+                </select>
+            </div>
+            <div class="extensions-filter-field">
+                <label for="category"><?php echo l('categories');?></label>
+                <select name="category" id="category" class="form-control" onchange="getcat(this);">
+                    <option value="all"><?php echo l('All');?></option>
+                    <option value="channel_manager"><?php echo l('Channel Manager');?></option>
+                    <option value="check_in_automation"><?php echo l('Check-in Automation');?></option>
+                    <option value="marketing"><?php echo l('Marketing');?></option>
+                    <option value="online_booking_engine"><?php echo l('Online Booking Engine');?></option>
+                    <option value="payment_process"><?php echo l('Payment Process');?></option>
+                    <option value="pos"><?php echo l('POS');?></option>
+                    <option value="promo_discount"><?php echo l('Promo/Discount');?></option>
+                    <option value="yield_management"><?php echo l('Yield Management');?></option>
+                </select>
+            </div>
+            <div class="extensions-filter-field extensions-filter-search">
+                <label class="sr-only" for="search_extensions"><?php echo l('Search Extensions', true); ?></label>
+                <input type="search" id="search_extensions" name="search_pos" placeholder="<?php echo l('Search Extensions', true); ?>" class="form-control search_ext">
+            </div>
         </div>
     </div>
 
@@ -55,23 +62,14 @@ if(isset($extensions) && $extensions){
 } 
 if($is_favourite) { ?>
     <section class="extensions-favourites">
-    <h2 class="extensions-section-title"><i class="fa fa-heart" aria-hidden="true"></i> <?php echo l('Favourites');?></h2>
-<?php } ?>
-<div class="extensions-card-panel <?php echo $is_favourite ? 'extensions-favourites-panel' : ''; ?>">
-    <div class="extension-card">
-
-        <?php
-        //Columns must be a factor of 12 (1,2,3,4,6,12)
-        $numOfCols = 3;
-        $rowCount = 0;
-        $bootstrapColWidth = 12 / $numOfCols;
-        ?>
-        <div class="row">
+        <h2 class="extensions-section-title"><i class="fa fa-heart" aria-hidden="true"></i> <?php echo l('Favourites');?></h2>
+        <div class="extensions-card-panel extensions-favourites-panel">
+            <div class="row extensions-grid">
             <?php if(isset($extensions) && $extensions) :
                 foreach ($extensions as $extension){
                     if(isset($extension['is_favourite']) && $extension['is_favourite']){
                         ?>
-                        <div class="col-md-<?php echo $bootstrapColWidth; ?>" style="padding-right: 0px">
+                        <div class="extensions-grid-item">
                             <div class="extension_block">
                                 <div class="main-extension">
                                     <div class="icon">
@@ -180,37 +178,25 @@ if($is_favourite) { ?>
                             </div>
                         </div>
                         <?php
-                        $rowCount++;
-                        if($rowCount % $numOfCols == 0) echo '</div><div class="row">';
                     }}
                 ?>
-            <?php else : ?>
-                <!-- <h3><?php echo l('No extensions have been found.', true); ?></h3> -->
             <?php endif; ?>
+            </div>
         </div>
-    </div>
-</div>
-<?php if($is_favourite) { ?></section><?php } ?>
+    </section>
+<?php } ?>
 <?php if($is_favourite) { ?>
 <h2 class="extensions-section-title"><?php echo l('Extensions');?></h2>
 <?php } ?>
 
 
 <div class="extensions-card-panel">
-    <div class="extension-card">
-
-        <?php
-        //Columns must be a factor of 12 (1,2,3,4,6,12)
-        $numOfCols = 3;
-        $rowCount = 0;
-        $bootstrapColWidth = 12 / $numOfCols;
-        ?>
-        <div class="extension_view" >
-            <div class="row">
-                <?php if(isset($extensions) && $extensions) :
-                    foreach ($extensions as $extension){
-                        ?>
-                        <div class="col-md-<?php echo $bootstrapColWidth; ?>" style="padding-right: 0px">
+    <div class="extension_view">
+        <div class="row extensions-grid">
+            <?php if(isset($extensions) && $extensions) :
+                foreach ($extensions as $extension){
+                    ?>
+                    <div class="extensions-grid-item">
                             <div class="extension_block">
                                 <div class="main-extension">
                                     <div class="icon">
@@ -322,20 +308,19 @@ if($is_favourite) { ?>
 
                             </div>
 
-                        </div>
-                        <?php
-                        $rowCount++;
-                        if($rowCount % $numOfCols == 0) echo '</div><div class="row">';
-                    }
-                    ?>
-                <?php else : ?>
+                    </div>
+                    <?php
+                }
+                ?>
+            <?php else : ?>
+                <div class="extensions-empty">
                     <?php if((isset($is_vendor[0]) && $this->user_permission == 'is_admin') || $this->is_super_admin == 1){ ?>
                         <h4><?php $href = base_url()."extensions/show_vendors_extensions"; echo l('No extensions found! Try installing a few, Go to <a href="'.$href.'">All Extensions</a>', true); ?></h4>
                     <?php } else { ?>
                         <h4><?php echo l('No extensions found!'); ?></h4>
                     <?php } ?>
-                <?php endif; ?>
-            </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

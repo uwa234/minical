@@ -1,0 +1,44 @@
+# Production compose — run from docker/:
+#   docker compose --env-file ../.env -f docker-compose.prod.yaml up -d --build
+#
+# --env-file supplies DATABASE_PASS / DATABASE_NAME for substitution (must match app .env).
+# Port 80 (not 8080), no phpMyAdmin, DB not exposed on host.
+
+version: '3'
+services:
+    web:
+        image: nginx:latest
+        ports:
+            - "80:80"
+        volumes:
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf
+            - ../:/app
+        links:
+            - php
+
+    php:
+        build:
+            context: .
+            dockerfile: PHP.Dockerfile.prod
+        volumes:
+            - ../:/app
+        links:
+            - db
+            - composer
+
+    db:
+        image: mariadb:latest
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DATABASE_PASS}
+            MYSQL_DATABASE: ${DATABASE_NAME}
+        volumes:
+            - mysqldata:/var/lib/mysql
+
+    composer:
+        image: composer:latest
+        command: ["composer", "install"]
+        volumes:
+            - ..:/app
+
+volumes:
+    mysqldata: {}
