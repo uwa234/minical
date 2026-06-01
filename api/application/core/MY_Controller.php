@@ -14,8 +14,9 @@ class MY_Controller extends REST_Controller {
 		$this->ci =& get_instance();
 
         $this->load->model(array('Booking_model'));
+        $this->load->helper('image_storage');
 
-        $this->image_url = "https://".getenv("AWS_S3_BUCKET").".s3.amazonaws.com/";
+        $this->image_url = image_storage_base_url();
         
 		$this->validate_permissions();
 	}

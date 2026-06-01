@@ -1672,6 +1672,35 @@ class Auth extends MY_Controller
             redirect('/auth/send_again/');
 
         } else {
+            $host_name = $_SERVER['HTTP_HOST'];
+            $white_label_name = explode('.', $host_name);
+            if (count($white_label_name) > 0) {
+                $white_label_name = $white_label_name[0];
+            }
+            $data['whitelabel_detail'] = '';
+            $white_label_detail = $this->Whitelabel_partner_model->get_partner_by_username($white_label_name);
+            if ($white_label_detail) {
+                $white_label_detail = $white_label_detail[0];
+                $data['whitelabel_detail'] = $white_label_detail;
+            } else {
+                $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('domain' => $host_name));
+                if ($white_label_detail) {
+                    $white_label_detail = $white_label_detail[0];
+                    $data['whitelabel_detail'] = $white_label_detail;
+                }
+            }
+            if ($data['whitelabel_detail']) {
+                $data['whitelabel_detail'] = veurion_normalize_whitelabel_partner($data['whitelabel_detail']);
+                $this->session->set_userdata('white_label_information', $data['whitelabel_detail']);
+            } else {
+                $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => 0));
+                if ($white_label_detail) {
+                    $white_label_detail = veurion_normalize_whitelabel_partner($white_label_detail[0]);
+                    $data['whitelabel_detail'] = $white_label_detail;
+                    $this->session->set_userdata('white_label_information', $white_label_detail);
+                }
+            }
+
             $this->form_validation->set_rules('login', 'Email or login', 'trim|required|xss_clean');
 
             $data['errors'] = array();
@@ -1704,12 +1733,10 @@ class Auth extends MY_Controller
                 }
             }
 
-            $data['js_files'] = array(
-                base_url().auto_version('js/login.js')
-            );
-
-
             $data['main_content'] = 'auth/forgot_password_form';
+            $data['css_files'] = array(
+                base_url() . auto_version('css/auth/login.css'),
+            );
             $this->load->view('includes/bootstrapped_template', $data);
         }
     }

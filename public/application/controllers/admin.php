@@ -1428,6 +1428,24 @@ class Admin extends MY_Controller {
         $this->load->view('includes/admin_template', $data);
     }
 
+    function download_database_backup()
+    {
+        $this->_require_platform_admin();
+
+        $db_name = trim((string) getenv('DATABASE_NAME'));
+        if ($db_name === '') {
+            show_error('Database configuration is missing.', 500);
+        }
+
+        $this->_log_platform_audit('backup.download', array(
+            'target_type' => 'database',
+            'target_label' => $db_name,
+            'details' => 'Downloaded full database SQL backup',
+        ));
+
+        platform_admin_stream_database_backup();
+    }
+
     function trial_registrations()
     {
         $this->_require_platform_admin();

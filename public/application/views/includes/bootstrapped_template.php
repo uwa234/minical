@@ -13,7 +13,7 @@
 
 <?php
 $protocol = $this->config->item('server_protocol');
-$auth_shell_paths = array('/auth/login', '/auth/register', '/auth/register_success');
+$auth_shell_paths = array('/auth/login', '/auth/register', '/auth/register_success', '/auth/forgot_password');
 $current_path = parse_url(current_url(), PHP_URL_PATH);
 $is_auth_login = false;
 foreach ($auth_shell_paths as $auth_path) {

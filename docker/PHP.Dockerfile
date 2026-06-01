@@ -1,5 +1,7 @@
 FROM php:8.2-fpm
 
+COPY php-uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 RUN docker-php-ext-install pdo pdo_mysql
 RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
 

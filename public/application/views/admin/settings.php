@@ -66,6 +66,18 @@
     </div>
 
     <div class="pa-card">
+        <div class="pa-card-header"><h2>Database backup</h2></div>
+        <div class="pa-card-body">
+            <p class="pa-meta-note" style="margin-top: 0;">
+                Download a gzip-compressed SQL dump of the full platform database. The file includes all tenant data — store it securely and do not share it.
+            </p>
+            <a href="<?php echo base_url('admin/download_database_backup'); ?>" class="pa-btn pa-btn-secondary">
+                <i class="fa fa-download" aria-hidden="true"></i> Download database backup
+            </a>
+        </div>
+    </div>
+
+    <div class="pa-card">
         <div class="pa-card-header"><h2><?php echo $edit_tier ? 'Edit pricing tier' : 'Add pricing tier'; ?></h2></div>
         <div class="pa-card-body">
         <form method="post" action="<?php echo base_url('admin/settings'); ?>" class="form-horizontal">

@@ -41,6 +41,7 @@ class MY_Controller extends CI_Controller {
 
         $this->load->helper('language');
         $this->load->helper('my_assets_helper');
+        $this->load->helper('image_storage');
 
         $this->controller_name = $this->ci->uri->rsegment(1);
         $this->function_name = $this->ci->uri->rsegment(2);
@@ -51,7 +52,7 @@ class MY_Controller extends CI_Controller {
         $this->language = $this->lang->language;
         $this->load->vars(array("l" => (object)$this->lang->language));
 
-        $this->image_url = "https://".getenv("AWS_S3_BUCKET").".s3.amazonaws.com/";
+        $this->image_url = image_storage_base_url();
 
         $this->check_login();
         $this->trial_lockout_active = isset($this->trial_lockout_active) ? $this->trial_lockout_active : false;

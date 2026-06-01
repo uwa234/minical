@@ -103,6 +103,7 @@ class Platform_audit_log_model extends CI_Model {
             'property.update' => 'Property updated',
             'subscription.update' => 'Subscription updated',
             'settings.update' => 'Settings updated',
+            'backup.download' => 'Database backup downloaded',
             'impersonation.start' => 'Impersonation started',
             'tenant.action' => 'Tenant action',
         );

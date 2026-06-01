@@ -47,6 +47,7 @@
 			onBeforeRemoveCroppedImg: null,
 			onAfterRemoveCroppedImg: null,
 			onError: null,
+			maxUploadBytes: 0,
 			
 		};
 
@@ -171,7 +172,22 @@
 			}
 											
 			that.form.find('input[type="file"]').change(function(){
-				
+				var selectedFile = that.form.find('input[type="file"]')[0].files[0];
+
+				if (selectedFile && that.options.maxUploadBytes > 0 && selectedFile.size > that.options.maxUploadBytes) {
+					var maxLabel = (selectedFile.size >= 1048576)
+						? (that.options.maxUploadBytes / 1048576) + ' MB'
+						: Math.round(that.options.maxUploadBytes / 1024) + ' KB';
+					var tooLargeMsg = 'Image file is too large. Maximum upload size is ' + maxLabel + '.';
+					if (that.options.onError) {
+						that.options.onError.call(that, tooLargeMsg);
+					} else {
+						alert(tooLargeMsg);
+					}
+					that.form.find('input[type="file"]').val('');
+					return;
+				}
+
 				if (that.options.onBeforeImgUpload) that.options.onBeforeImgUpload.call(that);
 				
 				that.showLoader();
@@ -222,8 +238,8 @@
 						contentType: false,
 						processData: false,
 						type: 'POST'
-					}).always(function(data){
-						response = typeof data =='object' ? data : jQuery.parseJSON(data);
+					}).done(function(data){
+						var response = typeof data === 'object' ? data : jQuery.parseJSON(data);
 						if(response.status=='success'){
 							
 							that.imgInitW = that.imgW = response.width;
@@ -244,15 +260,29 @@
 								that.hideLoader();
 								if (that.options.onAfterImgUpload) that.options.onAfterImgUpload.call(that);
 							});
+							return;
 						}
 						
 						if(response.status=='error'){
 							if (that.options.onError) that.options.onError.call(that,response.message);
 							that.hideLoader();
-							setTimeout( function(){ that.reset(); },2000)
+							setTimeout( function(){ that.reset(); },2000);
 						}
-						
-
+					}).fail(function(xhr){
+						var message = 'Upload failed. Please try again.';
+						if (xhr && xhr.status === 413) {
+							message = 'Image file is too large. Please choose a smaller file.';
+						} else if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+							message = xhr.responseJSON.message;
+						}
+						if (that.options.onError) {
+							that.options.onError.call(that, message);
+						} else {
+							alert(message);
+						}
+						that.hideLoader();
+						that.imgUploadControl.show();
+						setTimeout(function(){ that.reset(); }, 2000);
 					});
 				}
 			});

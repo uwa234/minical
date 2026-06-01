@@ -31,7 +31,33 @@ class PlatformAdminSecurityTest extends TestCase
     public function testPlatformAuditActionLabel()
     {
         $this->assertSame('Property restored', platform_audit_action_label('property.restore'));
+        $this->assertSame('Database backup downloaded', platform_audit_action_label('backup.download'));
         $this->assertSame('Unknown action', platform_audit_action_label('unknown.action'));
+    }
+
+    public function testPlatformAdminSqlLiteral()
+    {
+        $this->assertSame('NULL', platform_admin_sql_literal(null, null));
+        $this->assertSame('1', platform_admin_sql_literal(null, true));
+        $this->assertSame('42', platform_admin_sql_literal(null, 42));
+    }
+
+    public function testPlatformAdminDatabaseBackupFilename()
+    {
+        $previous = getenv('DATABASE_NAME');
+        putenv('DATABASE_NAME=minical_test');
+        $filename = platform_admin_database_backup_filename();
+        if ($previous !== false) {
+            putenv('DATABASE_NAME=' . $previous);
+        } else {
+            putenv('DATABASE_NAME');
+        }
+
+        $this->assertStringStartsWith('minical-test-backup-', $filename);
+        $this->assertTrue(
+            substr($filename, -7) === '.sql.gz' || substr($filename, -4) === '.sql',
+            'Backup filename should end with .sql.gz or .sql'
+        );
     }
 
     public function testVeurionSupportEmailsIncludesLegacy()

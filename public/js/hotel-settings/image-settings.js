@@ -20,6 +20,21 @@ innGrid.deleteImage = function(thumbnail) {
 
 }
 
+function formatImageUploadMaxSize(bytes) {
+	if (!bytes) {
+		return '5 MB';
+	}
+	if (bytes >= 1048576) {
+		var mb = bytes / 1048576;
+		return (mb === Math.floor(mb)) ? (mb + ' MB') : (mb.toFixed(1) + ' MB');
+	}
+	return Math.round(bytes / 1024) + ' KB';
+}
+
+function imageUploadSizeErrorMessage(maxBytes) {
+	return l('Image file is too large. Maximum upload size is') + ' ' + formatImageUploadMaxSize(maxBytes) + '.';
+}
+
 innGrid.insertImage = function(imageGroupID) {
     var img = jQuery('<img/>', {
 	    src: $(".croppedImg").prop("src"),
@@ -70,6 +85,7 @@ $(function (){
 					uploadUrl: getBaseURL() + 'image/save_to_file',
 					cropUrl: getBaseURL() + 'image/crop_to_file',
 					customUploadButtonId:'uploadbutton',
+					maxUploadBytes: data.max_upload_bytes,
 					imgEyecandy: false,
 					modal:true,
 					onBeforeImgUpload: function()
@@ -87,10 +103,9 @@ $(function (){
 						// Show loader animation
 						$(".cropImgWrapper").append('<div class="loader bubblingG"><span id="bubblingG_1"></span><span id="bubblingG_2"></span><span id="bubblingG_3"></span></div>');
 					},
-					onError: function(errormsg){ 
-                        alert(l('Some error occured. Please try again.'));
-                        $(".bubblingG").remove(); // init/reset
-						console.log('onError:'+errormsg);
+					onError: function(errormsg){
+						alert(errormsg || l('Some error occured. Please try again.'));
+						$(".bubblingG").remove();
 					}
 				};
 
@@ -167,7 +182,7 @@ $(function (){
 					$('#edit-rate-plan').modal('hide');
 					$('#room_type_model').modal('hide');
 					// $('#addnew_room_type_model').modal('hide');
-					$('#image_edit_modal_body').html("Click on [Upload Image] button below to upload image!<br/>The image's dimensions has to be at least <strong>"+data.width+"x"+data.height+"</strong> and <strong>smaller than 1 MB in size</strong>");
+					$('#image_edit_modal_body').html("Click on [Upload Image] button below to upload image!<br/>The image's dimensions has to be at least <strong>"+data.width+"x"+data.height+"</strong> and <strong>smaller than "+formatImageUploadMaxSize(data.max_upload_bytes)+" in size</strong>");
 					$('#uploadbutton').text('Upload Image');
 					croppicOptions.onAfterImgCrop = function(data) {
 						// croppic hack to fetch cropped image's filename

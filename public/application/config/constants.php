@@ -222,6 +222,9 @@ define('RATE_PLAN_IMAGE_TYPE_ID', 			'4');
 define('ROOM_TYPE_IMAGE_TYPE_ID', 			'5');
 define('VENDOR_LOGO_IMAGE_TYPE_ID', 	    '6');
 
+/** Maximum raw image upload size (bytes) for logo/gallery/croppic flows. */
+define('IMAGE_UPLOAD_MAX_BYTES',			5 * 1024 * 1024);
+
 
 /*
 |--------------------------------------------------------------------------

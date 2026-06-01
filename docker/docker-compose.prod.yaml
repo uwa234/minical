@@ -22,6 +22,7 @@ services:
             dockerfile: PHP.Dockerfile.prod
         volumes:
             - ../:/app
+            - ./php-uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
         links:
             - db
             - composer

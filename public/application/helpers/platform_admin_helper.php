@@ -155,6 +155,7 @@ function platform_audit_action_label($action)
             'property.update' => 'Property updated',
             'subscription.update' => 'Subscription updated',
             'settings.update' => 'Settings updated',
+            'backup.download' => 'Database backup downloaded',
             'impersonation.start' => 'Impersonation started',
             'tenant.action' => 'Tenant action',
         );
@@ -2405,5 +2406,188 @@ function platform_notify_debtor_overdue($company, $context = array())
         'amount_due' => isset($context['amount_due']) ? (string) $context['amount_due'] : '',
         'owner_email' => isset($company['owner_email']) ? (string) $company['owner_email'] : '',
     ));
+}
+
+/**
+ * Suggested filename for a platform database backup download.
+ *
+ * @return string
+ */
+function platform_admin_database_backup_filename()
+{
+    $db_name = trim((string) getenv('DATABASE_NAME'));
+    if ($db_name === '') {
+        $db_name = 'database';
+    }
+    $safe_name = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $db_name);
+    $extension = function_exists('gzopen') ? '.sql.gz' : '.sql';
+
+    return $safe_name . '-backup-' . gmdate('Y-m-d-His') . $extension;
+}
+
+/**
+ * Escape a value for use in a SQL INSERT statement.
+ *
+ * @param CI_DB_mysqli_driver|null $db
+ * @param mixed $value
+ * @return string
+ */
+function platform_admin_sql_literal($db, $value)
+{
+    if ($value === null) {
+        return 'NULL';
+    }
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+    if (is_int($value)) {
+        return (string) $value;
+    }
+    if (is_float($value)) {
+        return rtrim(rtrim(sprintf('%.17F', $value), '0'), '.');
+    }
+    if (is_string($value) && preg_match('/^-?\d+$/', $value)) {
+        return $value;
+    }
+
+    return "'" . $db->escape_str((string) $value) . "'";
+}
+
+/**
+ * Quote a SQL identifier (table/column) for MySQL.
+ *
+ * @param string $identifier
+ * @return string
+ */
+function platform_admin_sql_identifier($identifier)
+{
+    return '`' . str_replace('`', '``', (string) $identifier) . '`';
+}
+
+/**
+ * Stream a gzip-compressed SQL dump of the active database to the client.
+ */
+function platform_admin_stream_database_backup()
+{
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    $CI =& get_instance();
+    if (!isset($CI->db)) {
+        $CI->load->database();
+    }
+    $db = $CI->db;
+
+    $filename = platform_admin_database_backup_filename();
+    $use_gzip = function_exists('gzopen');
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    if ($use_gzip) {
+        header('Content-Type: application/gzip');
+    } else {
+        header('Content-Type: application/sql; charset=utf-8');
+    }
+    header('Content-Disposition: attachment; filename="' . preg_replace('/[^a-zA-Z0-9._-]+/', '-', $filename) . '"');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+
+    $write = null;
+    $gz = null;
+    if ($use_gzip) {
+        $gz = @gzopen('php://output', 'wb9');
+        if ($gz) {
+            $write = function ($chunk) use ($gz) {
+                gzwrite($gz, $chunk);
+            };
+        }
+    }
+    if ($write === null) {
+        $write = function ($chunk) {
+            echo $chunk;
+        };
+    }
+
+    $db_name = trim((string) getenv('DATABASE_NAME'));
+    $write("-- Veurion platform database backup\n");
+    $write('-- Generated: ' . gmdate('Y-m-d H:i:s') . " UTC\n");
+    if ($db_name !== '') {
+        $write('-- Database: ' . $db_name . "\n");
+    }
+    $write("\nSET NAMES utf8;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
+
+    $tables = $db->query('SHOW TABLES');
+    if (!$tables) {
+        if ($gz) {
+            gzclose($gz);
+        }
+        show_error('Could not read database tables.', 500);
+    }
+
+    foreach ($tables->result_array() as $table_row) {
+        $table = array_values($table_row);
+        if (empty($table[0])) {
+            continue;
+        }
+        $table_name = (string) $table[0];
+        $quoted_table = platform_admin_sql_identifier($table_name);
+
+        $create_result = $db->query('SHOW CREATE TABLE ' . $quoted_table);
+        if (!$create_result) {
+            continue;
+        }
+        $create_row = $create_result->row_array();
+        $create_sql = '';
+        if (isset($create_row['Create Table'])) {
+            $create_sql = $create_row['Create Table'];
+        } elseif (isset($create_row['Create View'])) {
+            $create_sql = $create_row['Create View'];
+        }
+        if ($create_sql === '') {
+            continue;
+        }
+
+        $write("\n-- Table structure for " . $table_name . "\n\n");
+        $write('DROP TABLE IF EXISTS ' . $quoted_table . ";\n");
+        $write($create_sql . ";\n\n");
+
+        $offset = 0;
+        $batch_size = 500;
+        do {
+            $data_result = $db->query('SELECT * FROM ' . $quoted_table . ' LIMIT ' . (int) $batch_size . ' OFFSET ' . (int) $offset);
+            if (!$data_result) {
+                break;
+            }
+            $rows = $data_result->result_array();
+            if (empty($rows)) {
+                break;
+            }
+
+            $columns = array_keys($rows[0]);
+            $column_list = implode(', ', array_map('platform_admin_sql_identifier', $columns));
+
+            foreach ($rows as $row) {
+                $values = array();
+                foreach ($columns as $column) {
+                    $values[] = platform_admin_sql_literal($db, array_key_exists($column, $row) ? $row[$column] : null);
+                }
+                $write('INSERT INTO ' . $quoted_table . ' (' . $column_list . ') VALUES (' . implode(', ', $values) . ");\n");
+            }
+
+            $offset += $batch_size;
+        } while (count($rows) === $batch_size);
+
+        $write("\n");
+    }
+
+    $write("SET FOREIGN_KEY_CHECKS=1;\n");
+
+    if ($gz) {
+        gzclose($gz);
+    }
+    exit;
 }
 

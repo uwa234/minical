@@ -82,8 +82,8 @@ Schedule nightly audit / trial expiry jobs per your product requirements.
 
 ## 5. Hardening checklist
 
-- **PHP:** `display_errors` off in production, OPcache on, reasonable `upload_max_filesize` / `post_max_size`, FPM `pm` tuning under load.
-- **Nginx:** hide version, rate-limit login if needed, only TLS 1.2+.
+- **PHP:** `display_errors` off in production, OPcache on, `upload_max_filesize` ≥ **10M** and `post_max_size` ≥ **12M** (see `docker/php-uploads.ini`), FPM `pm` tuning under load.
+- **Nginx:** hide version, rate-limit login if needed, only TLS 1.2+; set `client_max_body_size` to at least **10M** on the app vhost (default 1M returns HTTP 413 on image uploads before PHP runs).
 - **Database:** RDS backups + multi-AZ if downtime is costly.
 - **Observability:** CloudWatch agent or ALB access logs; error log shipping from Nginx/PHP.
 - **Dependencies:** `composer install --no-dev --optimize-autoloader` on deploy.

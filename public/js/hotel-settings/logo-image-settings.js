@@ -39,6 +39,26 @@ innGrid.insertImage = function(imageGroupID, imageSrc) {
 var imageDimensions = null;
 var imgGroupID = null;
 
+function formatImageUploadMaxSize(bytes) {
+	if (!bytes) {
+		return '5 MB';
+	}
+	if (bytes >= 1048576) {
+		var mb = bytes / 1048576;
+		return (mb === Math.floor(mb)) ? (mb + ' MB') : (mb.toFixed(1) + ' MB');
+	}
+	return Math.round(bytes / 1024) + ' KB';
+}
+
+function imageUploadSizeErrorMessage(maxBytes) {
+	return l('Image file is too large. Maximum upload size is') + ' ' + formatImageUploadMaxSize(maxBytes) + '.';
+}
+
+function showImageUploadError(message) {
+	$('#image_edit_modal_body').html('<p class="text-danger">' + message + '</p>');
+	$('#uploadbutton').show();
+}
+
 $(function (){
 
 	$(document).on('click', '.add-image', function() {
@@ -115,7 +135,7 @@ $(function (){
 				} else // User clicked Add Image button
 				{
 
-					$('#image_edit_modal_body').html("Click on [Upload Image] button below to upload image!<br/>The image's dimensions has to be at least <strong>"+dimensions.width+"x"+dimensions.height+"</strong> and <strong>smaller than 1 MB in size</strong>");
+					$('#image_edit_modal_body').html("Click on [Upload Image] button below to upload image!<br/>The image's dimensions has to be at least <strong>"+dimensions.width+"x"+dimensions.height+"</strong> and <strong>smaller than "+formatImageUploadMaxSize(dimensions.max_upload_bytes)+" in size</strong>");
 					$('#uploadbutton').text('Upload Image');
 
 
@@ -133,6 +153,16 @@ $(function (){
 
 	$(document).on('change', '#cropper_file_input', function () {
 		var file = document.getElementById("cropper_file_input").files[0];  // get a reference to the selected file
+
+		if (!file) {
+			return;
+		}
+
+		if (imageDimensions && imageDimensions.max_upload_bytes && file.size > imageDimensions.max_upload_bytes) {
+			showImageUploadError(imageUploadSizeErrorMessage(imageDimensions.max_upload_bytes));
+			$('#cropper_file_input').val('');
+			return;
+		}
 
 		var reader = new FileReader(); // create a file reader
 		// set an onload function to show the image in cropper once it has been loaded
@@ -198,6 +228,11 @@ $(function (){
 		var imageGroupID = $('.image-group').prop('id');
 		imgGroupID = imageGroupID;
 
+		if (imageDimensions && imageDimensions.max_upload_bytes && blob.size > imageDimensions.max_upload_bytes) {
+			showImageUploadError(imageUploadSizeErrorMessage(imageDimensions.max_upload_bytes));
+			return;
+		}
+
 		$.ajax({
 			url: getBaseURL() + "image/upload_to_s3/"+imgGroupID,
 			data: formDataToUpload,// Add as Data the Previously create formData
@@ -210,12 +245,20 @@ $(function (){
 
 				if (data.status == "success") {
 					innGrid.insertImage(imgGroupID, data.url);
+					$('#image_edit_modal').modal('hide');
 				} else {
-					alert(l('some error occurred!'));
+					var message = (data && data.message) ? data.message : l('some error occurred!');
+					showImageUploadError(message);
 				}
-
-				$('#image_edit_modal').modal('hide'); // close bootstrap modal
-				// location.reload(); // temporary fix to modal close issue
+			},
+			error: function(xhr) {
+				var message = l('some error occurred!');
+				if (xhr && xhr.status === 413) {
+					message = imageUploadSizeErrorMessage(imageDimensions && imageDimensions.max_upload_bytes);
+				} else if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+					message = xhr.responseJSON.message;
+				}
+				showImageUploadError(message);
 			}
 		});
 	});

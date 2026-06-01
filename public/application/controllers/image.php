@@ -12,12 +12,18 @@ class Image extends MY_Controller
 		$this->load->library('S3'); // load Amazon S3 library
 
         $this->load->helper("guid"); // for generating UUID
+        $this->load->helper('image_storage');
 	}	
 	
 
 	function save_to_file()
 	{
-           
+		$size_error = $this->_validate_image_upload('img');
+		if ($size_error !== null) {
+			print json_encode($size_error);
+			return;
+		}
+
 		$allowedExts = array("gif", "jpeg", "jpg", "png", "GIF", "JPEG", "JPG", "PNG");
 		$temp = explode(".", $_FILES["img"]["name"]);
 		$extension = end($temp);
@@ -30,7 +36,7 @@ class Image extends MY_Controller
                         
 				$response = array(
 					"status" => 'error',
-					"message" => 'ERROR Return Code: '. $_FILES["img"]["error"],
+					"message" => $this->_image_upload_error_message($_FILES["img"]["error"]),
 					);
 			}
 			else
@@ -38,7 +44,7 @@ class Image extends MY_Controller
                 $filename = $_FILES["img"]["tmp_name"];
                 list($width, $height) = getimagesize( $filename );
 				
-				$this->_upload_to_s3($_FILES["img"]["tmp_name"], "temp_image.".$extension);
+				$this->_store_image($_FILES["img"]["tmp_name"], "temp_image.".$extension);
 				$response = array(
 					"status" => 'success',
 					"url" => $this->image_url.$this->company_id."/temp_image.".$extension,
@@ -144,7 +150,7 @@ class Image extends MY_Controller
 		$filename = tempnam(sys_get_temp_dir(), "foo");
 		imagejpeg($final_image, $filename, $jpeg_quality);
 		
-		if ($this->_upload_to_s3($filename, $output_filename))
+		if ($this->_store_image($filename, $output_filename))
 		{
 			$response = array(
 				"status" => 'success',
@@ -176,7 +182,7 @@ class Image extends MY_Controller
 		$src = isset($_POST['src']) ? $_POST['src'] : null;
 		$image_group_id = isset($_POST['image_group_id']) ? $_POST['image_group_id'] : null;
 		$filename = basename($src);
-		$this->_delete_in_s3($filename);
+		$this->_delete_stored_image($filename);
 		$this->Image_model->delete_image($filename, $image_group_id);
 		$response = array(
 		  'response'=>'success!'
@@ -196,15 +202,70 @@ class Image extends MY_Controller
 		}
 		else
 		{
-			$width = 200;
-			$height = 150;
+			$width = 800;
+			$height = 400;
 		}
 		$response = array(
 		  'response'=>'success!',
 		  'width' => $width ,
-		  'height' => $height
+		  'height' => $height,
+		  'max_upload_bytes' => IMAGE_UPLOAD_MAX_BYTES,
+		  'max_upload_label' => $this->_image_upload_max_label(),
 		);
 		echo json_encode($response);
+	}
+
+	function _image_upload_max_label()
+	{
+		$mb = IMAGE_UPLOAD_MAX_BYTES / 1048576;
+		return ($mb == (int) $mb) ? ((int) $mb).' MB' : round($mb, 1).' MB';
+	}
+
+	function _image_upload_size_error_response()
+	{
+		$label = $this->_image_upload_max_label();
+		return array(
+			'status' => 'error',
+			'message' => "Image file is too large. Maximum upload size is {$label}.",
+		);
+	}
+
+	function _image_upload_error_message($error_code)
+	{
+		if ($error_code == UPLOAD_ERR_INI_SIZE || $error_code == UPLOAD_ERR_FORM_SIZE) {
+			return $this->_image_upload_size_error_response()['message'];
+		}
+		return 'ERROR Return Code: '. $error_code;
+	}
+
+	/**
+	 * @param string $file_key $_FILES key
+	 * @return array|null Error payload, or null if valid
+	 */
+	function _validate_image_upload($file_key = 'file')
+	{
+		if (empty($_FILES[$file_key]['tmp_name'])) {
+			if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES)) {
+				return $this->_image_upload_size_error_response();
+			}
+			return array(
+				'status' => 'error',
+				'message' => 'No image file was received. Please try again.',
+			);
+		}
+
+		if (!empty($_FILES[$file_key]['error'])) {
+			return array(
+				'status' => 'error',
+				'message' => $this->_image_upload_error_message($_FILES[$file_key]['error']),
+			);
+		}
+
+		if ($_FILES[$file_key]['size'] > IMAGE_UPLOAD_MAX_BYTES) {
+			return $this->_image_upload_size_error_response();
+		}
+
+		return null;
 	}
 
 	function _uri_exists($str = '', $uri)
@@ -223,34 +284,55 @@ class Image extends MY_Controller
 	// $output_filename should be:
 	// "slide#" for slideshow
 	// "gallery#" for gallery
-	function _upload_to_s3($source_image, $output_filename) {
-		
-		// remove the s3 file first
-		// Remember, _delete_in_s3 function also initializes s3->putBucket function.
-		$this->_delete_in_s3($output_filename);
-		
-		// upload/update the s3 file with new GUID
-		if ($this->s3->putObjectFile($source_image, getenv("AWS_S3_BUCKET"), $this->company_id."/".$output_filename, S3::ACL_PUBLIC_READ)) 
+	function _store_image($source_image, $output_filename)
+	{
+		$this->_delete_stored_image($output_filename);
+
+		if (image_storage_use_s3()) {
+			return $this->_upload_to_s3($source_image, $output_filename);
+		}
+
+		return image_storage_save_local($this->company_id, $source_image, $output_filename);
+	}
+
+	function _delete_stored_image($filename)
+	{
+		if (image_storage_use_s3()) {
+			$this->_delete_in_s3($filename);
+			return;
+		}
+
+		image_storage_delete_local($this->company_id, $filename);
+	}
+
+	function _upload_to_s3($source_image, $output_filename)
+	{
+		if ($this->s3->putObjectFile($source_image, getenv("AWS_S3_BUCKET"), $this->company_id."/".$output_filename, S3::ACL_PUBLIC_READ))
 		{
 			return true;
 		}
 		return false;
-	
 	}
 
 	function _delete_in_s3($filename) {
 		$this->s3->putBucket(getenv("AWS_S3_BUCKET"), S3::ACL_PUBLIC_READ);
-		$this->s3->deleteObject(getenv("AWS_S3_BUCKET"), $this->company_id."/".$filename);					
+		$this->s3->deleteObject(getenv("AWS_S3_BUCKET"), $this->company_id."/".$filename);
 	}
 
     function upload_to_s3 ($myId) {
+
+        $size_error = $this->_validate_image_upload('file');
+        if ($size_error !== null) {
+            print json_encode($size_error);
+            return;
+        }
 
         $output_filename = generate_guid();
 
         $filename = $_FILES["file"]["tmp_name"];
         list($width, $height) = getimagesize($filename);
 
-        if ($this->_upload_to_s3($_FILES["file"]["tmp_name"], $output_filename))
+        if ($this->_store_image($_FILES["file"]["tmp_name"], $output_filename))
         {
             $image_data = Array(
                 "image_group_id" => $myId,
@@ -269,7 +351,8 @@ class Image extends MY_Controller
         else
         {
             $response = array(
-                "status" => 'fail!'
+                "status" => 'error',
+                "message" => image_storage_upload_failure_message(),
             );
         }
 
@@ -278,12 +361,18 @@ class Image extends MY_Controller
 
     function vendor_upload_to_s3 ($myId) {
 
+        $size_error = $this->_validate_image_upload('file');
+        if ($size_error !== null) {
+            print json_encode($size_error);
+            return;
+        }
+
         $output_filename = generate_guid();
 
         $filename = $_FILES["file"]["tmp_name"];
         list($width, $height) = getimagesize($filename);
 
-        if ($this->_upload_to_s3($_FILES["file"]["tmp_name"], $output_filename))
+        if ($this->_store_image($_FILES["file"]["tmp_name"], $output_filename))
         {
             $image_data = Array(
                 "image_group_id" => $myId,
@@ -306,7 +395,8 @@ class Image extends MY_Controller
         else
         {
             $response = array(
-                "status" => 'fail!'
+                "status" => 'error',
+                "message" => image_storage_upload_failure_message(),
             );
         }
 
