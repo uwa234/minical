@@ -246,11 +246,11 @@ $(function () {
         var expectedName = $('#saas-delete-property-name').text();
 
         if (!confirmName || confirmName.toLowerCase() !== expectedName.toLowerCase()) {
-            alert('Type the exact property name to confirm permanent deletion.');
+            alert('Type the exact property name to confirm deletion.');
             return;
         }
 
-        if (!window.confirm('Permanently delete "' + expectedName + '" and all related data?')) {
+        if (!window.confirm('Soft-delete "' + expectedName + '"? The property can be restored later.')) {
             return;
         }
 
@@ -262,10 +262,29 @@ $(function () {
             },
             function () {
                 $('#saas-delete-property-modal').modal('hide');
-                $('tr[data-company-id="' + companyId + '"]').remove();
-                if ($('#saas-property-table tbody tr').length === 0) {
-                    window.location.reload();
-                }
+                window.location.reload();
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $btn
+        );
+    });
+
+    $('.saas-restore-property-btn').on('click', function () {
+        var $btn = $(this);
+        var companyId = $btn.data('company-id');
+        var companyName = $btn.data('company-name') || ('#' + companyId);
+
+        if (!window.confirm('Restore "' + companyName + '"?')) {
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/restore_property/',
+            { company_id: companyId },
+            function () {
+                window.location.reload();
             },
             function (msg) {
                 alert(msg);

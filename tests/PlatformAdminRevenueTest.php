@@ -55,4 +55,25 @@ class PlatformAdminRevenueTest extends TestCase
         $ref = build_manual_saas_payment_reference(42);
         $this->assertStringStartsWith('manual_admin_42_', $ref);
     }
+
+    public function testSaasReceiptNumberFromReference()
+    {
+        $this->assertSame('MANUAL-REF', build_saas_receipt_number('manual-ref'));
+        $this->assertStringStartsWith('VEU-', build_saas_receipt_number(''));
+    }
+
+    public function testSubscriptionDebtorLastContactedAt()
+    {
+        $this->assertNull(subscription_debtor_last_contacted_at(null));
+        $meta = json_encode(array('debtor_last_contacted_at' => '2026-05-01T12:00:00+00:00'));
+        $this->assertSame('2026-05-01T12:00:00+00:00', subscription_debtor_last_contacted_at($meta));
+    }
+
+    public function testCustomerReceiptTokenValidation()
+    {
+        $token = saas_subscription_receipt_token(42, 'saas_42_test');
+        $this->assertTrue(saas_subscription_receipt_token_valid(42, 'saas_42_test', $token));
+        $this->assertFalse(saas_subscription_receipt_token_valid(42, 'saas_42_test', 'invalid'));
+        $this->assertFalse(saas_subscription_receipt_token_valid(99, 'saas_42_test', $token));
+    }
 }

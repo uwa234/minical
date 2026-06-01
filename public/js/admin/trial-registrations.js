@@ -40,6 +40,45 @@
             $(this).data('previous-status', $(this).val());
         });
 
+        $('.trial-send-outreach-btn').on('click', function () {
+            var $btn = $(this);
+            var requestId = $btn.data('request-id');
+
+            if (!window.confirm('Send trial outreach email to this lead?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                type: 'POST',
+                url: getBaseURL() + 'admin/send_trial_lead_email',
+                dataType: 'json',
+                data: { request_id: requestId },
+                success: function (response) {
+                    if (response && response.success) {
+                        alert('Outreach email sent to ' + response.recipient + '.');
+                        window.location.reload();
+                        return;
+                    }
+                    alert((response && response.error) ? response.error : 'Could not send email.');
+                },
+                error: function (xhr) {
+                    var msg = 'Could not send email.';
+                    try {
+                        var body = JSON.parse(xhr.responseText);
+                        if (body && body.error) {
+                            msg = body.error;
+                        }
+                    } catch (e) {}
+                    alert(msg);
+                },
+                complete: function () {
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
+
         $('.trial-create-property-btn').on('click', function () {
             var $btn = $(this);
             if (typeof window.saasOpenAddPropertyModal !== 'function') {

@@ -3,9 +3,23 @@
         <h1>SaaS properties</h1>
         <p>Manage tenants, subscriptions, trials, and property owners.</p>
     </div>
-    <button type="button" class="pa-btn pa-btn-primary" data-toggle="modal" data-target="#saas-add-property-modal">
-        <i class="fa fa-plus" aria-hidden="true"></i> Add property
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <?php
+        $property_export_params = array('state' => $filter_state);
+        if (!empty($search_query)) {
+            $property_export_params['search_query'] = $search_query;
+        }
+        if ($this->input->get('include_deleted') === '1') {
+            $property_export_params['include_deleted'] = '1';
+        }
+        ?>
+        <a class="pa-btn pa-btn-secondary" href="<?php echo htmlspecialchars(base_url('admin/export_properties_csv?' . http_build_query($property_export_params)), ENT_QUOTES, 'UTF-8'); ?>">
+            <i class="fa fa-download" aria-hidden="true"></i> Export CSV
+        </a>
+        <button type="button" class="pa-btn pa-btn-primary" data-toggle="modal" data-target="#saas-add-property-modal">
+            <i class="fa fa-plus" aria-hidden="true"></i> Add property
+        </button>
+    </div>
 </div>
 
 <form method="get" action="<?php echo base_url('admin/property_list'); ?>" class="pa-filters">
@@ -142,7 +156,8 @@
                         <td><?php echo htmlspecialchars($property['creation_date'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="pa-actions-cell">
                             <a class="pa-btn pa-btn-primary pa-btn-sm" href="<?php echo base_url('admin/property_detail/' . (int) $property['company_id']); ?>">View</a>
-                            <a class="pa-btn pa-btn-secondary pa-btn-sm" href="<?php echo base_url('menu/select_hotel/' . (int) $property['company_id']); ?>">Open</a>
+                            <?php if (empty($property['is_deleted'])) { ?>
+                            <a class="pa-btn pa-btn-secondary pa-btn-sm" href="<?php echo base_url('admin/impersonate_tenant/' . (int) $property['company_id']); ?>">Login as tenant</a>
                             <button type="button" class="pa-btn pa-btn-secondary pa-btn-sm saas-edit-property-btn"
                                     data-company-id="<?php echo (int) $property['company_id']; ?>"
                                     data-company-name="<?php echo htmlspecialchars($property['name'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -163,6 +178,13 @@
                                     data-company-name="<?php echo htmlspecialchars($property['name'], ENT_QUOTES, 'UTF-8'); ?>">
                                 Delete
                             </button>
+                            <?php } else { ?>
+                            <button type="button" class="pa-btn pa-btn-success pa-btn-sm saas-restore-property-btn"
+                                    data-company-id="<?php echo (int) $property['company_id']; ?>"
+                                    data-company-name="<?php echo htmlspecialchars($property['name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                Restore
+                            </button>
+                            <?php } ?>
                         </td>
                     </tr>
                 <?php }
@@ -219,13 +241,14 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                <h4 class="modal-title">Permanently delete property</h4>
+                <h4 class="modal-title">Soft-delete property</h4>
             </div>
             <div class="modal-body">
-                <p class="text-danger">
-                    <strong>This cannot be undone.</strong> All bookings, customers, rooms, rates, and related data for
-                    <strong id="saas-delete-property-name"></strong> will be removed from the database.
+                <p class="text-warning">
+                    <strong>This soft-deletes the property.</strong> Tenant data is kept but the property is hidden and login is blocked.
+                    You can restore it later from the deleted properties list.
                 </p>
+                <p>Type the property name to confirm soft-deletion of <strong id="saas-delete-property-name"></strong>.</p>
                 <input type="hidden" name="saas_delete_company_id" value="" />
                 <div class="form-group">
                     <label for="saas_delete_confirm_name">Type the property name to confirm</label>
@@ -234,7 +257,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" id="saas-delete-property-submit">Delete permanently</button>
+                <button type="button" class="btn btn-danger" id="saas-delete-property-submit">Soft-delete property</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
             </div>
         </div>

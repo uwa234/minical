@@ -82,11 +82,20 @@ $(function () {
                 renewal_period: $('#debtor-payment-period').val(),
                 payment_date: $('#debtor-payment-date').val(),
                 tier_id: $('#debtor-payment-tier').val(),
-                notes: $.trim($('#debtor-payment-notes').val())
+                notes: $.trim($('#debtor-payment-notes').val()),
+                send_receipt: $('#debtor-payment-send-receipt').is(':checked') ? '1' : '0'
             },
             function (response) {
                 $('#debtor-record-payment-modal').modal('hide');
-                alert('Payment recorded. Subscription active until ' + response.expiration_date + '.');
+                var msg = 'Payment recorded. Subscription active until ' + response.expiration_date + '.';
+                if (response.receipt_sent) {
+                    msg += ' Receipt emailed to owner.';
+                }
+                if (response.receipt_url && window.confirm(msg + '\n\nOpen printable receipt now?')) {
+                    window.open(response.receipt_url, '_blank');
+                } else {
+                    alert(msg);
+                }
                 window.location.reload();
             },
             function (msg) {
@@ -112,7 +121,8 @@ $(function () {
                 grace_days: graceDays
             },
             function (response) {
-                alert('Grace extended. New expiry: ' + response.new_expiry_date + '.');
+                alert('Grace extended. New expiry: ' + response.new_expiry_date
+                    + (response.grace_email_sent ? '. Owner notified by email.' : '') + '.');
                 window.location.reload();
             },
             function (msg) {
@@ -135,6 +145,31 @@ $(function () {
             { company_id: $btn.data('company-id') },
             function (response) {
                 alert('Reminder sent to ' + response.recipient + '.');
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $btn
+        );
+    });
+
+    $('.debtor-mark-contacted').on('click', function () {
+        var $btn = $(this);
+        var name = $btn.data('property-name') || 'this property';
+        var note = window.prompt('Mark ' + name + ' as contacted. Optional note:', '');
+
+        if (note === null) {
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/mark_debtor_contacted/',
+            {
+                company_id: $btn.data('company-id'),
+                note: $.trim(note)
+            },
+            function () {
+                window.location.reload();
             },
             function (msg) {
                 alert(msg);

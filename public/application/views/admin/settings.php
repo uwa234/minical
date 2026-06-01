@@ -7,7 +7,7 @@
 
 <div class="pa-page-header">
     <h1>Platform settings</h1>
-    <p>Configure trials, marketing copy, and public pricing tiers.</p>
+    <p>Configure trials, billing defaults, marketing copy, and public pricing tiers.</p>
 </div>
 
 <div class="pa-settings-grid">
@@ -21,6 +21,26 @@
                 <div class="col-sm-4">
                     <input type="number" min="1" max="365" class="form-control" name="default_trial_days"
                            value="<?php echo (int) $default_trial_days; ?>" required />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-5 control-label">Paid plan grace (days)</label>
+                <div class="col-sm-4">
+                    <input type="number" min="1" max="90" class="form-control" name="paid_plan_grace_days"
+                           value="<?php echo (int) (isset($paid_plan_grace_days) ? $paid_plan_grace_days : saas_paid_plan_grace_days()); ?>" required />
+                    <p class="help-block" style="margin: 6px 0 0; font-size: 12px; color: var(--pa-muted, #64748b);">
+                        Days after plan expiry before account lockout. Also used when extending grace from the debtors list.
+                    </p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-5 control-label">Default currency</label>
+                <div class="col-sm-4">
+                    <input type="text" class="form-control" name="default_currency" maxlength="8" required
+                           value="<?php echo htmlspecialchars(isset($default_currency) ? $default_currency : saas_default_currency(), ENT_QUOTES, 'UTF-8'); ?>" />
+                    <p class="help-block" style="margin: 6px 0 0; font-size: 12px; color: var(--pa-muted, #64748b);">
+                        Platform-wide default (e.g. NGN, USD). Individual pricing tiers can override this.
+                    </p>
                 </div>
             </div>
             <div class="form-group">

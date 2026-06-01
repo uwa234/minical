@@ -1443,6 +1443,102 @@ class Admin_model extends CI_Model {
 	}
 
 	/**
+	 * Single SaaS subscription payment by reference for receipt generation.
+	 *
+	 * @param int $company_id
+	 * @param string $reference
+	 * @return array|null
+	 */
+	function get_saas_subscription_payment($company_id, $reference)
+	{
+		$company_id = (int) $company_id;
+		$reference = trim((string) $reference);
+		if ($company_id < 1 || $reference === '') {
+			return null;
+		}
+
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT
+				cc.company_charge_id,
+				cc.company_id,
+				cc.amount,
+				cc.date AS paid_date,
+				cc.description AS reference,
+				(
+					SELECT COUNT(*)
+					FROM company_charge AS prior
+					WHERE prior.company_id = cc.company_id
+						AND prior.is_deleted = 0
+						AND (prior.charge_type = 'subscription' OR prior.description LIKE 'saas\\_%')
+						AND prior.date < cc.date
+				) AS prior_payment_count
+			FROM company_charge AS cc
+			WHERE {$where}
+				AND cc.company_id = ?
+				AND cc.description = ?
+			LIMIT 1
+		";
+
+		$query = $this->db->query($sql, array($company_id, $reference));
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		if ($query->num_rows() < 1) {
+			return null;
+		}
+
+		$row = $query->row_array();
+		$row['payment_type'] = classify_saas_subscription_payment_type(
+			isset($row['prior_payment_count']) ? $row['prior_payment_count'] : 0
+		);
+
+		return $row;
+	}
+
+	/**
+	 * Find a SaaS subscription payment by reference (any company).
+	 *
+	 * @param string $reference
+	 * @return array|null
+	 */
+	function get_saas_subscription_payment_by_reference($reference)
+	{
+		$reference = trim((string) $reference);
+		if ($reference === '') {
+			return null;
+		}
+
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT
+				cc.company_charge_id,
+				cc.company_id,
+				cc.amount,
+				cc.date AS paid_date,
+				cc.description AS reference
+			FROM company_charge AS cc
+			WHERE {$where}
+				AND cc.description = ?
+			LIMIT 1
+		";
+
+		$query = $this->db->query($sql, array($reference));
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		if ($query->num_rows() < 1) {
+			return null;
+		}
+
+		return $query->row_array();
+	}
+
+	/**
 	 * Booking volume summary for platform admin tenant detail.
 	 *
 	 * @param int $company_id
@@ -1812,6 +1908,98 @@ class Admin_model extends CI_Model {
         $query = $this->db->query($sql);
         $row = $query->row_array();
         return isset($row['mrr']) ? round((float) $row['mrr'], 2) : 0;
+    }
+
+    /**
+     * SaaS funnel metrics for the current calendar month (dashboard).
+     *
+     * @return array<string, mixed>
+     */
+    function get_dashboard_month_saas_metrics()
+    {
+        $month_start = date('Y-m-01');
+        $month_end = date('Y-m-d');
+
+        $sql_conversions = "
+            SELECT COUNT(capi.company_id) AS cnt
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            INNER JOIN company AS c ON c.company_id = capi.company_id
+            WHERE cs.subscription_state = 'active'
+              AND capi.conversion_date IS NOT NULL
+              AND capi.conversion_date != ''
+              AND capi.conversion_date != '0000-00-00'
+              AND capi.conversion_date >= ?
+              AND capi.conversion_date <= ?
+              AND c.is_deleted = 0
+        ";
+        $conversions = (int) $this->db->query($sql_conversions, array($month_start, $month_end))->row('cnt');
+
+        $sql_new_trials = "
+            SELECT COUNT(capi.company_id) AS cnt
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            INNER JOIN company AS c ON c.company_id = capi.company_id
+            WHERE capi.creation_date >= ?
+              AND capi.creation_date <= ?
+              AND cs.subscription_state != 'deleted'
+              AND c.is_deleted = 0
+        ";
+        $new_trials = (int) $this->db->query($sql_new_trials, array($month_start, $month_end))->row('cnt');
+
+        $sql_churn = "
+            SELECT COUNT(capi.company_id) AS cnt
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            INNER JOIN company AS c ON c.company_id = capi.company_id
+            WHERE capi.conversion_date IS NOT NULL
+              AND capi.conversion_date != ''
+              AND capi.conversion_date != '0000-00-00'
+              AND cs.subscription_state = 'canceled'
+              AND capi.churn_date >= ?
+              AND capi.churn_date <= ?
+              AND c.is_deleted = 0
+        ";
+        $churn_count = (int) $this->db->query($sql_churn, array($month_start, $month_end))->row('cnt');
+
+        $conversion_rate = null;
+        if ($new_trials > 0) {
+            $conversion_rate = round(($conversions / $new_trials) * 100, 1);
+        }
+
+        return array(
+            'month_label' => date('F Y'),
+            'conversions' => $conversions,
+            'new_trials' => $new_trials,
+            'conversion_rate' => $conversion_rate,
+            'churn_count' => $churn_count,
+        );
+    }
+
+    /**
+     * Total amount due across all subscription debtors.
+     *
+     * @return array{total: float, count: int}
+     */
+    function get_subscription_debtor_outstanding_total()
+    {
+        $CI =& get_instance();
+        if (!isset($CI->Platform_settings_model)) {
+            $CI->load->model('Platform_settings_model');
+        }
+
+        $tiers = $CI->Platform_settings_model->get_pricing_tiers(false);
+        $debtors = $this->get_subscription_debtors(array('filter' => 'all'));
+        $total = 0.0;
+
+        foreach ($debtors as $row) {
+            $total += resolve_subscription_debtor_amount_due($row, $tiers);
+        }
+
+        return array(
+            'total' => round($total, 2),
+            'count' => count($debtors),
+        );
     }
 
     function get_trials_expiring_within_days($days = 7)
@@ -2243,6 +2431,493 @@ class Admin_model extends CI_Model {
             'due_soon' => count($this->get_subscription_debtors(array('filter' => 'due_soon'))),
             'all' => count($this->get_subscription_debtors(array('filter' => 'all'))),
         );
+    }
+
+    /**
+     * Platform-wide extension adoption counts for upsell/support.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    function get_extension_adoption_stats()
+    {
+        if (!$this->db->table_exists('extensions_x_company')) {
+            return array();
+        }
+
+        $skip = array('subscription', 'reseller_package', 'vendor_monthly_report');
+        $this->db->select('exc.extension_name, COUNT(DISTINCT exc.company_id) AS tenant_count', false);
+        $this->db->from('extensions_x_company AS exc');
+        $this->db->join('company AS c', 'c.company_id = exc.company_id', 'inner');
+        $this->db->join('company_subscription AS cs', 'cs.company_id = c.company_id', 'inner');
+        $this->db->where('exc.is_active', 1);
+        $this->db->where('c.is_deleted', 0);
+        $this->db->where_in('cs.subscription_state', array('trialing', 'active'));
+        $this->db->where_not_in('exc.extension_name', $skip);
+        $this->db->group_by('exc.extension_name');
+        $this->db->order_by('tenant_count', 'DESC');
+        $this->db->order_by('exc.extension_name', 'ASC');
+
+        $query = $this->db->get();
+        if ($query->num_rows() < 1) {
+            return array();
+        }
+
+        return $query->result_array();
+    }
+
+    /**
+     * Count of active/trialing tenants (denominator for adoption rates).
+     *
+     * @return int
+     */
+    function get_active_tenant_count()
+    {
+        $sql = "
+            SELECT COUNT(*) AS cnt
+            FROM company AS c
+            INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+            WHERE c.is_deleted = 0
+              AND cs.subscription_state IN ('trialing', 'active')
+        ";
+        $query = $this->db->query($sql);
+        if ($query->num_rows() < 1) {
+            return 0;
+        }
+        $row = $query->row_array();
+
+        return isset($row['cnt']) ? (int) $row['cnt'] : 0;
+    }
+
+    /**
+     * Companies with Channex active but no recent booking retrieval sync.
+     *
+     * @param int $stale_hours
+     * @return array<int, array<string, mixed>>
+     */
+    function get_channel_sync_issues($stale_hours = 48)
+    {
+        if (
+            !$this->db->table_exists('extensions_x_company')
+            || !$this->db->table_exists('ota_x_company')
+            || !$this->db->table_exists('ota_xml_logs')
+        ) {
+            return array();
+        }
+
+        $stale_hours = max(1, (int) $stale_hours);
+        $sql = "
+            SELECT
+                c.company_id,
+                c.name,
+                oxc.ota_property_id,
+                MAX(oxl.datetime) AS last_sync_at
+            FROM company AS c
+            INNER JOIN extensions_x_company AS exc ON exc.company_id = c.company_id
+                AND exc.extension_name IN ('channex-integration', 'channexpci_integration')
+                AND exc.is_active = 1
+            INNER JOIN ota_x_company AS oxc ON oxc.company_id = c.company_id AND oxc.is_active = 1
+            LEFT JOIN ota_xml_logs AS oxl ON oxl.ota_property_id = oxc.ota_property_id AND oxl.request_type = 2
+            INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+            WHERE c.is_deleted = 0
+              AND cs.subscription_state IN ('trialing', 'active')
+            GROUP BY c.company_id, c.name, oxc.ota_property_id
+            HAVING MAX(oxl.datetime) IS NULL
+                OR MAX(oxl.datetime) < DATE_SUB(NOW(), INTERVAL {$stale_hours} HOUR)
+            ORDER BY MAX(oxl.datetime) IS NULL DESC, MAX(oxl.datetime) ASC, c.name ASC
+        ";
+
+        $query = $this->db->query($sql);
+        if (!$query || $this->db->_error_message()) {
+            log_message('error', 'get_channel_sync_issues: ' . $this->db->_error_message());
+            return array();
+        }
+        if ($query->num_rows() < 1) {
+            return array();
+        }
+
+        return $query->result_array();
+    }
+
+    /**
+     * Night audit health across all auto-enabled properties.
+     *
+     * @return array<string, mixed>
+     */
+    function get_night_audit_platform_health()
+    {
+        $this->load->model(array('Company_model', 'Night_audit_model'));
+        $this->load->helper(array('timezone', 'automated_night_audit'));
+
+        $companies = $this->Company_model->get_companies_with_auto_night_audit();
+        if (!$companies) {
+            return array(
+                'enabled_count' => 0,
+                'overdue_count' => 0,
+                'ok_count' => 0,
+                'overdue' => array(),
+            );
+        }
+
+        $overdue = array();
+        $ok = 0;
+        foreach ($companies as $company) {
+            $company_id = (int) $company['company_id'];
+            $time_zone = $this->Company_model->get_time_zone($company_id);
+            $local_now = automated_night_audit_local_now($time_zone);
+            $run_time = !empty($company['night_audit_auto_run_time'])
+                ? $company['night_audit_auto_run_time']
+                : '04:00:00';
+            $selling_date = isset($company['selling_date']) ? (string) $company['selling_date'] : '';
+            $has_log = $this->Night_audit_model->has_logged_for_selling_date($company_id, $selling_date);
+
+            if (automated_night_audit_is_overdue(
+                $local_now,
+                $run_time,
+                $selling_date,
+                $has_log,
+                3
+            )) {
+                $overdue[] = array(
+                    'company_id' => $company_id,
+                    'name' => isset($company['name']) ? (string) $company['name'] : ('#' . $company_id),
+                    'selling_date' => $selling_date,
+                    'calendar_date' => $local_now->format('Y-m-d'),
+                    'run_time' => $run_time,
+                );
+            } else {
+                $ok++;
+            }
+        }
+
+        return array(
+            'enabled_count' => count($companies),
+            'overdue_count' => count($overdue),
+            'ok_count' => $ok,
+            'overdue' => $overdue,
+        );
+    }
+
+    /**
+     * Cron job health summary for platform admin.
+     *
+     * @return array<string, mixed>
+     */
+    function get_cron_health_summary()
+    {
+        $today = date('Y-m-d');
+        $pending_sql = "
+            SELECT COUNT(*) AS cnt
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            INNER JOIN company AS c ON c.company_id = capi.company_id
+            WHERE cs.subscription_state = 'trialing'
+              AND capi.trial_expiry_date IS NOT NULL
+              AND capi.trial_expiry_date != ''
+              AND capi.trial_expiry_date != '0000-00-00'
+              AND capi.trial_expiry_date < ?
+              AND c.is_deleted = 0
+        ";
+        $pending_query = $this->db->query($pending_sql, array($today));
+        $pending = 0;
+        if ($pending_query->num_rows() >= 1) {
+            $row = $pending_query->row_array();
+            $pending = isset($row['cnt']) ? (int) $row['cnt'] : 0;
+        }
+
+        $expiring_today_sql = "
+            SELECT COUNT(*) AS cnt
+            FROM company_admin_panel_info AS capi
+            INNER JOIN company_subscription AS cs ON cs.company_id = capi.company_id
+            INNER JOIN company AS c ON c.company_id = capi.company_id
+            WHERE cs.subscription_state = 'trialing'
+              AND capi.trial_expiry_date = ?
+              AND c.is_deleted = 0
+        ";
+        $expiring_query = $this->db->query($expiring_today_sql, array($today));
+        $expiring_today = 0;
+        if ($expiring_query->num_rows() >= 1) {
+            $row = $expiring_query->row_array();
+            $expiring_today = isset($row['cnt']) ? (int) $row['cnt'] : 0;
+        }
+
+        $repo_root = dirname(dirname(dirname(dirname(__FILE__))));
+        $trial_log = $repo_root . '/logs/cron/expire_platform_trials.log';
+        $night_audit_log = $repo_root . '/logs/cron/run_automated_night_audit.log';
+
+        return array(
+            'trials_pending_expiry' => $pending,
+            'trials_expiring_today' => $expiring_today,
+            'trial_cron_last_run' => parse_cron_log_last_run($trial_log),
+            'night_audit_cron_last_run' => parse_cron_log_last_run($night_audit_log),
+            'trial_cron_schedule' => 'Daily at 02:10 UTC',
+            'night_audit_cron_schedule' => 'Every 15 minutes',
+        );
+    }
+
+    /**
+     * Tenant health rows with composite score and risk flags.
+     *
+     * @param array $filters filter (all|at_risk|no_bookings|trial_expiring|night_audit|channel_sync), search
+     * @return array<int, array<string, mixed>>
+     */
+    function get_tenant_health_rows($filters = array())
+    {
+        $today = date('Y-m-d');
+        $trial_soon_end = date('Y-m-d', strtotime('+7 days'));
+        $inactive_cutoff = date('Y-m-d', strtotime('-30 days'));
+
+        $sql = "
+            SELECT
+                c.company_id,
+                c.name,
+                c.last_login,
+                cs.subscription_state,
+                capi.trial_expiry_date,
+                u.email AS owner_email,
+                pf.first_name AS owner_first_name,
+                pf.last_name AS owner_last_name,
+                COALESCE(bs.total_bookings, 0) AS total_bookings,
+                COALESCE(bs.bookings_last_30_days, 0) AS bookings_last_30_days
+            FROM company AS c
+            INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+            LEFT JOIN company_admin_panel_info AS capi ON capi.company_id = c.company_id
+            LEFT JOIN (
+                SELECT company_id, MIN(user_id) AS user_id
+                FROM user_permissions
+                WHERE permission = 'is_owner'
+                GROUP BY company_id
+            ) AS owner_pick ON owner_pick.company_id = c.company_id
+            LEFT JOIN users AS u ON u.id = owner_pick.user_id
+            LEFT JOIN user_profiles AS pf ON pf.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    b.company_id,
+                    COUNT(DISTINCT b.booking_id) AS total_bookings,
+                    COUNT(DISTINCT CASE
+                        WHEN bl.date_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN b.booking_id
+                    END) AS bookings_last_30_days
+                FROM booking AS b
+                LEFT JOIN (
+                    SELECT booking_id, MIN(date_time) AS date_time
+                    FROM booking_log
+                    GROUP BY booking_id
+                ) AS bl ON bl.booking_id = b.booking_id
+                WHERE b.is_deleted = 0
+                GROUP BY b.company_id
+            ) AS bs ON bs.company_id = c.company_id
+            WHERE c.is_deleted = 0
+              AND cs.subscription_state IN ('trialing', 'active')
+        ";
+
+        if (!empty($filters['search'])) {
+            $q = $this->db->escape_like_str($filters['search']);
+            $sql .= " AND (c.name LIKE '%{$q}%' OR u.email LIKE '%{$q}%')";
+        }
+
+        $sql .= ' ORDER BY c.name ASC';
+
+        $query = $this->db->query($sql);
+        if ($query->num_rows() < 1) {
+            return array();
+        }
+
+        $channel_issues = $this->get_channel_sync_issues();
+        $channel_issue_ids = array();
+        foreach ($channel_issues as $issue) {
+            $channel_issue_ids[(int) $issue['company_id']] = true;
+        }
+
+        $night_audit = $this->get_night_audit_platform_health();
+        $night_audit_overdue_ids = array();
+        foreach ($night_audit['overdue'] as $row) {
+            $night_audit_overdue_ids[(int) $row['company_id']] = true;
+        }
+
+        $rows = array();
+        foreach ($query->result_array() as $row) {
+            $company_id = (int) $row['company_id'];
+            $trial_expiry = !empty($row['trial_expiry_date']) ? (string) $row['trial_expiry_date'] : '';
+            $state = isset($row['subscription_state']) ? (string) $row['subscription_state'] : '';
+            $last_login = !empty($row['last_login']) && $row['last_login'] !== '0000-00-00'
+                ? (string) $row['last_login']
+                : '';
+
+            $flags = array(
+                'no_bookings' => ((int) $row['total_bookings']) < 1,
+                'trial_expiring_soon' => $state === 'trialing'
+                    && $trial_expiry !== ''
+                    && $trial_expiry !== '0000-00-00'
+                    && $trial_expiry >= $today
+                    && $trial_expiry <= $trial_soon_end,
+                'trial_expired' => $state === 'trial_ended'
+                    || ($state === 'trialing' && $trial_expiry !== '' && $trial_expiry !== '0000-00-00' && $trial_expiry < $today),
+                'night_audit_overdue' => !empty($night_audit_overdue_ids[$company_id]),
+                'channel_sync_issue' => !empty($channel_issue_ids[$company_id]),
+                'inactive_login' => $last_login === '' || $last_login < $inactive_cutoff,
+            );
+
+            $score = compute_tenant_health_score($flags);
+            $risk = tenant_health_risk_level($score);
+            $flag_labels = tenant_health_flag_labels();
+            $active_flags = array();
+            foreach ($flags as $key => $active) {
+                if ($active && isset($flag_labels[$key])) {
+                    $active_flags[] = $flag_labels[$key];
+                }
+            }
+
+            $rows[] = array(
+                'company_id' => $company_id,
+                'name' => isset($row['name']) ? (string) $row['name'] : '',
+                'subscription_state' => $state,
+                'trial_expiry_date' => $trial_expiry !== '' ? $trial_expiry : null,
+                'owner_email' => isset($row['owner_email']) ? (string) $row['owner_email'] : '',
+                'owner_name' => trim((string) $row['owner_first_name'] . ' ' . $row['owner_last_name']),
+                'total_bookings' => (int) $row['total_bookings'],
+                'bookings_last_30_days' => (int) $row['bookings_last_30_days'],
+                'health_score' => $score,
+                'risk_level' => $risk,
+                'flags' => $flags,
+                'flag_labels' => $active_flags,
+            );
+        }
+
+        usort($rows, function ($a, $b) {
+            if ($a['health_score'] === $b['health_score']) {
+                return strcmp($a['name'], $b['name']);
+            }
+
+            return $a['health_score'] - $b['health_score'];
+        });
+
+        $filter = isset($filters['filter']) ? (string) $filters['filter'] : 'at_risk';
+        if ($filter === 'all') {
+            return $rows;
+        }
+
+        return array_values(array_filter($rows, function ($row) use ($filter) {
+            if ($filter === 'at_risk') {
+                return in_array($row['risk_level'], array('at_risk', 'critical'), true);
+            }
+            if ($filter === 'no_bookings') {
+                return !empty($row['flags']['no_bookings']);
+            }
+            if ($filter === 'trial_expiring') {
+                return !empty($row['flags']['trial_expiring_soon']) || !empty($row['flags']['trial_expired']);
+            }
+            if ($filter === 'night_audit') {
+                return !empty($row['flags']['night_audit_overdue']);
+            }
+            if ($filter === 'channel_sync') {
+                return !empty($row['flags']['channel_sync_issue']);
+            }
+
+            return true;
+        }));
+    }
+
+    /**
+     * Summary counts for tenant health dashboard cards.
+     *
+     * @return array<string, int>
+     */
+    function get_tenant_health_summary()
+    {
+        $all = $this->get_tenant_health_rows(array('filter' => 'all'));
+        $counts = array(
+            'total' => count($all),
+            'at_risk' => 0,
+            'critical' => 0,
+            'no_bookings' => 0,
+            'trial_expiring' => 0,
+            'night_audit_overdue' => 0,
+            'channel_sync_issues' => 0,
+        );
+
+        foreach ($all as $row) {
+            if ($row['risk_level'] === 'at_risk') {
+                $counts['at_risk']++;
+            } elseif ($row['risk_level'] === 'critical') {
+                $counts['critical']++;
+            }
+            if (!empty($row['flags']['no_bookings'])) {
+                $counts['no_bookings']++;
+            }
+            if (!empty($row['flags']['trial_expiring_soon']) || !empty($row['flags']['trial_expired'])) {
+                $counts['trial_expiring']++;
+            }
+            if (!empty($row['flags']['night_audit_overdue'])) {
+                $counts['night_audit_overdue']++;
+            }
+            if (!empty($row['flags']['channel_sync_issue'])) {
+                $counts['channel_sync_issues']++;
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Company IDs for bulk tenant health actions.
+     *
+     * @param string $scope all_trialing|expiring_7|active|at_risk
+     * @return array<int, int>
+     */
+    function get_tenant_health_bulk_company_ids($scope)
+    {
+        $scope = (string) $scope;
+        $today = date('Y-m-d');
+        $soon = date('Y-m-d', strtotime('+7 days'));
+
+        if ($scope === 'all_trialing') {
+            $sql = "
+                SELECT c.company_id
+                FROM company AS c
+                INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+                WHERE c.is_deleted = 0 AND cs.subscription_state = 'trialing'
+            ";
+            $query = $this->db->query($sql);
+        } elseif ($scope === 'expiring_7') {
+            $sql = "
+                SELECT c.company_id
+                FROM company AS c
+                INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+                INNER JOIN company_admin_panel_info AS capi ON capi.company_id = c.company_id
+                WHERE c.is_deleted = 0
+                  AND cs.subscription_state = 'trialing'
+                  AND capi.trial_expiry_date >= ?
+                  AND capi.trial_expiry_date <= ?
+            ";
+            $query = $this->db->query($sql, array($today, $soon));
+        } elseif ($scope === 'active') {
+            $sql = "
+                SELECT c.company_id
+                FROM company AS c
+                INNER JOIN company_subscription AS cs ON cs.company_id = c.company_id
+                WHERE c.is_deleted = 0 AND cs.subscription_state = 'active'
+            ";
+            $query = $this->db->query($sql);
+        } elseif ($scope === 'at_risk') {
+            $ids = array();
+            foreach ($this->get_tenant_health_rows(array('filter' => 'at_risk')) as $row) {
+                $ids[] = (int) $row['company_id'];
+            }
+
+            return $ids;
+        } else {
+            return array();
+        }
+
+        if (!$query || $query->num_rows() < 1) {
+            return array();
+        }
+
+        $ids = array();
+        foreach ($query->result_array() as $row) {
+            $ids[] = (int) $row['company_id'];
+        }
+
+        return $ids;
     }
 }
 	

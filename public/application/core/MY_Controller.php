@@ -520,7 +520,7 @@ class MY_Controller extends CI_Controller {
             {
                 if (
                     $this->controller_name === 'account_settings' &&
-                    in_array($this->function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'), true) &&
+                    in_array($this->function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health', 'subscription_receipt'), true) &&
                     !user_can_manage_billing(
                         $this->user_id,
                         $this->company_id,

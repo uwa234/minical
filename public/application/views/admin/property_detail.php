@@ -86,9 +86,15 @@ function pa_format_extension_name($name) {
             <i class="fa fa-arrow-left" aria-hidden="true"></i> Back to list
         </a>
         <?php if (empty($tenant['is_deleted'])) { ?>
-            <a class="pa-btn pa-btn-primary" href="<?php echo base_url('menu/select_hotel/' . $company_id); ?>">
-                <i class="fa fa-external-link" aria-hidden="true"></i> Open property
+            <a class="pa-btn pa-btn-primary" href="<?php echo base_url('admin/impersonate_tenant/' . $company_id); ?>">
+                <i class="fa fa-external-link" aria-hidden="true"></i> Login as tenant
             </a>
+        <?php } else { ?>
+            <button type="button" class="pa-btn pa-btn-success saas-restore-property-btn"
+                    data-company-id="<?php echo $company_id; ?>"
+                    data-company-name="<?php echo htmlspecialchars(isset($tenant['name']) ? $tenant['name'] : '', ENT_QUOTES, 'UTF-8'); ?>">
+                <i class="fa fa-undo" aria-hidden="true"></i> Restore property
+            </button>
         <?php } ?>
     </div>
 </div>
@@ -284,12 +290,19 @@ function pa_format_extension_name($name) {
                     <textarea class="form-control input-sm" id="tenant-payment-notes" rows="2"
                               placeholder="Bank transfer ref, invoice #, etc."></textarea>
                 </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="tenant-payment-send-receipt" value="1" checked /> Email receipt to property owner</label>
+                </div>
                 <button type="button" class="pa-btn pa-btn-primary pa-btn-sm" id="tenant-record-payment">Record payment</button>
                 <button type="button" class="pa-btn pa-btn-secondary pa-btn-sm" id="tenant-extend-grace"
                         data-grace-days="<?php echo (int) (isset($default_grace_days) ? $default_grace_days : saas_paid_plan_grace_days()); ?>">
                     Extend grace (<?php echo (int) (isset($default_grace_days) ? $default_grace_days : saas_paid_plan_grace_days()); ?> days)
                 </button>
                 <button type="button" class="pa-btn pa-btn-secondary pa-btn-sm" id="tenant-send-reminder">Send reminder</button>
+                <?php if (in_array($state, array('canceled', 'unpaid', 'trial_ended'), true)) { ?>
+                    <button type="button" class="pa-btn pa-btn-secondary pa-btn-sm" id="tenant-send-win-back">Send win-back email</button>
+                <?php } ?>
+                <button type="button" class="pa-btn pa-btn-secondary pa-btn-sm" id="tenant-mark-contacted">Mark contacted</button>
             </div>
         </div>
     </div>
@@ -428,12 +441,13 @@ function pa_format_extension_name($name) {
                     <th>Type</th>
                     <th>Amount</th>
                     <th>Reference</th>
+                    <th>Receipt</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($subscription_payments)) { ?>
                     <tr>
-                        <td colspan="4" class="pa-empty" style="padding: 32px;">No subscription payments recorded</td>
+                        <td colspan="5" class="pa-empty" style="padding: 32px;">No subscription payments recorded</td>
                     </tr>
                 <?php } else {
                     foreach ($subscription_payments as $payment) { ?>
@@ -442,6 +456,16 @@ function pa_format_extension_name($name) {
                             <td><?php echo htmlspecialchars((string) $payment['payment_type'], ENT_QUOTES, 'UTF-8'); ?></td>
                             <td><strong><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount((float) $payment['amount']); ?></strong></td>
                             <td style="font-size: 12px; word-break: break-all;"><?php echo htmlspecialchars((string) $payment['reference'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td>
+                                <a class="pa-btn pa-btn-secondary pa-btn-sm" target="_blank" rel="noopener"
+                                   href="<?php echo htmlspecialchars(saas_subscription_receipt_url((int) $company_id, (string) $payment['reference']), ENT_QUOTES, 'UTF-8'); ?>">
+                                    View
+                                </a>
+                                <button type="button" class="pa-btn pa-btn-secondary pa-btn-sm tenant-email-receipt"
+                                        data-reference="<?php echo htmlspecialchars((string) $payment['reference'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    Email
+                                </button>
+                            </td>
                         </tr>
                     <?php }
                 } ?>

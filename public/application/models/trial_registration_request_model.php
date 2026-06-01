@@ -30,7 +30,12 @@ class Trial_registration_request_model extends CI_Model {
         );
 
         if ($this->db->insert('trial_registration_request', $row)) {
-            return (int) $this->db->insert_id();
+            $id = (int) $this->db->insert_id();
+            $row['trial_registration_request_id'] = $id;
+            if (function_exists('platform_notify_trial_signup')) {
+                platform_notify_trial_signup($row);
+            }
+            return $id;
         }
 
         return false;

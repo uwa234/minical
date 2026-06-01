@@ -89,6 +89,11 @@
                                     </a>
                                 <?php } else { ?>
                                     <button type="button"
+                                            class="pa-btn pa-btn-secondary pa-btn-sm trial-send-outreach-btn"
+                                            data-request-id="<?php echo $lead_id; ?>">
+                                        Send outreach
+                                    </button>
+                                    <button type="button"
                                             class="pa-btn pa-btn-primary pa-btn-sm trial-create-property-btn"
                                             data-request-id="<?php echo $lead_id; ?>"
                                             data-property-name="<?php echo htmlspecialchars($row['property_name'], ENT_QUOTES, 'UTF-8'); ?>"

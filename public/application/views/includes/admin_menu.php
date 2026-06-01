@@ -2,19 +2,27 @@
 $current = $this->uri->segment(2) ?: 'dashboard';
 $nav_items = array(
     'dashboard' => array('label' => 'Dashboard', 'icon' => 'fa-dashboard', 'url' => 'admin/dashboard'),
+    'analytics' => array('label' => 'Growth', 'icon' => 'fa-bar-chart', 'url' => 'admin/analytics'),
+    'tenant_health' => array('label' => 'Tenant health', 'icon' => 'fa-heartbeat', 'url' => 'admin/tenant_health'),
     'property_list' => array('label' => 'Properties', 'icon' => 'fa-building', 'url' => 'admin/property_list'),
     'trial_registrations' => array('label' => 'Trial sign-ups', 'icon' => 'fa-envelope', 'url' => 'admin/trial_registrations'),
     'revenue' => array('label' => 'Revenue', 'icon' => 'fa-line-chart', 'url' => 'admin/revenue'),
     'debtors' => array('label' => 'Debtors', 'icon' => 'fa-exclamation-circle', 'url' => 'admin/debtors'),
+    'communication' => array('label' => 'Communication', 'icon' => 'fa-bullhorn', 'url' => 'admin/communication'),
+    'security' => array('label' => 'Security', 'icon' => 'fa-shield', 'url' => 'admin/security'),
     'settings' => array('label' => 'Settings', 'icon' => 'fa-cog', 'url' => 'admin/settings'),
 );
 $page_titles = array(
     'dashboard' => 'Dashboard',
+    'analytics' => 'Growth & analytics',
+    'tenant_health' => 'Tenant health & support',
     'property_list' => 'Properties',
     'property_detail' => 'Property detail',
     'trial_registrations' => 'Trial sign-ups',
     'revenue' => 'Revenue',
     'debtors' => 'Subscription debtors',
+    'communication' => 'Growth & communication',
+    'security' => 'Security & governance',
     'settings' => 'Settings',
 );
 $pa_page_title = isset($page_titles[$current]) ? $page_titles[$current] : 'Platform Admin';

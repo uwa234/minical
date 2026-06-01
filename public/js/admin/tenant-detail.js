@@ -181,10 +181,20 @@ $(function () {
                 renewal_period: $('#tenant-payment-period').val(),
                 payment_date: $('#tenant-payment-date').val(),
                 tier_id: tierId,
-                notes: $.trim($('#tenant-payment-notes').val())
+                notes: $.trim($('#tenant-payment-notes').val()),
+                send_receipt: $('#tenant-payment-send-receipt').is(':checked') ? '1' : '0'
             },
             function (response) {
-                alert('Payment recorded. Subscription active until ' + response.expiration_date + '.');
+                var msg = 'Payment recorded. Subscription active until ' + response.expiration_date + '.';
+                if (response.receipt_sent) {
+                    msg += ' Receipt emailed to owner.';
+                }
+                if (response.receipt_url && window.confirm(msg + '\n\nOpen printable receipt now?')) {
+                    window.open(response.receipt_url, '_blank');
+                    window.location.reload();
+                    return;
+                }
+                alert(msg);
                 window.location.reload();
             },
             function (msg) {
@@ -206,7 +216,8 @@ $(function () {
             baseUrl() + 'admin/extend_subscription_grace/',
             { company_id: companyId, grace_days: graceDays },
             function (response) {
-                alert('Grace extended. New expiry: ' + response.new_expiry_date + '.');
+                alert('Grace extended. New expiry: ' + response.new_expiry_date
+                    + (response.grace_email_sent ? '. Owner notified by email.' : '') + '.');
                 window.location.reload();
             },
             function (msg) {
@@ -228,6 +239,94 @@ $(function () {
             { company_id: companyId },
             function (response) {
                 alert('Reminder sent to ' + response.recipient + '.');
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $btn
+        );
+    });
+
+    $('#tenant-send-win-back').on('click', function () {
+        var $btn = $(this);
+
+        if (!window.confirm('Send a win-back email to the property owner?')) {
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/send_win_back_email/',
+            { company_id: companyId },
+            function (response) {
+                alert('Win-back email sent to ' + response.recipient + '.');
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $btn
+        );
+    });
+
+    $('#tenant-mark-contacted').on('click', function () {
+        var $btn = $(this);
+        var note = window.prompt('Mark this property as contacted. Optional note:', '');
+
+        if (note === null) {
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/mark_debtor_contacted/',
+            { company_id: companyId, note: $.trim(note) },
+            function () {
+                window.location.reload();
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $btn
+        );
+    });
+
+    $('.tenant-email-receipt').on('click', function () {
+        var $btn = $(this);
+        var reference = $btn.data('reference');
+
+        if (!reference) {
+            return;
+        }
+
+        if (!window.confirm('Email receipt to the property owner?')) {
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/send_subscription_receipt/',
+            { company_id: companyId, reference: reference },
+            function () {
+                alert('Receipt emailed to property owner.');
+            },
+            function (msg) {
+                alert(msg);
+            },
+            $btn
+        );
+    });
+
+    $('.saas-restore-property-btn').on('click', function () {
+        var $btn = $(this);
+        var restoreCompanyId = $btn.data('company-id') || companyId;
+        var companyName = $btn.data('company-name') || ('#' + restoreCompanyId);
+
+        if (!window.confirm('Restore "' + companyName + '"?')) {
+            return;
+        }
+
+        postAdminJson(
+            baseUrl() + 'admin/restore_property/',
+            { company_id: restoreCompanyId },
+            function () {
+                window.location.reload();
             },
             function (msg) {
                 alert(msg);

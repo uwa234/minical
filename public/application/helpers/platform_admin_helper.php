@@ -29,15 +29,147 @@ function is_veurion_support_email($email)
 
 function is_platform_admin($user_id, $email = null)
 {
+    $CI =& get_instance();
+    if (!isset($CI->Platform_admin_model)) {
+        $CI->load->model('Platform_admin_model');
+    }
+
+    if ($CI->Platform_admin_model->table_exists()) {
+        if ($email !== null && $email !== '') {
+            if ($CI->Platform_admin_model->is_active_platform_admin_email($email)) {
+                return true;
+            }
+        }
+        if ((int) $user_id > 0 && $CI->Platform_admin_model->is_active_platform_admin_user($user_id, $email)) {
+            return true;
+        }
+    }
+
     if ($email !== null && $email !== '') {
         return is_veurion_support_email($email);
     }
-    $CI =& get_instance();
     if (!isset($CI->User_model)) {
         $CI->load->model('User_model');
     }
     $user = $CI->User_model->get_user_by_id($user_id);
     return $user && isset($user['email']) && is_veurion_support_email($user['email']);
+}
+
+function platform_admin_encrypt_secret($plaintext)
+{
+    $plaintext = (string) $plaintext;
+    if ($plaintext === '') {
+        return '';
+    }
+
+    $CI =& get_instance();
+    $key = $CI->config->item('encryption_key');
+    if (!$key) {
+        return base64_encode($plaintext);
+    }
+
+    $iv = random_bytes(16);
+    $cipher = openssl_encrypt($plaintext, 'AES-256-CBC', hash('sha256', $key, true), OPENSSL_RAW_DATA, $iv);
+    if ($cipher === false) {
+        return base64_encode($plaintext);
+    }
+
+    return base64_encode($iv . $cipher);
+}
+
+function platform_admin_decrypt_secret($ciphertext)
+{
+    $ciphertext = (string) $ciphertext;
+    if ($ciphertext === '') {
+        return '';
+    }
+
+    $raw = base64_decode($ciphertext, true);
+    if ($raw === false || strlen($raw) < 17) {
+        return base64_decode($ciphertext) ?: '';
+    }
+
+    $CI =& get_instance();
+    $key = $CI->config->item('encryption_key');
+    if (!$key) {
+        return $raw;
+    }
+
+    $iv = substr($raw, 0, 16);
+    $cipher = substr($raw, 16);
+    $plain = openssl_decrypt($cipher, 'AES-256-CBC', hash('sha256', $key, true), OPENSSL_RAW_DATA, $iv);
+
+    return $plain !== false ? $plain : '';
+}
+
+function platform_admin_request_ip()
+{
+    $CI =& get_instance();
+    return $CI->input->ip_address();
+}
+
+function platform_audit_log($action, $data = array())
+{
+    $CI =& get_instance();
+    if (!isset($CI->Platform_audit_log_model)) {
+        $CI->load->model('Platform_audit_log_model');
+    }
+    if (!$CI->Platform_audit_log_model->table_exists()) {
+        return false;
+    }
+
+    $actor_user_id = isset($data['actor_user_id']) ? (int) $data['actor_user_id'] : 0;
+    $actor_email = isset($data['actor_email']) ? (string) $data['actor_email'] : '';
+    if ($actor_user_id < 1 && $CI->session) {
+        $actor_user_id = (int) $CI->session->userdata('user_id');
+    }
+    if ($actor_email === '' && $CI->session) {
+        $actor_email = (string) $CI->session->userdata('email');
+    }
+
+    return $CI->Platform_audit_log_model->add_entry(array(
+        'actor_user_id' => $actor_user_id > 0 ? $actor_user_id : null,
+        'actor_email' => $actor_email,
+        'action' => (string) $action,
+        'target_type' => isset($data['target_type']) ? (string) $data['target_type'] : null,
+        'target_id' => isset($data['target_id']) ? (int) $data['target_id'] : null,
+        'target_label' => isset($data['target_label']) ? (string) $data['target_label'] : null,
+        'details' => isset($data['details']) ? (string) $data['details'] : null,
+        'ip_address' => platform_admin_request_ip(),
+    ));
+}
+
+function platform_audit_action_label($action)
+{
+    static $labels = null;
+    if ($labels === null) {
+        $labels = array(
+            'login' => 'Login',
+            'login.2fa' => '2FA verification',
+            'admin.add' => 'Admin added',
+            'admin.revoke' => 'Admin revoked',
+            '2fa.enable' => '2FA enabled',
+            '2fa.disable' => '2FA disabled',
+            'property.soft_delete' => 'Property soft-deleted',
+            'property.restore' => 'Property restored',
+            'property.update' => 'Property updated',
+            'subscription.update' => 'Subscription updated',
+            'settings.update' => 'Settings updated',
+            'impersonation.start' => 'Impersonation started',
+            'tenant.action' => 'Tenant action',
+        );
+        if (function_exists('get_instance')) {
+            $CI =& get_instance();
+            if (isset($CI->Platform_audit_log_model)) {
+                $labels = $CI->Platform_audit_log_model->action_labels();
+            } elseif (class_exists('CI_Controller', false)) {
+                $CI->load->model('Platform_audit_log_model');
+                $labels = $CI->Platform_audit_log_model->action_labels();
+            }
+        }
+    }
+
+    return isset($labels[$action]) ? $labels[$action] : ucfirst(str_replace(array('.', '_'), ' ', (string) $action));
 }
 
 function is_hosted_prod_service()
@@ -51,7 +183,22 @@ function is_hosted_prod_service()
  */
 function saas_paid_plan_grace_days()
 {
-    return 7;
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $CI =& get_instance();
+    if (!isset($CI->Platform_settings_model)) {
+        $CI->load->model('Platform_settings_model');
+    }
+    if ($CI->db->table_exists('platform_settings')) {
+        $cached = $CI->Platform_settings_model->get_paid_plan_grace_days();
+        return $cached;
+    }
+
+    $cached = 7;
+    return $cached;
 }
 
 /**
@@ -173,7 +320,7 @@ function is_trial_lockout_allowed_route($controller_name, $function_name)
     $function = strtolower(trim((string) $function_name));
 
     $allowed = array(
-        'account_settings' => array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'),
+        'account_settings' => array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health', 'subscription_receipt'),
         'auth' => array('logout', 'get_subscription_state_extended', 'check_for_employee_auto_logout'),
         'menu' => array('select_hotel'),
         'properties' => array('my_properties'),
@@ -263,7 +410,22 @@ function veurion_use_text_login_logo($whitelabel)
  */
 function saas_default_currency()
 {
-    return 'NGN';
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $CI =& get_instance();
+    if (!isset($CI->Platform_settings_model)) {
+        $CI->load->model('Platform_settings_model');
+    }
+    if ($CI->db->table_exists('platform_settings')) {
+        $cached = $CI->Platform_settings_model->get_default_currency();
+        return $cached;
+    }
+
+    $cached = 'NGN';
+    return $cached;
 }
 
 /**
@@ -832,6 +994,55 @@ function subscription_debtor_reason_label($reason)
 }
 
 /**
+ * Amount due for a subscription debtor row (renewal cost or tier fallback).
+ *
+ * @param array $row Debtor row from Admin_model::get_subscription_debtors()
+ * @param array $tiers Pricing tiers from Platform_settings_model
+ * @return float
+ */
+function resolve_subscription_debtor_amount_due($row, $tiers)
+{
+    $room_count = isset($row['number_of_rooms']) ? (int) $row['number_of_rooms'] : 1;
+    if ($room_count < 1) {
+        $room_count = 1;
+    }
+
+    $amount_due = isset($row['renewal_cost']) ? (float) $row['renewal_cost'] : 0;
+    $meta = array();
+    if (!empty($row['meta_data'])) {
+        $decoded = json_decode($row['meta_data'], true);
+        if (is_array($decoded)) {
+            $meta = $decoded;
+        }
+    }
+
+    $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+    foreach ($tiers as $tier) {
+        if ($selected_tier_id > 0) {
+            if ((int) $tier['id'] === $selected_tier_id) {
+                if ($amount_due <= 0 && isset($tier['monthly_price'])) {
+                    $amount_due = (float) $tier['monthly_price'];
+                }
+                break;
+            }
+        } else {
+            $min = (int) $tier['min_rooms'];
+            $max = (isset($tier['max_rooms']) && $tier['max_rooms'] !== null && $tier['max_rooms'] !== '')
+                ? (int) $tier['max_rooms']
+                : null;
+            if ($room_count >= $min && ($max === null || $room_count <= $max)) {
+                if ($amount_due <= 0 && isset($tier['monthly_price'])) {
+                    $amount_due = (float) $tier['monthly_price'];
+                }
+                break;
+            }
+        }
+    }
+
+    return max(0, $amount_due);
+}
+
+/**
  * Normalize renewal period input to "1 month" or "1 year".
  *
  * @param string $renewal_period
@@ -1045,6 +1256,13 @@ function record_saas_subscription_payment($options)
         ));
     }
 
+    $receipt_url = saas_customer_subscription_receipt_url($company_id, $reference);
+    $CI->Company_subscription_model->update_company_subscription($company_id, array(
+        'invoice_link' => $receipt_url,
+    ));
+
+    platform_notify_payment_received($company_id, $amount, $reference, $company);
+
     return array(
         'success' => true,
         'reference' => $reference,
@@ -1150,6 +1368,20 @@ function build_subscription_payment_reminder_email($company, $context = array())
     $currency_symbol = saas_currency_symbol();
     $subscription_url = function_exists('base_url') ? base_url('account_settings/subscription') : '/account_settings/subscription';
 
+    $amount_label = $amount_due > 0
+        ? $currency_symbol . format_saas_price_amount($amount_due)
+        : '';
+
+    $rendered = render_platform_email_template('payment_reminder', array(
+        'property_name' => $property_name,
+        'due_date' => ($due_date !== '' && $due_date !== '0000-00-00') ? $due_date : '—',
+        'amount_due' => $amount_label !== '' ? $amount_label : '—',
+        'subscription_url' => $subscription_url,
+    ));
+    if ($rendered) {
+        return $rendered;
+    }
+
     $subject = 'Payment reminder: ' . $property_name . ' subscription';
     $lines = array(
         '<p>Hello,</p>',
@@ -1172,3 +1404,1006 @@ function build_subscription_payment_reminder_email($company, $context = array())
         'body' => implode("\n", $lines),
     );
 }
+
+
+/**
+ * Compute tenant health score (0–100) from risk flags.
+ *
+ * @param array<string, bool> $flags
+ * @return int
+ */
+function compute_tenant_health_score($flags)
+{
+    $score = 100;
+    if (!empty($flags['no_bookings'])) {
+        $score -= 30;
+    }
+    if (!empty($flags['trial_expired'])) {
+        $score -= 40;
+    } elseif (!empty($flags['trial_expiring_soon'])) {
+        $score -= 20;
+    }
+    if (!empty($flags['night_audit_overdue'])) {
+        $score -= 25;
+    }
+    if (!empty($flags['channel_sync_issue'])) {
+        $score -= 20;
+    }
+    if (!empty($flags['inactive_login'])) {
+        $score -= 10;
+    }
+
+    return max(0, min(100, $score));
+}
+
+/**
+ * @param int $score
+ * @return string critical|at_risk|healthy
+ */
+function tenant_health_risk_level($score)
+{
+    $score = (int) $score;
+    if ($score < 50) {
+        return 'critical';
+    }
+    if ($score < 70) {
+        return 'at_risk';
+    }
+
+    return 'healthy';
+}
+
+/**
+ * Human-readable labels for tenant health risk flags.
+ *
+ * @return array<string, string>
+ */
+function tenant_health_flag_labels()
+{
+    return array(
+        'no_bookings' => 'No bookings',
+        'trial_expiring_soon' => 'Trial expiring soon',
+        'trial_expired' => 'Trial expired',
+        'night_audit_overdue' => 'Night audit overdue',
+        'channel_sync_issue' => 'Channel sync stale',
+        'inactive_login' => 'No login in 30 days',
+    );
+}
+
+/**
+ * Parse last cron run timestamp from a minical-cron log file.
+ *
+ * @param string $log_path
+ * @return string|null ISO-like timestamp or null
+ */
+function parse_cron_log_last_run($log_path)
+{
+    if (!is_readable($log_path)) {
+        return null;
+    }
+
+    $content = @file_get_contents($log_path);
+    if ($content === false || $content === '') {
+        return null;
+    }
+
+    if (preg_match_all('/===== ([0-9T:+\-]+) cron /', $content, $matches) && !empty($matches[1])) {
+        return end($matches[1]);
+    }
+
+    return null;
+}
+
+/**
+ * Session keys used when a platform admin impersonates a tenant.
+ *
+ * @return array<string, string>
+ */
+function platform_admin_impersonation_session_keys()
+{
+    return array(
+        'active' => 'pa_impersonating',
+        'company_id' => 'pa_impersonating_company_id',
+        'company_name' => 'pa_impersonating_company_name',
+        'return_url' => 'pa_impersonator_return',
+    );
+}
+
+/**
+ * @return bool
+ */
+function platform_admin_is_impersonating()
+{
+    $CI =& get_instance();
+    $keys = platform_admin_impersonation_session_keys();
+
+    return (bool) $CI->session->userdata($keys['active']);
+}
+
+/**
+ * Mark a subscription debtor as contacted (stores timestamp in subscription meta_data).
+ *
+ * @param int $company_id
+ * @param string|null $contacted_by Admin email or identifier
+ * @param string $note Optional note
+ * @return array{success: bool, error?: string, contacted_at?: string}
+ */
+function mark_subscription_debtor_contacted($company_id, $contacted_by = null, $note = '')
+{
+    $CI =& get_instance();
+    $company_id = (int) $company_id;
+
+    if ($company_id < 1) {
+        return array('success' => false, 'error' => 'Invalid company.');
+    }
+
+    $CI->load->model(array('Company_model', 'Company_subscription_model'));
+    $company = $CI->Company_model->get_company($company_id);
+    if (!$company || !isset($company['company_id'])) {
+        return array('success' => false, 'error' => 'Property not found.');
+    }
+
+    $subscription = $CI->Company_subscription_model->get_company_subscription($company_id);
+    $meta = array();
+    if ($subscription && !empty($subscription['meta_data'])) {
+        $decoded = json_decode($subscription['meta_data'], true);
+        if (is_array($decoded)) {
+            $meta = $decoded;
+        }
+    }
+
+    $contacted_at = gmdate('c');
+    $meta['debtor_last_contacted_at'] = $contacted_at;
+    if ($contacted_by !== null && trim((string) $contacted_by) !== '') {
+        $meta['debtor_last_contacted_by'] = trim((string) $contacted_by);
+    }
+    if (trim((string) $note) !== '') {
+        $meta['debtor_last_contact_note'] = trim((string) $note);
+    }
+
+    $CI->Company_subscription_model->insert_or_update_company_subscription($company_id, array(
+        'meta_data' => json_encode($meta),
+    ));
+
+    return array(
+        'success' => true,
+        'contacted_at' => $contacted_at,
+    );
+}
+
+/**
+ * Extract debtor last-contacted timestamp from subscription meta_data JSON.
+ *
+ * @param string|null $meta_data_json
+ * @return string|null ISO8601 or null
+ */
+function subscription_debtor_last_contacted_at($meta_data_json)
+{
+    if ($meta_data_json === null || trim((string) $meta_data_json) === '') {
+        return null;
+    }
+    $decoded = json_decode($meta_data_json, true);
+    if (!is_array($decoded) || empty($decoded['debtor_last_contacted_at'])) {
+        return null;
+    }
+    return (string) $decoded['debtor_last_contacted_at'];
+}
+
+/**
+ * Build receipt number from payment reference.
+ *
+ * @param string $reference
+ * @return string
+ */
+function build_saas_receipt_number($reference)
+{
+    $ref = trim((string) $reference);
+    if ($ref === '') {
+        return 'VEU-' . gmdate('Ymd') . '-' . strtoupper(substr(md5(uniqid('', true)), 0, 6));
+    }
+    if (strlen($ref) <= 32) {
+        return strtoupper($ref);
+    }
+    return 'VEU-' . strtoupper(substr(md5($ref), 0, 12));
+}
+
+/**
+ * URL for platform admin subscription receipt page.
+ *
+ * @param int $company_id
+ * @param string $reference
+ * @return string
+ */
+function saas_subscription_receipt_url($company_id, $reference)
+{
+    $company_id = (int) $company_id;
+    $reference = rawurlencode(trim((string) $reference));
+    return base_url('admin/subscription_receipt/' . $company_id . '/' . $reference);
+}
+
+/**
+ * Secret for signed customer receipt links (no login required).
+ *
+ * @return string
+ */
+function saas_receipt_hmac_secret()
+{
+    if (function_exists('minical_env')) {
+        $secret = trim((string) minical_env('MIGRATION_SECRET', ''));
+        if ($secret !== '') {
+            return $secret;
+        }
+        $db_pass = trim((string) minical_env('DATABASE_PASS', ''));
+        if ($db_pass !== '') {
+            return $db_pass;
+        }
+    }
+    return 'minical';
+}
+
+/**
+ * HMAC token for a customer-facing subscription receipt link.
+ *
+ * @param int $company_id
+ * @param string $reference
+ * @return string
+ */
+function saas_subscription_receipt_token($company_id, $reference)
+{
+    return hash_hmac(
+        'sha256',
+        (int) $company_id . '|' . trim((string) $reference),
+        saas_receipt_hmac_secret()
+    );
+}
+
+/**
+ * Customer-facing printable receipt URL (works from email without admin login).
+ *
+ * @param int $company_id
+ * @param string $reference
+ * @return string
+ */
+function saas_customer_subscription_receipt_url($company_id, $reference)
+{
+    $company_id = (int) $company_id;
+    $reference = trim((string) $reference);
+    $token = saas_subscription_receipt_token($company_id, $reference);
+
+    return base_url(
+        'account_settings/subscription_receipt/'
+        . rawurlencode($reference)
+        . '?token=' . rawurlencode($token)
+    );
+}
+
+/**
+ * Verify a customer receipt token.
+ *
+ * @param int $company_id
+ * @param string $reference
+ * @param string $token
+ * @return bool
+ */
+function saas_subscription_receipt_token_valid($company_id, $reference, $token)
+{
+    $expected = saas_subscription_receipt_token($company_id, $reference);
+    return hash_equals($expected, trim((string) $token));
+}
+
+/**
+ * Load receipt row data for HTML/email generation.
+ *
+ * @param int $company_id
+ * @param string $reference
+ * @return array|null
+ */
+function build_saas_subscription_receipt_data($company_id, $reference)
+{
+    $CI =& get_instance();
+    $company_id = (int) $company_id;
+    $reference = trim((string) $reference);
+    if ($company_id < 1 || $reference === '') {
+        return null;
+    }
+
+    $CI->load->model(array(
+        'Company_model',
+        'Company_subscription_model',
+        'Platform_settings_model',
+        'Admin_model',
+    ));
+
+    $payment = $CI->Admin_model->get_saas_subscription_payment($company_id, $reference);
+    if (!$payment) {
+        return null;
+    }
+
+    $company = $CI->Company_model->get_company($company_id);
+    if (!$company) {
+        return null;
+    }
+
+    $tiers = $CI->Platform_settings_model->get_pricing_tiers(false);
+    $tier_id = resolve_company_pricing_tier_id($company, $tiers);
+    $tier_name = '';
+    $currency = saas_default_currency();
+    if ($tier_id > 0) {
+        $tier = $CI->Platform_settings_model->get_pricing_tier($tier_id);
+        if ($tier) {
+            $tier_name = isset($tier['name']) ? (string) $tier['name'] : '';
+            if (!empty($tier['currency'])) {
+                $currency = strtoupper((string) $tier['currency']);
+            }
+        }
+    }
+
+    $meta = array();
+    if (!empty($company['meta_data'])) {
+        $decoded = json_decode($company['meta_data'], true);
+        if (is_array($decoded)) {
+            $meta = $decoded;
+        }
+    }
+    if (!empty($meta['last_currency'])) {
+        $currency = strtoupper((string) $meta['last_currency']);
+    }
+    if (!empty($meta['tier_name'])) {
+        $tier_name = (string) $meta['tier_name'];
+    }
+
+    $subscription = $CI->Company_subscription_model->get_company_subscription($company_id);
+    $notes = !empty($meta['last_admin_note']) ? (string) $meta['last_admin_note'] : '';
+    $plan_expires = isset($company['expiration_date']) ? (string) $company['expiration_date'] : '';
+    $renewal_period = ($subscription && isset($subscription['renewal_period']))
+        ? (string) $subscription['renewal_period']
+        : '';
+
+    return array(
+        'company_id' => $company_id,
+        'property_name' => isset($company['name']) ? (string) $company['name'] : 'Property',
+        'amount' => isset($payment['amount']) ? (float) $payment['amount'] : 0,
+        'currency' => $currency,
+        'paid_date' => isset($payment['paid_date']) ? (string) $payment['paid_date'] : '',
+        'reference' => $reference,
+        'payment_type' => isset($payment['payment_type']) ? (string) $payment['payment_type'] : 'Subscription payment',
+        'renewal_period' => $renewal_period,
+        'plan_expires' => $plan_expires,
+        'tier_name' => $tier_name,
+        'notes' => $notes,
+    );
+}
+
+/**
+ * Email subscription payment receipt to the property owner.
+ *
+ * @param int $company_id
+ * @param string $reference
+ * @return bool
+ */
+function send_saas_subscription_receipt_email($company_id, $reference)
+{
+    $CI =& get_instance();
+    $company_id = (int) $company_id;
+    $reference = trim((string) $reference);
+    if ($company_id < 1 || $reference === '') {
+        return false;
+    }
+
+    if (!minical_env('SMTP_USER', '')) {
+        return false;
+    }
+
+    $CI->load->model('Company_model');
+    $company = $CI->Company_model->get_company($company_id);
+    if (!$company) {
+        return false;
+    }
+
+    $recipient = !empty($company['owner_email']) ? trim((string) $company['owner_email']) : '';
+    if ($recipient === '' && !empty($company['email'])) {
+        $recipient = trim((string) $company['email']);
+    }
+    if ($recipient === '') {
+        return false;
+    }
+
+    $receipt = build_saas_subscription_receipt_data($company_id, $reference);
+    if (!$receipt) {
+        return false;
+    }
+
+    $email_content = build_saas_subscription_receipt_email($company, $receipt);
+
+    $CI->load->library('email');
+    $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+    $CI->email->from($from_email, 'Veurion');
+    $CI->email->to($recipient);
+    $CI->email->subject($email_content['subject']);
+    $CI->email->message($email_content['body']);
+    $CI->email->set_mailtype('html');
+
+    if (!$CI->email->send()) {
+        log_message('error', 'Subscription receipt email failed for company ' . $company_id . ': '
+            . $CI->email->print_debugger(array('headers')));
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Build subject and HTML body when admin extends subscription grace.
+ *
+ * @param array $company
+ * @param array $context new_expiry_date, grace_days, subscription_state
+ * @return array{subject: string, body: string}
+ */
+function build_subscription_grace_extended_email($company, $context = array())
+{
+    $property_name = isset($company['name']) ? (string) $company['name'] : 'your property';
+    $new_expiry = !empty($context['new_expiry_date']) ? (string) $context['new_expiry_date'] : '';
+    $grace_days = isset($context['grace_days']) ? (int) $context['grace_days'] : 0;
+    $subscription_url = function_exists('base_url') ? base_url('account_settings/subscription') : '/account_settings/subscription';
+
+    $subject = 'Subscription extended: ' . $property_name;
+    $lines = array(
+        '<p>Hello,</p>',
+        '<p>Your Veurion subscription for <strong>' . htmlspecialchars($property_name, ENT_QUOTES, 'UTF-8') . '</strong> has been extended.</p>',
+    );
+    if ($grace_days > 0) {
+        $lines[] = '<p>Extension: <strong>' . (int) $grace_days . ' day' . ($grace_days === 1 ? '' : 's') . '</strong></p>';
+    }
+    if ($new_expiry !== '' && $new_expiry !== '0000-00-00') {
+        $lines[] = '<p>New expiry date: <strong>' . htmlspecialchars($new_expiry, ENT_QUOTES, 'UTF-8') . '</strong></p>';
+    }
+    $lines[] = '<p><a href="' . htmlspecialchars($subscription_url, ENT_QUOTES, 'UTF-8') . '">Open your subscription page</a> to review your plan or pay online.</p>';
+    $lines[] = '<p>Thank you,<br>Veurion Support</p>';
+
+    return array(
+        'subject' => $subject,
+        'body' => implode("\n", $lines),
+    );
+}
+
+
+/**
+ * Email property owner when subscription grace is extended.
+ *
+ * @param int $company_id
+ * @param array $context new_expiry_date, grace_days, subscription_state
+ * @return bool
+ */
+function send_subscription_grace_extended_email($company_id, $context = array())
+{
+    $CI =& get_instance();
+    $company_id = (int) $company_id;
+    if ($company_id < 1 || !minical_env('SMTP_USER', '')) {
+        return false;
+    }
+
+    $CI->load->model('Company_model');
+    $company = $CI->Company_model->get_company($company_id);
+    if (!$company) {
+        return false;
+    }
+
+    $recipient = !empty($company['owner_email']) ? trim((string) $company['owner_email']) : '';
+    if ($recipient === '' && !empty($company['email'])) {
+        $recipient = trim((string) $company['email']);
+    }
+    if ($recipient === '') {
+        return false;
+    }
+
+    $email_content = build_subscription_grace_extended_email($company, $context);
+
+    $CI->load->library('email');
+    $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+    $CI->email->from($from_email, 'Veurion');
+    $CI->email->to($recipient);
+    $CI->email->subject($email_content['subject']);
+    $CI->email->message($email_content['body']);
+    $CI->email->set_mailtype('html');
+
+    if (!$CI->email->send()) {
+        log_message('error', 'Grace extension email failed for company ' . $company_id . ': '
+            . $CI->email->print_debugger(array('headers')));
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Build HTML receipt for a SaaS subscription payment.
+ *
+ * @param array $receipt Keys: property_name, company_id, amount, currency, paid_date, reference,
+ *                      payment_type, renewal_period, plan_expires, tier_name, notes
+ * @return string HTML
+ */
+function build_saas_subscription_receipt_html($receipt)
+{
+    $property_name = isset($receipt['property_name']) ? (string) $receipt['property_name'] : 'Property';
+    $company_id = isset($receipt['company_id']) ? (int) $receipt['company_id'] : 0;
+    $amount = isset($receipt['amount']) ? (float) $receipt['amount'] : 0;
+    $currency = isset($receipt['currency']) ? strtoupper((string) $receipt['currency']) : saas_default_currency();
+    $currency_symbol = saas_currency_symbol($currency);
+    $paid_date = isset($receipt['paid_date']) ? (string) $receipt['paid_date'] : gmdate('Y-m-d');
+    $reference = isset($receipt['reference']) ? (string) $receipt['reference'] : '';
+    $payment_type = isset($receipt['payment_type']) ? (string) $receipt['payment_type'] : 'Subscription payment';
+    $renewal_period = isset($receipt['renewal_period']) ? (string) $receipt['renewal_period'] : '';
+    $plan_expires = isset($receipt['plan_expires']) ? (string) $receipt['plan_expires'] : '';
+    $tier_name = isset($receipt['tier_name']) ? (string) $receipt['tier_name'] : '';
+    $notes = isset($receipt['notes']) ? (string) $receipt['notes'] : '';
+    $receipt_number = build_saas_receipt_number($reference);
+    $issued_at = gmdate('Y-m-d H:i') . ' UTC';
+
+    $rows = array(
+        array('Receipt #', htmlspecialchars($receipt_number, ENT_QUOTES, 'UTF-8')),
+        array('Property', htmlspecialchars($property_name, ENT_QUOTES, 'UTF-8') . ' (ID ' . $company_id . ')'),
+        array('Payment date', htmlspecialchars($paid_date, ENT_QUOTES, 'UTF-8')),
+        array('Description', htmlspecialchars($payment_type, ENT_QUOTES, 'UTF-8')),
+    );
+    if ($tier_name !== '') {
+        $rows[] = array('Plan', htmlspecialchars($tier_name, ENT_QUOTES, 'UTF-8'));
+    }
+    if ($renewal_period !== '') {
+        $rows[] = array('Renewal period', htmlspecialchars($renewal_period, ENT_QUOTES, 'UTF-8'));
+    }
+    if ($plan_expires !== '' && $plan_expires !== '0000-00-00') {
+        $rows[] = array('Plan valid until', htmlspecialchars($plan_expires, ENT_QUOTES, 'UTF-8'));
+    }
+    if ($reference !== '') {
+        $rows[] = array('Reference', htmlspecialchars($reference, ENT_QUOTES, 'UTF-8'));
+    }
+
+    $table_rows = '';
+    foreach ($rows as $row) {
+        $table_rows .= '<tr><th style="text-align:left;padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;font-weight:600;">'
+            . $row[0] . '</th><td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">' . $row[1] . '</td></tr>';
+    }
+
+    $notes_block = '';
+    if ($notes !== '') {
+        $notes_block = '<p style="margin:16px 0 0;font-size:14px;color:#64748b;"><strong>Notes:</strong> '
+            . nl2br(htmlspecialchars($notes, ENT_QUOTES, 'UTF-8')) . '</p>';
+    }
+
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Receipt ' . htmlspecialchars($receipt_number, ENT_QUOTES, 'UTF-8') . '</title>'
+        . '<style>@media print{ .no-print{display:none!important;} body{margin:0;padding:24px;} }</style></head><body style="font-family:system-ui,-apple-system,sans-serif;color:#0f172a;background:#f8fafc;margin:0;padding:24px;">'
+        . '<div style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;">'
+        . '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">'
+        . '<div><h1 style="margin:0 0 4px;font-size:24px;">Veurion</h1><p style="margin:0;color:#64748b;font-size:14px;">Subscription receipt</p></div>'
+        . '<div style="text-align:right;font-size:13px;color:#64748b;">Issued ' . htmlspecialchars($issued_at, ENT_QUOTES, 'UTF-8') . '</div></div>'
+        . '<table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px;">' . $table_rows . '</table>'
+        . '<div style="background:#f1f5f9;border-radius:8px;padding:16px 20px;">'
+        . '<div style="font-size:13px;color:#64748b;margin-bottom:4px;">Amount paid</div>'
+        . '<div style="font-size:28px;font-weight:700;">' . htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8')
+        . htmlspecialchars(format_saas_price_amount($amount, 2), ENT_QUOTES, 'UTF-8')
+        . ' <span style="font-size:14px;font-weight:600;color:#64748b;">' . htmlspecialchars($currency, ENT_QUOTES, 'UTF-8') . '</span></div></div>'
+        . $notes_block
+        . '<p style="margin:24px 0 0;font-size:13px;color:#64748b;">Thank you for your payment. This receipt confirms your Veurion SaaS subscription payment.</p>'
+        . '<p class="no-print" style="margin-top:24px;"><button onclick="window.print()" style="padding:10px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Print receipt</button></p>'
+        . '</div></body></html>';
+}
+
+/**
+ * Build subject and HTML body for subscription payment receipt email.
+ *
+ * @param array $company
+ * @param array $receipt Same keys as build_saas_subscription_receipt_html()
+ * @return array{subject: string, body: string}
+ */
+function build_saas_subscription_receipt_email($company, $receipt)
+{
+    $property_name = isset($receipt['property_name']) ? (string) $receipt['property_name'] : (isset($company['name']) ? (string) $company['name'] : 'your property');
+    $amount = isset($receipt['amount']) ? (float) $receipt['amount'] : 0;
+    $currency = isset($receipt['currency']) ? strtoupper((string) $receipt['currency']) : saas_default_currency();
+    $currency_symbol = saas_currency_symbol($currency);
+    $paid_date = isset($receipt['paid_date']) ? (string) $receipt['paid_date'] : gmdate('Y-m-d');
+    $reference = isset($receipt['reference']) ? (string) $receipt['reference'] : '';
+    $receipt_number = build_saas_receipt_number($reference);
+    $receipt_url = ($reference !== '' && isset($receipt['company_id']))
+        ? saas_customer_subscription_receipt_url((int) $receipt['company_id'], $reference)
+        : '';
+
+    $subject = 'Payment receipt: ' . $property_name . ' — ' . $receipt_number;
+    $lines = array(
+        '<p>Hello,</p>',
+        '<p>Thank you for your Veurion subscription payment for <strong>' . htmlspecialchars($property_name, ENT_QUOTES, 'UTF-8') . '</strong>.</p>',
+        '<p><strong>Amount:</strong> ' . htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8')
+            . htmlspecialchars(format_saas_price_amount($amount, 2), ENT_QUOTES, 'UTF-8')
+            . ' (' . htmlspecialchars($currency, ENT_QUOTES, 'UTF-8') . ')<br>',
+        '<strong>Date:</strong> ' . htmlspecialchars($paid_date, ENT_QUOTES, 'UTF-8') . '<br>',
+        '<strong>Receipt #:</strong> ' . htmlspecialchars($receipt_number, ENT_QUOTES, 'UTF-8') . '</p>',
+    );
+    if ($receipt_url !== '') {
+        $lines[] = '<p><a href="' . htmlspecialchars($receipt_url, ENT_QUOTES, 'UTF-8') . '">View printable receipt</a></p>';
+    }
+    $lines[] = '<p>Thank you,<br>Veurion Support</p>';
+
+    return array(
+        'subject' => $subject,
+        'body' => implode("\n", $lines),
+    );
+}
+
+/**
+ * Supported platform webhook event labels.
+ *
+ * @return array<string, string>
+ */
+function platform_webhook_event_labels()
+{
+    return array(
+        'trial_signup' => 'New trial sign-up',
+        'payment_received' => 'Payment received',
+        'debtor_overdue' => 'Debtor overdue',
+    );
+}
+
+/**
+ * @param string $stored JSON or comma-separated list
+ * @return array<int, string>
+ */
+function platform_webhook_enabled_events_from_storage($stored)
+{
+    $allowed = array_keys(platform_webhook_event_labels());
+    if ($stored === '' || $stored === null) {
+        return $allowed;
+    }
+
+    $decoded = json_decode((string) $stored, true);
+    if (is_array($decoded)) {
+        return array_values(array_intersect($decoded, $allowed));
+    }
+
+    $parts = array_map('trim', explode(',', (string) $stored));
+
+    return array_values(array_intersect($parts, $allowed));
+}
+
+/**
+ * @return array<int, string>
+ */
+function platform_webhook_enabled_events()
+{
+    $CI =& get_instance();
+    if (!$CI->db->table_exists('platform_settings')) {
+        return array_keys(platform_webhook_event_labels());
+    }
+
+    $CI->load->model('Platform_settings_model');
+
+    return platform_webhook_enabled_events_from_storage(
+        $CI->Platform_settings_model->get('webhook_enabled_events', '')
+    );
+}
+
+/**
+ * Replace {placeholder} tokens in platform email templates.
+ *
+ * @param string $text
+ * @param array<string, string> $vars
+ * @return string
+ */
+function apply_platform_email_template_vars($text, $vars)
+{
+    foreach ($vars as $key => $value) {
+        $text = str_replace('{' . $key . '}', (string) $value, $text);
+    }
+
+    return $text;
+}
+
+/**
+ * Render a platform email template from the database.
+ *
+ * @param string $slug
+ * @param array<string, string> $vars
+ * @return array{subject: string, body: string}|null
+ */
+function render_platform_email_template($slug, $vars = array())
+{
+    $CI =& get_instance();
+    if (!$CI->db->table_exists('platform_email_template')) {
+        return null;
+    }
+
+    $CI->load->model('Platform_communication_model');
+    $template = $CI->Platform_communication_model->get_email_template($slug);
+    if (!$template || empty($template['is_active'])) {
+        return null;
+    }
+
+    $subject = apply_platform_email_template_vars((string) $template['subject'], $vars);
+    $body = apply_platform_email_template_vars((string) $template['body_html'], $vars);
+
+    return array(
+        'subject' => $subject,
+        'body' => $body,
+    );
+}
+
+/**
+ * @param array $lead Row from trial_registration_request
+ * @return array{subject: string, body: string}
+ */
+function build_trial_lead_outreach_email($lead)
+{
+    $first_name = isset($lead['first_name']) ? trim((string) $lead['first_name']) : '';
+    $property_name = isset($lead['property_name']) ? (string) $lead['property_name'] : 'your property';
+    $room_count = isset($lead['number_of_rooms']) ? (int) $lead['number_of_rooms'] : 0;
+
+    $rendered = render_platform_email_template('trial_outreach', array(
+        'first_name' => $first_name !== '' ? $first_name : 'there',
+        'property_name' => $property_name,
+        'room_count' => (string) $room_count,
+        'lead_email' => isset($lead['email']) ? (string) $lead['email'] : '',
+    ));
+    if ($rendered) {
+        return $rendered;
+    }
+
+    return array(
+        'subject' => 'Welcome to Veurion — let\'s get ' . $property_name . ' set up',
+        'body' => '<p>Hi ' . htmlspecialchars($first_name !== '' ? $first_name : 'there', ENT_QUOTES, 'UTF-8') . ',</p>'
+            . '<p>Thanks for your interest in Veurion for <strong>'
+            . htmlspecialchars($property_name, ENT_QUOTES, 'UTF-8') . '</strong>.</p>'
+            . '<p>Reply to this email and we\'ll help you start your free trial.</p>'
+            . '<p>Best,<br>Veurion Team</p>',
+    );
+}
+
+/**
+ * @param array $company Row from Company_model::get_company()
+ * @return array{subject: string, body: string}
+ */
+function build_win_back_email($company)
+{
+    $property_name = isset($company['name']) ? (string) $company['name'] : 'your property';
+    $subscription_url = function_exists('base_url') ? base_url('account_settings/subscription') : '/account_settings/subscription';
+
+    $rendered = render_platform_email_template('win_back', array(
+        'property_name' => $property_name,
+        'subscription_url' => $subscription_url,
+    ));
+    if ($rendered) {
+        return $rendered;
+    }
+
+    return array(
+        'subject' => 'We\'d love to have ' . $property_name . ' back on Veurion',
+        'body' => '<p>Hello,</p>'
+            . '<p>We noticed your Veurion subscription for <strong>'
+            . htmlspecialchars($property_name, ENT_QUOTES, 'UTF-8') . '</strong> is no longer active.</p>'
+            . '<p><a href="' . htmlspecialchars($subscription_url, ENT_QUOTES, 'UTF-8') . '">View subscription options</a></p>'
+            . '<p>Thank you,<br>Veurion Support</p>',
+    );
+}
+
+/**
+ * Send a platform email using CI email library.
+ *
+ * @return array{success: bool, error?: string}
+ */
+function send_platform_email($to, $subject, $body_html)
+{
+    $recipient = trim((string) $to);
+    if ($recipient === '') {
+        return array('success' => false, 'error' => 'Recipient email is required.');
+    }
+    if (!minical_env('SMTP_USER', '')) {
+        return array('success' => false, 'error' => 'Email is not configured (SMTP_USER missing in .env).');
+    }
+
+    $CI =& get_instance();
+    $CI->load->library('email');
+    $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+
+    $CI->email->clear(true);
+    $CI->email->from($from_email, 'Veurion');
+    $CI->email->to($recipient);
+    $CI->email->subject($subject);
+    $CI->email->message($body_html);
+    $CI->email->set_mailtype('html');
+
+    if (!$CI->email->send()) {
+        log_message('error', 'Platform email failed to ' . $recipient . ': '
+            . $CI->email->print_debugger(array('headers')));
+
+        return array('success' => false, 'error' => 'Email could not be sent.');
+    }
+
+    return array('success' => true);
+}
+
+/**
+ * Active platform-wide tenant announcement, respecting dismiss cookie.
+ *
+ * @return array|null
+ */
+function get_active_platform_announcement()
+{
+    $CI =& get_instance();
+    if (!$CI->db->table_exists('platform_announcement')) {
+        return null;
+    }
+
+    $CI->load->model('Platform_communication_model');
+    $announcement = $CI->Platform_communication_model->get_active_announcement();
+    if (!$announcement) {
+        return null;
+    }
+
+    $cookie_key = 'pa_ann_dismiss_' . (int) $announcement['id'];
+    if (!empty($announcement['dismissible']) && isset($_COOKIE[$cookie_key]) && $_COOKIE[$cookie_key] === '1') {
+        return null;
+    }
+
+    return $announcement;
+}
+
+/**
+ * Post a platform ops notification to Slack and/or a generic webhook.
+ *
+ * @param string $event trial_signup|payment_received|debtor_overdue
+ * @param array $payload
+ * @return bool True if at least one destination accepted the message
+ */
+function platform_notify_event($event, $payload = array())
+{
+    $event = (string) $event;
+    $enabled = platform_webhook_enabled_events();
+    if (!in_array($event, $enabled, true)) {
+        return false;
+    }
+
+    $labels = platform_webhook_event_labels();
+    $title = isset($labels[$event]) ? $labels[$event] : $event;
+    $lines = array($title);
+    foreach ($payload as $key => $value) {
+        if ($value === null || $value === '') {
+            continue;
+        }
+        $lines[] = ucfirst(str_replace('_', ' ', (string) $key)) . ': ' . $value;
+    }
+    $text = implode("\n", $lines);
+
+    $CI =& get_instance();
+    if (!$CI->db->table_exists('platform_settings')) {
+        return false;
+    }
+
+    $CI->load->model('Platform_settings_model');
+    $slack_url = trim((string) $CI->Platform_settings_model->get('slack_webhook_url', ''));
+    $webhook_url = trim((string) $CI->Platform_settings_model->get('webhook_url', ''));
+
+    if ($slack_url === '' && $webhook_url === '') {
+        return false;
+    }
+
+    $sent = false;
+    if ($slack_url !== '') {
+        $sent = platform_post_webhook($slack_url, array('text' => $text)) || $sent;
+    }
+    if ($webhook_url !== '') {
+        $sent = platform_post_webhook($webhook_url, array(
+            'event' => $event,
+            'title' => $title,
+            'payload' => $payload,
+            'text' => $text,
+            'timestamp' => gmdate('c'),
+        )) || $sent;
+    }
+
+    return $sent;
+}
+
+/**
+ * @param string $url
+ * @param array $body
+ * @return bool
+ */
+function platform_post_webhook($url, $body)
+{
+    $url = trim((string) $url);
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        return false;
+    }
+
+    $json = json_encode($body);
+    if ($json === false) {
+        return false;
+    }
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return $code >= 200 && $code < 300;
+    }
+
+    $context = stream_context_create(array(
+        'http' => array(
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\n",
+            'content' => $json,
+            'timeout' => 10,
+            'ignore_errors' => true,
+        ),
+    ));
+    $response = @file_get_contents($url, false, $context);
+    if ($response === false) {
+        return false;
+    }
+
+    if (isset($http_response_header[0]) && preg_match('#\s(\d{3})\s#', $http_response_header[0], $m)) {
+        $code = (int) $m[1];
+
+        return $code >= 200 && $code < 300;
+    }
+
+    return true;
+}
+
+/**
+ * @param int $company_id
+ * @param float $amount
+ * @param string $reference
+ * @param array|null $company
+ */
+function platform_notify_payment_received($company_id, $amount, $reference, $company = null)
+{
+    $CI =& get_instance();
+    if (!$company) {
+        $CI->load->model('Company_model');
+        $company = $CI->Company_model->get_company((int) $company_id);
+    }
+
+    platform_notify_event('payment_received', array(
+        'property' => $company && isset($company['name']) ? (string) $company['name'] : ('Company #' . (int) $company_id),
+        'company_id' => (string) (int) $company_id,
+        'amount' => saas_currency_symbol() . format_saas_price_amount($amount),
+        'reference' => (string) $reference,
+    ));
+}
+
+/**
+ * @param array $lead
+ */
+function platform_notify_trial_signup($lead)
+{
+    platform_notify_event('trial_signup', array(
+        'property' => isset($lead['property_name']) ? (string) $lead['property_name'] : '',
+        'contact' => trim((isset($lead['first_name']) ? $lead['first_name'] : '') . ' ' . (isset($lead['last_name']) ? $lead['last_name'] : '')),
+        'email' => isset($lead['email']) ? (string) $lead['email'] : '',
+        'phone' => isset($lead['phone']) ? (string) $lead['phone'] : '',
+        'rooms' => isset($lead['number_of_rooms']) ? (string) (int) $lead['number_of_rooms'] : '',
+    ));
+}
+
+/**
+ * @param array $company
+ * @param array $context
+ */
+function platform_notify_debtor_overdue($company, $context = array())
+{
+    platform_notify_event('debtor_overdue', array(
+        'property' => isset($company['name']) ? (string) $company['name'] : '',
+        'company_id' => isset($company['company_id']) ? (string) (int) $company['company_id'] : '',
+        'due_date' => isset($context['due_date']) ? (string) $context['due_date'] : '',
+        'amount_due' => isset($context['amount_due']) ? (string) $context['amount_due'] : '',
+        'owner_email' => isset($company['owner_email']) ? (string) $company['owner_email'] : '',
+    ));
+}
+

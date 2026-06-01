@@ -4,6 +4,21 @@ $format_amount = function ($amount) {
     return format_saas_price_amount($amount);
 };
 $lifetime_total = isset($subscription_revenue_lifetime['total_revenue']) ? (float) $subscription_revenue_lifetime['total_revenue'] : 0;
+$mrr = isset($mrr_estimate) ? (float) $mrr_estimate : 0;
+$arr = isset($arr_estimate) ? (float) $arr_estimate : ($mrr * 12);
+$month_metrics = isset($month_saas_metrics) && is_array($month_saas_metrics) ? $month_saas_metrics : array();
+$debtor_total = isset($debtor_outstanding) && is_array($debtor_outstanding) ? $debtor_outstanding : array('total' => 0, 'count' => 0);
+$conversions = isset($month_metrics['conversions']) ? (int) $month_metrics['conversions'] : 0;
+$new_trials = isset($month_metrics['new_trials']) ? (int) $month_metrics['new_trials'] : 0;
+$conversion_rate = array_key_exists('conversion_rate', $month_metrics) ? $month_metrics['conversion_rate'] : null;
+$churn_count = isset($month_metrics['churn_count']) ? (int) $month_metrics['churn_count'] : 0;
+$month_label = isset($month_metrics['month_label']) ? (string) $month_metrics['month_label'] : date('F Y');
+$outstanding_amount = isset($debtor_total['total']) ? (float) $debtor_total['total'] : 0;
+$debtor_count = isset($debtor_total['count']) ? (int) $debtor_total['count'] : 0;
+$comm_summary = isset($communication_summary) && is_array($communication_summary) ? $communication_summary : array();
+$active_announcements = isset($comm_summary['active_announcements']) ? (int) $comm_summary['active_announcements'] : 0;
+$email_template_count = isset($comm_summary['email_templates']) ? (int) $comm_summary['email_templates'] : 0;
+$webhooks_configured = !empty($comm_summary['webhooks_configured']);
 ?>
 <?php if ($this->session->flashdata('admin_message')) { ?>
     <div class="pa-alert pa-alert-success">
@@ -14,7 +29,7 @@ $lifetime_total = isset($subscription_revenue_lifetime['total_revenue']) ? (floa
 
 <div class="pa-page-header">
     <h1>Platform overview</h1>
-    <p>Monitor tenants, subscriptions, and trial health at a glance.</p>
+    <p>Monitor tenants, subscriptions, revenue, and trial health at a glance.</p>
 </div>
 
 <div class="pa-stats">
@@ -30,9 +45,41 @@ $lifetime_total = isset($subscription_revenue_lifetime['total_revenue']) ? (floa
         <div class="pa-stat-label">Active</div>
         <div class="pa-stat-value"><?php echo (int) $state_counts['active']; ?></div>
     </div>
+</div>
+
+<h2 class="pa-stats-heading">Revenue &amp; subscriptions</h2>
+<div class="pa-stats pa-stats--wide">
     <div class="pa-stat-card pa-stat-card--warning">
-        <div class="pa-stat-label">Lifetime subscription revenue</div>
-        <div class="pa-stat-value"><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($lifetime_total); ?></div>
+        <div class="pa-stat-label">Lifetime revenue</div>
+        <div class="pa-stat-value pa-stat-value-sm"><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($lifetime_total); ?></div>
+        <div class="pa-stat-sub">Cash collected · all time</div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--accent">
+        <div class="pa-stat-label">MRR</div>
+        <div class="pa-stat-value pa-stat-value-sm"><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($mrr); ?></div>
+        <div class="pa-stat-sub">ARR <?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($arr); ?> · active plans</div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--success">
+        <div class="pa-stat-label">Trial conversion</div>
+        <div class="pa-stat-value pa-stat-value-sm">
+            <?php echo $conversion_rate === null ? '—' : htmlspecialchars(number_format($conversion_rate, 1), ENT_QUOTES, 'UTF-8') . '%'; ?>
+        </div>
+        <div class="pa-stat-sub">
+            <?php echo $conversions; ?> converted · <?php echo $new_trials; ?> new trials · <?php echo htmlspecialchars($month_label, ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--danger">
+        <div class="pa-stat-label">Churn this month</div>
+        <div class="pa-stat-value"><?php echo $churn_count; ?></div>
+        <div class="pa-stat-sub"><?php echo htmlspecialchars($month_label, ENT_QUOTES, 'UTF-8'); ?></div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--danger">
+        <div class="pa-stat-label">Outstanding debtors</div>
+        <div class="pa-stat-value pa-stat-value-sm"><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($outstanding_amount); ?></div>
+        <div class="pa-stat-sub">
+            <?php echo $debtor_count; ?> propert<?php echo $debtor_count === 1 ? 'y' : 'ies'; ?> requiring payment
+            · <a href="<?php echo base_url('admin/debtors'); ?>">View list</a>
+        </div>
     </div>
 </div>
 
@@ -159,14 +206,62 @@ $lifetime_total = isset($subscription_revenue_lifetime['total_revenue']) ? (floa
     </div>
 </div>
 
+<h2 class="pa-stats-heading">Growth &amp; communication</h2>
+<div class="pa-stats pa-stats--wide">
+    <div class="pa-stat-card pa-stat-card--info">
+        <div class="pa-stat-label">Email templates</div>
+        <div class="pa-stat-value"><?php echo $email_template_count; ?></div>
+        <div class="pa-stat-sub">Trial outreach, payment reminders, win-back</div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--accent">
+        <div class="pa-stat-label">Active announcements</div>
+        <div class="pa-stat-value"><?php echo $active_announcements; ?></div>
+        <div class="pa-stat-sub">Tenant in-app banners</div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--<?php echo $webhooks_configured ? 'success' : 'warning'; ?>">
+        <div class="pa-stat-label">Webhook / Slack</div>
+        <div class="pa-stat-value pa-stat-value-sm"><?php echo $webhooks_configured ? 'Configured' : 'Not set'; ?></div>
+        <div class="pa-stat-sub">Trial sign-ups, payments, debtors</div>
+    </div>
+</div>
+
+<div class="pa-grid-2">
+    <div class="pa-card">
+        <div class="pa-card-header">
+            <h2>Growth &amp; communication</h2>
+        </div>
+        <div class="pa-card-body">
+            <ul class="pa-feature-list">
+                <li><strong>Email templates</strong> — Outreach to trial leads, payment reminders, win-back for churned tenants</li>
+                <li><strong>In-app announcements</strong> — Banner to all tenants (maintenance, new features)</li>
+                <li><strong>Webhook / Slack alert</strong> — Notify on new trial signup, payment received, debtor overdue</li>
+            </ul>
+            <p class="pa-meta-note" style="margin-top:16px;">
+                <a class="pa-btn pa-btn-primary pa-btn-sm" href="<?php echo base_url('admin/communication'); ?>">
+                    <i class="fa fa-bullhorn" aria-hidden="true"></i> Manage communication
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
 <div class="pa-btn-group">
     <a class="pa-btn pa-btn-primary" href="<?php echo base_url('admin/property_list'); ?>">
         <i class="fa fa-building" aria-hidden="true"></i> Manage properties
+    </a>
+    <a class="pa-btn pa-btn-secondary" href="<?php echo base_url('admin/tenant_health'); ?>">
+        <i class="fa fa-heartbeat" aria-hidden="true"></i> Tenant health
+    </a>
+    <a class="pa-btn pa-btn-secondary" href="<?php echo base_url('admin/analytics'); ?>">
+        <i class="fa fa-bar-chart" aria-hidden="true"></i> Growth &amp; analytics
     </a>
     <a class="pa-btn pa-btn-secondary" href="<?php echo base_url('admin/revenue'); ?>">
         <i class="fa fa-line-chart" aria-hidden="true"></i> Revenue report
     </a>
     <a class="pa-btn pa-btn-secondary" href="<?php echo base_url('admin/debtors'); ?>">
         <i class="fa fa-exclamation-circle" aria-hidden="true"></i> Subscription debtors
+    </a>
+    <a class="pa-btn pa-btn-secondary" href="<?php echo base_url('admin/communication'); ?>">
+        <i class="fa fa-bullhorn" aria-hidden="true"></i> Communication
     </a>
 </div>

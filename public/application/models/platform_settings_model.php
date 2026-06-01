@@ -45,6 +45,18 @@ class Platform_settings_model extends CI_Model {
         return $days > 0 ? $days : 14;
     }
 
+    function get_paid_plan_grace_days()
+    {
+        $days = (int) $this->get('paid_plan_grace_days', 7);
+        return $days > 0 ? $days : 7;
+    }
+
+    function get_default_currency()
+    {
+        $code = strtoupper(trim((string) $this->get('default_currency', 'NGN')));
+        return $code !== '' ? $code : 'NGN';
+    }
+
     function get_pricing_tiers($active_only = true)
     {
         if (!$this->db->table_exists('saas_pricing_tier')) {

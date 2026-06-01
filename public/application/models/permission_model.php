@@ -143,7 +143,7 @@ class Permission_model extends CI_Model {
 
         if (
             $controller_name === 'account_settings' &&
-            in_array($function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'), true)
+            in_array($function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health', 'subscription_receipt'), true)
         ) {
             return user_can_manage_billing(
                 $user_id,
@@ -340,7 +340,7 @@ class Permission_model extends CI_Model {
                 (
                     $permission == 'access_to_billing' &&
                     $controller_name === 'account_settings' &&
-                    in_array($function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health'), true)
+                    in_array($function_name, array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health', 'subscription_receipt'), true)
                 ) ||
 
                 ($permission == 'can_edit_invoices' && $controller_name == 'invoice' && (

@@ -166,6 +166,59 @@ if ($is_auth_login) {
 			endif;
 		?>
 
+        <?php if (function_exists('platform_admin_is_impersonating') && platform_admin_is_impersonating()) {
+            $keys = platform_admin_impersonation_session_keys();
+            $impersonating_name = $this->session->userdata($keys['company_name']);
+            ?>
+            <div class="pa-impersonation-banner" role="status" style="position:fixed;top:0;left:0;right:0;z-index:2000;display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 16px;background:#7c2d12;color:#fff;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+                <span>
+                    Viewing as tenant:
+                    <strong><?php echo htmlspecialchars((string) $impersonating_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+                </span>
+                <a href="<?php echo base_url('admin/stop_impersonation'); ?>" style="color:#fff;font-weight:600;text-decoration:underline;">Exit to Platform Admin</a>
+            </div>
+            <style>.app-container.fixed-header{padding-top:44px !important;}</style>
+        <?php } ?>
+
+        <?php
+        $platform_announcement = function_exists('get_active_platform_announcement') ? get_active_platform_announcement() : null;
+        if ($platform_announcement && !$is_auth_login) {
+            $ann_id = (int) $platform_announcement['id'];
+            $ann_severity = ($platform_announcement['severity'] === 'warning') ? 'warning' : 'info';
+            $ann_bg = ($ann_severity === 'warning') ? '#92400e' : '#1e40af';
+            ?>
+            <div class="pa-platform-announcement" id="pa-platform-announcement-<?php echo $ann_id; ?>" role="status"
+                 data-announcement-id="<?php echo $ann_id; ?>"
+                 data-dismissible="<?php echo !empty($platform_announcement['dismissible']) ? '1' : '0'; ?>"
+                 style="position:fixed;top:0;left:0;right:0;z-index:1999;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 48px 10px 16px;background:<?php echo $ann_bg; ?>;color:#fff;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12);">
+                <span>
+                    <strong><?php echo htmlspecialchars($platform_announcement['title'], ENT_QUOTES, 'UTF-8'); ?>:</strong>
+                    <?php echo htmlspecialchars($platform_announcement['body'], ENT_QUOTES, 'UTF-8'); ?>
+                </span>
+                <?php if (!empty($platform_announcement['dismissible'])) { ?>
+                    <button type="button" class="pa-platform-announcement-dismiss" aria-label="Dismiss announcement"
+                            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;">&times;</button>
+                <?php } ?>
+            </div>
+            <script>
+            (function () {
+                var banner = document.getElementById('pa-platform-announcement-<?php echo $ann_id; ?>');
+                if (!banner) { return; }
+                var topPad = banner.offsetHeight;
+                var container = document.querySelector('.app-container.fixed-header');
+                if (container) { container.style.paddingTop = topPad + 'px'; }
+                var btn = banner.querySelector('.pa-platform-announcement-dismiss');
+                if (btn) {
+                    btn.addEventListener('click', function () {
+                        document.cookie = 'pa_ann_dismiss_<?php echo $ann_id; ?>=1; path=/; max-age=2592000; SameSite=Lax';
+                        banner.parentNode.removeChild(banner);
+                        if (container) { container.style.paddingTop = ''; }
+                    });
+                }
+            })();
+            </script>
+        <?php } ?>
+
 			<?php
 			//Load Menu
 			

@@ -10,10 +10,19 @@ $lifetime_payment_count = isset($subscription_revenue_lifetime['payment_count'])
 $lifetime_first_payment = isset($subscription_revenue_lifetime['first_payment_date']) ? $subscription_revenue_lifetime['first_payment_date'] : null;
 $lifetime_last_payment = isset($subscription_revenue_lifetime['last_payment_date']) ? $subscription_revenue_lifetime['last_payment_date'] : null;
 $listed_payment_count = !empty($subscription_payments) ? count($subscription_payments) : 0;
+$revenue_export_url = base_url('admin/export_revenue_csv?' . http_build_query(array(
+    'from_date' => $from_date,
+    'to_date' => $to_date,
+)));
 ?>
-<div class="pa-page-header">
-    <h1>Platform revenue</h1>
-    <p>Track subscription payments, signups, conversions, and churn (<?php echo htmlspecialchars(saas_default_currency(), ENT_QUOTES, 'UTF-8'); ?>).</p>
+<div class="pa-page-header pa-page-header-row">
+    <div>
+        <h1>Platform revenue</h1>
+        <p>Track subscription payments, signups, conversions, and churn (<?php echo htmlspecialchars(saas_default_currency(), ENT_QUOTES, 'UTF-8'); ?>).</p>
+    </div>
+    <a class="pa-btn pa-btn-secondary" href="<?php echo htmlspecialchars($revenue_export_url, ENT_QUOTES, 'UTF-8'); ?>">
+        <i class="fa fa-download" aria-hidden="true"></i> Export CSV
+    </a>
 </div>
 
 <div class="pa-card" style="margin-bottom: 24px;">
@@ -71,12 +80,13 @@ $listed_payment_count = !empty($subscription_payments) ? count($subscription_pay
                     <th>Type</th>
                     <th>Amount</th>
                     <th>Reference</th>
+                    <th>Receipt</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($subscription_payments)) { ?>
                     <tr>
-                        <td colspan="5" class="pa-empty" style="padding: 32px;">No subscription payments in this date range</td>
+                        <td colspan="6" class="pa-empty" style="padding: 32px;">No subscription payments in this date range</td>
                     </tr>
                 <?php } else {
                     foreach ($subscription_payments as $payment) {
@@ -98,6 +108,12 @@ $listed_payment_count = !empty($subscription_payments) ? count($subscription_pay
                             <td><?php echo htmlspecialchars((string) $payment['payment_type'], ENT_QUOTES, 'UTF-8'); ?></td>
                             <td><strong><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount((float) $payment['amount']); ?></strong></td>
                             <td style="font-size: 12px; word-break: break-all;"><?php echo htmlspecialchars((string) $payment['reference'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td>
+                                <a class="pa-btn pa-btn-secondary pa-btn-sm" target="_blank" rel="noopener"
+                                   href="<?php echo htmlspecialchars(saas_subscription_receipt_url((int) $payment['company_id'], (string) $payment['reference']), ENT_QUOTES, 'UTF-8'); ?>">
+                                    Receipt
+                                </a>
+                            </td>
                         </tr>
                     <?php }
                 } ?>

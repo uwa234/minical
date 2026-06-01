@@ -7,10 +7,23 @@ $counts = isset($debtor_counts) && is_array($debtor_counts) ? $debtor_counts : a
 $filter = isset($filter) ? $filter : 'overdue';
 $default_grace_days = isset($default_grace_days) ? (int) $default_grace_days : saas_paid_plan_grace_days();
 $pricing_tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_tiers : array();
+$export_params = array('filter' => $filter);
+if (!empty($search_query)) {
+    $export_params['search_query'] = $search_query;
+}
+if ($this->input->get('include_deleted') === '1') {
+    $export_params['include_deleted'] = '1';
+}
+$export_csv_url = base_url('admin/export_debtors_csv?' . http_build_query($export_params));
 ?>
-<div class="pa-page-header">
-    <h1>Subscription debtors</h1>
-    <p>Properties whose trial or paid plan has expired, or payment is due soon and has not been received.</p>
+<div class="pa-page-header pa-page-header-row">
+    <div>
+        <h1>Subscription debtors</h1>
+        <p>Properties whose trial or paid plan has expired, or payment is due soon and has not been received.</p>
+    </div>
+    <a class="pa-btn pa-btn-secondary" href="<?php echo htmlspecialchars($export_csv_url, ENT_QUOTES, 'UTF-8'); ?>">
+        <i class="fa fa-download" aria-hidden="true"></i> Export CSV
+    </a>
 </div>
 
 <div class="pa-stats" style="margin-bottom: 24px;">
@@ -72,13 +85,14 @@ $pricing_tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_ti
                     <th>Plan</th>
                     <th>Est. amount due</th>
                     <th>Balance</th>
+                    <th>Last contacted</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($debtors)) { ?>
                     <tr>
-                        <td colspan="10" class="pa-empty" style="padding: 32px;">No properties match this filter</td>
+                        <td colspan="11" class="pa-empty" style="padding: 32px;">No properties match this filter</td>
                     </tr>
                 <?php } else {
                     foreach ($debtors as $debtor) {
@@ -155,6 +169,18 @@ $pricing_tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_ti
                                 }
                                 ?>
                             </td>
+                            <td>
+                                <?php
+                                if (!empty($debtor['last_contacted_at'])) {
+                                    $contacted_ts = strtotime($debtor['last_contacted_at']);
+                                    echo $contacted_ts
+                                        ? htmlspecialchars(gmdate('Y-m-d', $contacted_ts), ENT_QUOTES, 'UTF-8')
+                                        : htmlspecialchars((string) $debtor['last_contacted_at'], ENT_QUOTES, 'UTF-8');
+                                } else {
+                                    echo '<span style="color: var(--pa-muted, #64748b);">—</span>';
+                                }
+                                ?>
+                            </td>
                             <td class="pa-actions-cell">
                                 <button type="button"
                                         class="pa-btn pa-btn-primary pa-btn-sm debtor-record-payment"
@@ -169,13 +195,19 @@ $pricing_tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_ti
                                         data-company-id="<?php echo (int) $debtor['company_id']; ?>"
                                         data-property-name="<?php echo htmlspecialchars((string) $debtor['name'], ENT_QUOTES, 'UTF-8'); ?>"
                                         data-grace-days="<?php echo $default_grace_days; ?>">
-                                    Extend grace
+                                    Extend grace (<?php echo $default_grace_days; ?>d)
                                 </button>
                                 <button type="button"
                                         class="pa-btn pa-btn-secondary pa-btn-sm debtor-send-reminder"
                                         data-company-id="<?php echo (int) $debtor['company_id']; ?>"
                                         data-property-name="<?php echo htmlspecialchars((string) $debtor['name'], ENT_QUOTES, 'UTF-8'); ?>">
                                     Send reminder
+                                </button>
+                                <button type="button"
+                                        class="pa-btn pa-btn-secondary pa-btn-sm debtor-mark-contacted"
+                                        data-company-id="<?php echo (int) $debtor['company_id']; ?>"
+                                        data-property-name="<?php echo htmlspecialchars((string) $debtor['name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    Mark contacted
                                 </button>
                             </td>
                         </tr>
@@ -234,6 +266,11 @@ $pricing_tiers = isset($pricing_tiers) && is_array($pricing_tiers) ? $pricing_ti
                     <div class="col-sm-8">
                         <textarea class="form-control" id="debtor-payment-notes" rows="2"
                                   placeholder="Bank transfer ref, invoice #, etc."></textarea>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-sm-offset-4 col-sm-8">
+                        <label><input type="checkbox" id="debtor-payment-send-receipt" value="1" checked /> Email receipt to property owner</label>
                     </div>
                 </div>
                 <p class="text-muted" style="margin: 0;">

@@ -8,7 +8,7 @@ class Account_settings extends MY_Controller {
 		
         $auth_required = true;
         
-        if ($this->router->method === 'paystack_webhook') {
+        if ($this->router->method === 'paystack_webhook' || $this->router->method === 'subscription_receipt') {
             $auth_required = false;
         }
 		
@@ -259,6 +259,42 @@ class Account_settings extends MY_Controller {
 		));
 	}
 
+	function subscription_receipt($reference = null)
+	{
+		$reference = rawurldecode(trim((string) $reference));
+		if ($reference === '') {
+			show_404();
+			return;
+		}
+
+		$payment = $this->Admin_model->get_saas_subscription_payment_by_reference($reference);
+		if (!$payment || empty($payment['company_id'])) {
+			show_404();
+			return;
+		}
+
+		$company_id = (int) $payment['company_id'];
+		$token = trim((string) $this->input->get('token'));
+		$token_valid = saas_subscription_receipt_token_valid($company_id, $reference, $token);
+		$logged_in_match = $this->tank_auth->is_logged_in()
+			&& (int) $this->company_id === $company_id;
+
+		if (!$token_valid && !$logged_in_match) {
+			show_error('You do not have access to this receipt.', 403);
+			return;
+		}
+
+		$receipt = build_saas_subscription_receipt_data($company_id, $reference);
+		if (!$receipt) {
+			show_404();
+			return;
+		}
+
+		$this->output
+			->set_content_type('text/html; charset=utf-8')
+			->set_output(build_saas_subscription_receipt_html($receipt));
+	}
+
 	function paystack_callback()
 	{
 		if ($this->_deny_billing_without_permission()) {
@@ -454,7 +490,16 @@ class Account_settings extends MY_Controller {
 			));
 		}
 
-		return array('success' => true);
+		$receipt_url = saas_customer_subscription_receipt_url($company_id, $reference);
+		$this->Company_subscription_model->update_company_subscription($company_id, array(
+			'invoice_link' => $receipt_url,
+		));
+
+		send_saas_subscription_receipt_email($company_id, $reference);
+
+		platform_notify_payment_received($company_id, $amount_major, $reference, $company);
+
+		return array('success' => true, 'receipt_url' => $receipt_url);
 	}
 
 	private function _build_paystack_reference($company_id)
