@@ -14,6 +14,13 @@ if ($has_logo) {
         $logo_url = base_url() . 'images/' . $whitelabel_detail['logo'];
     }
 }
+if (!$has_logo) {
+    $platform_logo_url = platform_website_logo_url();
+    if ($platform_logo_url !== '') {
+        $has_logo = true;
+        $logo_url = $platform_logo_url;
+    }
+}
 
 $trial_days = isset($default_trial_days) ? (int) $default_trial_days : 14;
 

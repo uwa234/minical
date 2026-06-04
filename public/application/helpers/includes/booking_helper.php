@@ -80,6 +80,9 @@ function add_booking($booking)
         "revenue" => isset($booking['revenue']) ? $booking['revenue'] : 0,
         "add_daily_charge" => isset($booking['add_daily_charge']) ? $booking['add_daily_charge'] : 0,
         "residual_rate" => isset($booking['residual_rate']) ? $booking['residual_rate'] : null,
+        "discount_type" => isset($booking['discount_type']) ? (int) $booking['discount_type'] : 0,
+        "discount_value" => isset($booking['discount_value']) ? $booking['discount_value'] : 0,
+        "discount_scope" => isset($booking['discount_scope']) ? (int) $booking['discount_scope'] : 0,
         "is_invoice_auto_sent" => isset($booking['is_invoice_auto_sent']) ? $booking['is_invoice_auto_sent'] : 0
     );
     
@@ -320,6 +323,9 @@ function update_booking(array $booking = null, int $booking_id = null)
         "revenue" => isset($booking['revenue']) ? $booking['revenue'] : 0,
         "add_daily_charge" => isset($booking['add_daily_charge']) ? $booking['add_daily_charge'] : 0,
         "residual_rate" => isset($booking['residual_rate']) ? $booking['residual_rate'] : null,
+        "discount_type" => isset($booking['discount_type']) ? (int) $booking['discount_type'] : 0,
+        "discount_value" => isset($booking['discount_value']) ? $booking['discount_value'] : 0,
+        "discount_scope" => isset($booking['discount_scope']) ? (int) $booking['discount_scope'] : 0,
         "is_invoice_auto_sent" => isset($booking['is_invoice_auto_sent']) ? $booking['is_invoice_auto_sent'] : 0
     );
    

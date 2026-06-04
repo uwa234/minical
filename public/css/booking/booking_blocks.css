@@ -8,13 +8,15 @@
 
 .border-red {
 	border-width: 2px;
-	border-color: red;
+	border-color: #ef4444;
 	border-style: solid;
+	background-color: #fee2e2 !important;
+	color: #991b1b !important;
 }
 
 /* Reservation */
 .state0 {
-	background-color:#e6f3ff; 
+	background-color:#dbeafe;
 }
 
 #booking_table0 {
@@ -23,7 +25,7 @@
 
 /* In house */
 .state1 {
-	background-color:#DFFEA7; 
+	background-color:#d1fae5;
 }
 
 #booking_table1 {
@@ -32,7 +34,7 @@
 
 /* Checked out */
 .state2 {
-	background-color:#FFE6AA; 
+	background-color:#ffedd5;
 }
 #booking_table2 {
 	background-color:#FFD166;
@@ -48,9 +50,10 @@
 	color:#ffffff;
 }
 
-/* Unconfirmed Booking */
+/* Unconfirmed Booking (online / WhatsApp engine, etc.) */
 .state7 {
-	background-color:#FFFFFF; 
+	background-color:#fef3c7;
+	color:#78350f;
 }
 
 

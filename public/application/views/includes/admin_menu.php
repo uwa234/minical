@@ -26,14 +26,20 @@ $page_titles = array(
     'settings' => 'Settings',
 );
 $pa_page_title = isset($page_titles[$current]) ? $page_titles[$current] : 'Platform Admin';
+$pa_website_logo_url = platform_website_logo_url();
 ?>
 <aside class="pa-sidebar" id="pa-sidebar" aria-label="Platform admin navigation">
     <a class="pa-sidebar-brand" href="<?php echo base_url('admin/dashboard'); ?>">
-        <span class="pa-brand-mark" aria-hidden="true"></span>
-        <span>
-            <span class="pa-brand-text">Veurion</span>
-            <span class="pa-brand-sub">Platform Admin</span>
-        </span>
+        <?php if ($pa_website_logo_url !== '') { ?>
+            <img class="pa-brand-logo" src="<?php echo htmlspecialchars($pa_website_logo_url, ENT_QUOTES, 'UTF-8'); ?>" alt="Platform logo" />
+            <span><span class="pa-brand-sub">Platform Admin</span></span>
+        <?php } else { ?>
+            <span class="pa-brand-mark" aria-hidden="true"></span>
+            <span>
+                <span class="pa-brand-text">Veurion</span>
+                <span class="pa-brand-sub">Platform Admin</span>
+            </span>
+        <?php } ?>
     </a>
 
     <nav class="pa-nav">

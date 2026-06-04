@@ -64,7 +64,7 @@ $autoload['libraries'] = array('database', 'session', 'migration');
 */
 
 
-$autoload['helper'] = array( 'url', 'form', 'global_helper', 'includes/extension', 'includes/post', 'includes/meta','includes/option', 'platform_admin');
+$autoload['helper'] = array( 'url', 'form', 'global_helper', 'includes/extension', 'includes/post', 'includes/meta','includes/option', 'platform_admin', 'seo', 'legal', 'marketing');
 
 
 /*

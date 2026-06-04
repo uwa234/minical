@@ -21,7 +21,9 @@ $whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userda
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
 	<!-- <title><?php echo (isset($whitelabel_detail) && isset($whitelabel_detail['name'])) ? ucfirst($whitelabel_detail['name']) : $this->config->item('branding_name'); ?> - Hotel software made by hotelier</title> -->
     <title><?php
-        if (isset($this->company_name) && $this->company_name) {
+        if (!empty($seo['title'])) {
+            echo htmlspecialchars($seo['title'], ENT_QUOTES, 'UTF-8');
+        } elseif (isset($this->company_name) && $this->company_name) {
             echo htmlspecialchars(ucfirst($this->company_name), ENT_QUOTES, 'UTF-8');
         } elseif (isset($whitelabel_detail['name']) && $whitelabel_detail['name']) {
             echo htmlspecialchars(ucfirst(veurion_display_brand_name($whitelabel_detail['name'])), ENT_QUOTES, 'UTF-8');
@@ -29,6 +31,7 @@ $whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userda
             echo htmlspecialchars($this->config->item('branding_name') ?: 'Veurion', ENT_QUOTES, 'UTF-8');
         }
     ?></title>
+    <?php if (!empty($seo)) { $this->load->view('includes/seo_head', array('seo' => $seo)); } ?>
 	
 	<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap.min.css"  />	
 	<!-- <link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap-theme.min.css"  />	 -->
@@ -41,7 +44,7 @@ $whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userda
 		<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/smoothness/jquery-ui.min.css" />
 	<?php } ?>
 
-	<link rel="shortcut icon" href="<?php echo base_url();?>images/favicon.ico" type="image/x-icon" />
+	<?php echo platform_branding_favicon_link_html(); ?>
         <!-- Link font-awesome css -->
 	<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
         

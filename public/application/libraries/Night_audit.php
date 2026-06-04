@@ -284,10 +284,18 @@ class Night_audit {
                         
                         if (isset($rate['charge_type_id']))
                         {
+                            $this->ci->load->helper('booking_discount');
+                            $discounted_rate = apply_booking_discount(
+                                $rate['rate'],
+                                isset($booking['discount_type']) ? $booking['discount_type'] : 0,
+                                isset($booking['discount_value']) ? $booking['discount_value'] : 0,
+                                isset($booking['discount_scope']) ? $booking['discount_scope'] : 0,
+                                booking_discount_night_count($booking)
+                            );
                             $charge_data[] = Array(
                                 'description' => $rate['rate_plan_name'],
                                 'charge_type_id' => $rate['charge_type_id'],
-                                'amount' => $rate['rate'],
+                                'amount' => $discounted_rate,
                                 'booking_id' => $booking_id,
                                 'user_id' => $user_id,
                                 'pay_period' => DAILY,
@@ -315,7 +323,24 @@ class Night_audit {
                     {
                         $charge_type_id = $default_room_charge_type_id;
                     }
-                    $amount = $booking['rate'];
+                    $this->ci->load->helper('booking_discount');
+                    $discount_nights = booking_discount_night_count($booking);
+                    $amount = apply_booking_discount(
+                        $booking['rate'],
+                        isset($booking['discount_type']) ? $booking['discount_type'] : 0,
+                        isset($booking['discount_value']) ? $booking['discount_value'] : 0,
+                        isset($booking['discount_scope']) ? $booking['discount_scope'] : 0,
+                        $discount_nights
+                    );
+                    $residual_rate = isset($booking['residual_rate']) && $booking['residual_rate']
+                        ? apply_booking_discount(
+                            $booking['residual_rate'],
+                            isset($booking['discount_type']) ? $booking['discount_type'] : 0,
+                            isset($booking['discount_value']) ? $booking['discount_value'] : 0,
+                            isset($booking['discount_scope']) ? $booking['discount_scope'] : 0,
+                            $discount_nights
+                        )
+                        : 0;
                     if($booking['pay_period'] == DAILY) // charge daily
                     {
                         $last_room_charge = $this->ci->Charge_model->get_last_applied_charge($booking_id, $charge_type_id, null, true);
@@ -400,7 +425,7 @@ class Night_audit {
                                 ($last_room_charge && $last_room_charge['pay_period'] != $booking['pay_period'] && date('Y-m-d', strtotime("+7 day", strtotime($new_charge_start_date))) > $booking['check_out_date'])
                             ) && $booking['add_daily_charge'])
                         {
-                            $daily_rate = (isset($booking['pay_period']) && ($booking['pay_period'] == WEEKLY || $booking['pay_period'] == MONTHLY) && $booking['residual_rate']) ? $booking['residual_rate'] : round(($amount / 7), 2, PHP_ROUND_HALF_UP);
+                            $daily_rate = (isset($booking['pay_period']) && ($booking['pay_period'] == WEEKLY || $booking['pay_period'] == MONTHLY) && $residual_rate) ? $residual_rate : round(($amount / 7), 2, PHP_ROUND_HALF_UP);
                             $charge_data[] = Array(
                                 'description' => "Daily ".$company['default_charge_name'],
                                 'charge_type_id' => $charge_type_id,
@@ -458,7 +483,7 @@ class Night_audit {
                                 ($last_room_charge && $last_room_charge['pay_period'] != $booking['pay_period'] && date('Y-m-d', strtotime("+1 month", strtotime($new_charge_start_date))) > $booking['check_out_date'])
                             ) && $booking['add_daily_charge'])
                         {
-                            $daily_rate = (isset($booking['pay_period']) && ($booking['pay_period'] == WEEKLY || $booking['pay_period'] == MONTHLY) && $booking['residual_rate']) ? $booking['residual_rate'] : round(($amount / 30), 2, PHP_ROUND_HALF_UP);
+                            $daily_rate = (isset($booking['pay_period']) && ($booking['pay_period'] == WEEKLY || $booking['pay_period'] == MONTHLY) && $residual_rate) ? $residual_rate : round(($amount / 30), 2, PHP_ROUND_HALF_UP);
                             $charge_data[] = Array(
                                 'description' => "Daily ".$company['default_charge_name'],
                                 'charge_type_id' => $charge_type_id,

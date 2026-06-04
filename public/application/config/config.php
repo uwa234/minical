@@ -37,7 +37,7 @@ $config['api_url']	= getenv('API_URL');
 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
 $config['is_hosted_prod_service'] = ($is_hosted_prod_service === '1' || $is_hosted_prod_service === 'true' || $is_hosted_prod_service === true);
 
-$saas_primary_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+$saas_primary_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io', 'app.travelhub247.com');
 $is_saas_primary_host = in_array($_SERVER['HTTP_HOST'], $saas_primary_hosts, true);
 
 if ($is_hosted_prod_service && !$is_saas_primary_host) {

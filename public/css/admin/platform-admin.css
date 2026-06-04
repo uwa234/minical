@@ -94,6 +94,96 @@ body.pa-platform-admin .navbar-default {
     flex-shrink: 0;
 }
 
+.pa-brand-logo {
+    max-width: 140px;
+    max-height: 40px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.pa-branding-card {
+    margin-bottom: 24px;
+}
+
+.pa-branding-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin-top: 16px;
+}
+
+.pa-branding-grid--compact {
+    gap: 16px;
+}
+
+.pa-branding-label {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pa-ink);
+}
+
+.pa-branding-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 88px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px dashed var(--pa-border);
+    border-radius: var(--pa-radius);
+    background: var(--pa-bg);
+}
+
+.pa-branding-preview--favicon img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.pa-branding-preview--compact {
+    min-height: 64px;
+    padding: 12px;
+}
+
+.pa-branding-preview img {
+    max-width: 100%;
+    max-height: 56px;
+    object-fit: contain;
+}
+
+.pa-branding-placeholder {
+    font-size: 13px;
+    color: var(--pa-ink-soft);
+}
+
+.pa-branding-form {
+    margin-bottom: 8px;
+}
+
+.pa-branding-file {
+    margin-bottom: 10px;
+}
+
+.pa-branding-remove-form {
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.pa-branding-remove-btn {
+    background: var(--pa-danger-soft);
+    color: var(--pa-danger);
+    border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+@media (max-width: 768px) {
+    .pa-branding-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .pa-brand-text {
     font-size: 17px;
     font-weight: 700;
@@ -924,6 +1014,14 @@ body.pa-login {
     border-radius: 14px;
     background: linear-gradient(135deg, var(--pa-accent) 0%, #7c3aed 100%);
     margin: 0 auto 16px;
+}
+
+.pa-login-logo-img {
+    display: block;
+    max-width: 200px;
+    max-height: 56px;
+    margin: 0 auto 16px;
+    object-fit: contain;
 }
 
 .pa-login-header h1 {

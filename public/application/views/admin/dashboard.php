@@ -226,6 +226,41 @@ $webhooks_configured = !empty($comm_summary['webhooks_configured']);
 </div>
 
 <div class="pa-grid-2">
+    <div class="pa-card" id="branding">
+        <div class="pa-card-header">
+            <h2>Website branding</h2>
+        </div>
+        <div class="pa-card-body">
+            <p class="pa-meta-note" style="margin-top: 0;">Logo and favicon shown on the marketing site, login pages, and platform admin sidebar.</p>
+            <div class="pa-branding-grid pa-branding-grid--compact">
+                <div class="pa-branding-block">
+                    <h3 class="pa-branding-label">Logo</h3>
+                    <div class="pa-branding-preview pa-branding-preview--compact">
+                        <?php if (!empty($website_logo_url)) { ?>
+                            <img src="<?php echo htmlspecialchars($website_logo_url, ENT_QUOTES, 'UTF-8'); ?>" alt="Website logo" />
+                        <?php } else { ?>
+                            <span class="pa-branding-placeholder">Not set</span>
+                        <?php } ?>
+                    </div>
+                </div>
+                <div class="pa-branding-block">
+                    <h3 class="pa-branding-label">Favicon</h3>
+                    <div class="pa-branding-preview pa-branding-preview--favicon pa-branding-preview--compact">
+                        <?php if (!empty($website_favicon_url)) { ?>
+                            <img src="<?php echo htmlspecialchars($website_favicon_url, ENT_QUOTES, 'UTF-8'); ?>" alt="Favicon" />
+                        <?php } else { ?>
+                            <span class="pa-branding-placeholder">Default</span>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
+            <p class="pa-meta-note" style="margin-top:16px;">
+                <a class="pa-btn pa-btn-primary pa-btn-sm" href="<?php echo base_url('admin/settings#branding'); ?>">
+                    <i class="fa fa-picture-o" aria-hidden="true"></i> Manage branding
+                </a>
+            </p>
+        </div>
+    </div>
     <div class="pa-card">
         <div class="pa-card-header">
             <h2>Growth &amp; communication</h2>

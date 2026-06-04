@@ -475,7 +475,7 @@ class MY_Controller extends CI_Controller {
             $host_name = $_SERVER['HTTP_HOST'];
             $protocol = $this->config->item('server_protocol');
             $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-            $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+            $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io', 'app.travelhub247.com');
             if ((!$whitelabelinfo && $this->company_data['partner_id']) || ($whitelabelinfo && ($is_hosted_prod_service || in_array($host_name, $saas_app_hosts, true)) && isset($whitelabelinfo['id']) && $whitelabelinfo['id'] != $this->company_data['partner_id'])) {
                 $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => $this->company_data['partner_id']));
                 if($white_label_detail && isset($white_label_detail[0])) {

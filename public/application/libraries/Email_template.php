@@ -20,9 +20,10 @@ class Email_template {
         $this->ci->load->model('Tax_model');
         $this->ci->load->model('Whitelabel_partner_model');
         $this->ci->load->model('Currency_model');
+        $this->ci->load->model('Invoice_model');
 
         $this->ci->load->library('Email');
-        $this->ci->load->helper('language_translation_helper');
+        $this->ci->load->helper(array('language_translation_helper', 'email', 'invoice_totals'));
 
         log_message('debug', "Email template initialized");
     }
@@ -100,27 +101,30 @@ class Email_template {
                 $invoice_email_header = $company['invoice_email_header'];
             }
 
-            // generate html email
-            // for a good guideline, read: http://kb.mailchimp.com/article/how-to-code-html-emails
-            // Company logo
             $email_header = $this->ci->Image_model
                 ->get_company_logo_url($company['company_id'], $company['logo_image_group_id'], 1);
 
-            $content =  $email_header.l("Dear", true)." ".$customer_name.",
-                                <br/><br/>"
-                .$invoice_email_header.
-                "<br/><br/>
-                                ".l('Please visit the following link to view your invoice', true).": <a href='".$invoice_link."'>".$invoice_link."</a>
-                                <br/><br/>";
+            $invoice_number = $this->ci->Invoice_model->get_invoice_number($booking_id);
+            $invoice_num_display = str_pad((string) ($invoice_number ?: 0), 8, '0', STR_PAD_LEFT);
 
-            $content = $content."<br/><br/>".l('Thank you for your business', true).",<br/><br/>"
-                .$company['name']."
-                    <br/>".$company['email']. "<br/>".$company['phone']."<br/>";
+            $this->ci->load->library('Invoice_pdf');
+            $pdf_path = $this->ci->invoice_pdf->generate_for_booking($booking_id, $folio_id);
 
+            if ($pdf_path) {
+                $body_intro = invoice_email_copy('invoice_email_body_intro');
+                $body_online = invoice_email_copy('invoice_email_body_online');
+            } else {
+                $body_intro = invoice_email_copy('invoice_email_body_link_only');
+                $body_online = invoice_email_copy('invoice_email_view_online');
+            }
 
-            $config['mailtype'] = 'html';
-
-            $this->ci->email->initialize($config);
+            $content = $email_header . l("Dear", true) . " " . $customer_name . ",<br/><br/>"
+                . $invoice_email_header
+                . ($invoice_email_header ? "<br/><br/>" : "")
+                . $body_intro . "<br/><br/>"
+                . $body_online . ": <a href='" . $invoice_link . "'>" . $invoice_link . "</a><br/><br/>"
+                . l('Thank you for your business', true) . ",<br/><br/>"
+                . $company['name'] . "<br/>" . $company['email'] . "<br/>" . $company['phone'] . "<br/>";
 
             $email_list = $email;
             if(isset($company['send_copy_to_additional_emails']) && $company['send_copy_to_additional_emails'])
@@ -130,18 +134,37 @@ class Email_template {
 
             $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-            $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+            $from_email = minical_smtp_from_email($whitelabelinfo);
+
+            $config['mailtype'] = 'html';
+            $this->ci->email->initialize($config);
 
             $this->ci->email->from($from_email, $company['name']);
             $this->ci->email->to($email_list);
             $this->ci->email->reply_to($company['email'], $company['name']);
-            $this->ci->email->subject("Invoice ".$booking_id." from ".$company['name']);
+            $this->ci->email->subject(invoice_email_copy('invoice_email_subject', array($company['name'], $invoice_num_display)));
             $this->ci->email->message($content);
 
-            $this->ci->email->send();
-            echo "sent email to ".$email_list;
+            if ($pdf_path && is_readable($pdf_path)) {
+                $this->ci->email->attach($pdf_path);
+            }
 
-            if(isset($_GET['dev_mode'])) {
+            $sent = $this->ci->email->send();
+
+            if (!$sent && isset($_GET['dev_mode'])) {
+                echo $this->ci->email->print_debugger();
+            }
+
+            if ($pdf_path && file_exists($pdf_path)) {
+                @unlink($pdf_path);
+            }
+
+            echo "sent email to ".$email_list;
+            if (!$pdf_path) {
+                echo " (no PDF attachment — see application/logs/invoice_pdf.log)";
+            }
+
+            if(isset($_GET['dev_mode']) && $sent) {
                 echo $this->ci->email->print_debugger();
             }
 
@@ -151,7 +174,7 @@ class Email_template {
             $log_data['user_id'] = $this->ci->session->userdata('user_id');
             $log_data['log_type'] = INVOICE_LOG;
             $log_data['booking_id'] = $booking_id;
-            $log_data['log'] = "Invoice sent via e-mail to ".$customer_name;
+            $log_data['log'] = "Invoice sent via e-mail to ".$customer_name . ($pdf_path ? ' (with PDF)' : ' (link only, PDF failed)');
             $this->ci->load->model('Booking_log_model');
 
             $this->ci->Booking_log_model->insert_log($log_data);
@@ -184,17 +207,13 @@ class Email_template {
             // Company logo
             $email_header = $this->ci->Image_model
                 ->get_company_logo_url($company['company_id'], $company['logo_image_group_id'], 1);
-            $content =  $email_header.l("Dear", true).' '.$customer_name.",
-                                <br/><br/>"
-                .$invoice_email_header.
-                "<br/><br/>
-                                ".l("Please visit the following link to view your master invoice", true).": <a href='".$invoice_link."'>".$invoice_link."</a>
-                                <br/><br/>";
-
-            $content = $content."<br/><br/>".l('Thank you for your business', true).",<br/><br/>"
-                .$company['name']."
-                    <br/>".$company['email']. "<br/>".$company['phone']."<br/>";
-
+            $content = $email_header . l("Dear", true) . ' ' . $customer_name . ",<br/><br/>"
+                . $invoice_email_header
+                . ($invoice_email_header ? "<br/><br/>" : "")
+                . invoice_email_copy('master_invoice_email_body_intro') . "<br/><br/>"
+                . invoice_email_copy('master_invoice_email_body_online') . ": <a href='" . $invoice_link . "'>" . $invoice_link . "</a><br/><br/>"
+                . l('Thank you for your business', true) . ",<br/><br/>"
+                . $company['name'] . "<br/>" . $company['email'] . "<br/>" . $company['phone'] . "<br/>";
 
             $config['mailtype'] = 'html';
 
@@ -208,12 +227,12 @@ class Email_template {
 
             $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-            $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+            $from_email = minical_smtp_from_email($whitelabelinfo);
 
             $this->ci->email->from($from_email, $company['name']);
             $this->ci->email->to($email_list);
             $this->ci->email->reply_to($company['email'], $company['name']);
-            $this->ci->email->subject("Invoice Group ".$group_id." from ".$company['name']);
+            $this->ci->email->subject(invoice_email_copy('master_invoice_email_subject', array($company['name'], $group_id)));
             $this->ci->email->message($content);
 
             $this->ci->email->send();
@@ -595,11 +614,9 @@ class Email_template {
 
         $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-        $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+        $from_email = minical_smtp_from_email($whitelabelinfo);
 
-        $email_from = isset($this->ci->avoid_dmarc_blocking) && $this->ci->avoid_dmarc_blocking ? $from_email : $company['email'];
-
-        $this->ci->email->from($email_from, $company['name']);
+        $this->ci->email->from($from_email, $company['name']);
         $this->ci->email->to($email_list);
         $this->ci->email->reply_to($email_data['company_email']);
 
@@ -904,7 +921,7 @@ class Email_template {
 
         $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-        $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+        $from_email = minical_smtp_from_email($whitelabelinfo);
 
         $this->ci->email->from($from_email, $company['name']);
         $this->ci->email->to($email_list);
@@ -1076,7 +1093,7 @@ class Email_template {
 
         $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-        $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+        $from_email = minical_smtp_from_email($whitelabelinfo);
 
         $this->ci->email->from($from_email, $company['name']);
         $this->ci->email->to($email_list);
@@ -1366,11 +1383,9 @@ class Email_template {
         
         $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-        $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : 'donotreply@veurion.com';
+        $from_email = minical_smtp_from_email($whitelabelinfo);
 
-        $email_from = isset($this->ci->avoid_dmarc_blocking) && $this->ci->avoid_dmarc_blocking ? $from_email : $company['email'];
-
-        $this->ci->email->from($email_from);
+        $this->ci->email->from($from_email, $company['name']);
         $this->ci->email->to($email_list);
         $this->ci->email->reply_to($customer_info['email']);
 
@@ -1441,7 +1456,7 @@ class Email_template {
 
         $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-        $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+        $from_email = minical_smtp_from_email($whitelabelinfo);
 
         $this->ci->email->from($from_email, $company['name']);
         $this->ci->email->to($customer_email);
@@ -1518,7 +1533,7 @@ class Email_template {
 
             $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-            $from_email = isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : (isset($company['email']) && $company['email'] ? $company['email'] : 'donotreply@veurion.com');
+            $from_email = minical_smtp_from_email($whitelabelinfo);
 
             $this->ci->email->from($from_email, $company['name']);
             $this->ci->email->to($email_list);

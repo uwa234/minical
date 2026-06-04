@@ -59,6 +59,13 @@ $lang['date_must_be_valid_format'] = 'Date must be in a valid format (YYYY-MM-DD
 //Booking Form
 $lang['invoice_balance'] = 'Invoice balance';
 $lang['open_invoice'] = 'Open Invoice';
+$lang['invoice_email_subject'] = 'Your invoice from %s — Invoice #%s';
+$lang['invoice_email_body_intro'] = 'Please find your invoice attached to this email for your stay with us.';
+$lang['invoice_email_body_online'] = 'You can also view your invoice online at the link below:';
+$lang['invoice_email_body_link_only'] = 'Please use the link below to view your invoice:';
+$lang['master_invoice_email_subject'] = 'Your group invoice from %s — Group #%s';
+$lang['master_invoice_email_body_intro'] = 'Please find your group invoice attached to this email.';
+$lang['master_invoice_email_body_online'] = 'You can also view your group invoice online at the link below:';
 $lang['print_registration_card'] = 'Print Registration Card';
 $lang['check_in_date'] = 'Check-in date';
 $lang['check_out_date'] = 'Check-out date';
@@ -105,6 +112,21 @@ $lang['housekeeping_notes'] = 'Housekeeping Notes';
 
 $lang['customer_making_reservation'] = 'Customer Making Reservation';
 $lang['customers_staying'] = 'Staying Guests (optional)';
+
+$lang['discount'] = 'Discount';
+$lang['discount_type'] = 'Discount type';
+$lang['discount_none'] = 'None';
+$lang['discount_percent'] = 'Percentage (%)';
+$lang['discount_fixed'] = 'Fixed amount';
+$lang['discount_value'] = 'Amount';
+$lang['discount_scope'] = 'Apply to';
+$lang['discount_per_night'] = 'Per night';
+$lang['discount_on_total'] = 'Total stay';
+$lang['discounted_rate'] = 'Rate after discount';
+$lang['discount_hint_percent_total'] = 'Percentage is applied to the total stay amount.';
+$lang['discount_hint_percent_night'] = 'Percentage is applied to each night\'s rate.';
+$lang['discount_hint_fixed_total'] = 'Fixed amount is deducted from the total stay.';
+$lang['discount_hint_fixed_night'] = 'Fixed amount is deducted from each night\'s rate.';
 
 $lang['booking_notes'] = 'Booking Notes';
 $lang['show_log'] = 'Show log';

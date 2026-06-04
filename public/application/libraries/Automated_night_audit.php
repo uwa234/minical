@@ -182,9 +182,10 @@ class Automated_night_audit {
             return;
         }
 
+        $this->ci->load->helper('email');
         $this->ci->load->library('email');
-        $from_email = 'donotreply@veurion.com';
-        $from_name = 'miniCal';
+        $from_email = minical_smtp_from_email();
+        $from_name = 'Veurion';
 
         $this->ci->email->from($from_email, $from_name);
         $this->ci->email->to($to);

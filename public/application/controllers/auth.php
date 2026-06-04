@@ -275,6 +275,9 @@ class Auth extends MY_Controller
             $data['css_files'] = array(
                 base_url() . auto_version('css/auth/login.css'),
             );
+            if (is_hosted_prod_service() && empty($data['whitelabel_detail'])) {
+                $data['seo'] = seo_auth_page('login');
+            }
 
             $this->load->view('includes/bootstrapped_template', $data);
 
@@ -571,7 +574,7 @@ class Auth extends MY_Controller
             else{
                 //print_r(validation_errors());
                 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-                $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+                $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com', 'app.travelhub247.com');
                 $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
                 if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
                     echo 'The Email field must contain a valid email address.';
@@ -758,6 +761,9 @@ class Auth extends MY_Controller
         $data['css_files'] = array(
             base_url() . auto_version('css/auth/login.css'),
         );
+        if (is_hosted_prod_service() && empty($data['whitelabel_detail'])) {
+            $data['seo'] = seo_auth_page('register');
+        }
         $this->load->view('includes/bootstrapped_template', $data);
     }
 
@@ -843,7 +849,8 @@ class Auth extends MY_Controller
 
         $whitelabelinfo = $this->session->userdata('white_label_information');
 
-        $email_from = $whitelabelinfo && isset($whitelabelinfo['do_not_reply_email']) && $whitelabelinfo['do_not_reply_email'] ? $whitelabelinfo['do_not_reply_email'] : 'donotreply@veurion.com';
+        $this->load->helper('email');
+        $email_from = minical_smtp_from_email($whitelabelinfo);
 
         // Send welcome email
         if (
@@ -853,7 +860,7 @@ class Auth extends MY_Controller
 
             // alert sales about this new user that registered
             $this->load->library('email');
-            $this->email->from($email_from);
+            $this->email->from($email_from, 'Veurion');
             $this->email->to("sales@veurion.com");
             $this->email->subject("New user alert");
             $this->email->message("company name: ".$data['name']
@@ -1089,7 +1096,7 @@ class Auth extends MY_Controller
             $this->User_model->add_user_permission($company_id, $data['user_id'], 'is_admin');
 
             $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-            $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+            $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com', 'app.travelhub247.com');
             $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
 
             if(
@@ -1535,19 +1542,12 @@ class Auth extends MY_Controller
         $this->load->library('email');
 
         $whitelabelinfo = $this->session->userdata('white_label_information');
-        $smtp_user = minical_env('SMTP_USER', '');
+        $this->load->helper('email');
         $from_name = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name']
             ? $whitelabelinfo['name']
             : 'Veurion';
 
-        // Prefer the authenticated SMTP mailbox as From (required by many providers, e.g. AWS WorkMail).
-        if ($smtp_user) {
-            $from_email = $smtp_user;
-        } elseif ($whitelabelinfo && !empty($whitelabelinfo['do_not_reply_email'])) {
-            $from_email = $whitelabelinfo['do_not_reply_email'];
-        } else {
-            $from_email = minical_env('MAIL_FROM', 'donotreply@veurion.com');
-        }
+        $from_email = minical_smtp_from_email($whitelabelinfo);
 
         $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email']
             ? $whitelabelinfo['support_email']
@@ -2073,12 +2073,14 @@ class Auth extends MY_Controller
 
     function show_terms_of_service()
     {
-        $this->load->view('auth/terms_of_service.php');
+        $data = marketing_page_layout(seo_auth_page('terms'));
+        $this->load->view('auth/terms_of_service', $data);
     }
 
     function show_privacy_policy()
     {
-        $this->load->view('auth/privacy_policy.php');
+        $data = marketing_page_layout(seo_auth_page('privacy'));
+        $this->load->view('auth/privacy_policy', $data);
     }
 
     function get_all_session_variables()
@@ -2348,7 +2350,7 @@ class Auth extends MY_Controller
         ///property build logic
          $data_build = $company_data = array();
         $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-        $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+        $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com', 'app.travelhub247.com');
         $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
         if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
          

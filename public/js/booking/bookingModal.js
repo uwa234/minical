@@ -697,6 +697,11 @@ var bookingModalInvoker = function ($) {
                 )
                 .append(
                     $('<div/>', {
+                        class: 'col-sm-12 booking-discount-row-wrap clearfix'
+                    }).append(this._getDiscountBlock())
+                )
+                .append(
+                    $('<div/>', {
                         class: 'form-group col-sm-2 pay-period-block',
                         style: 'padding-left: 4px;margin-top: 25px;padding-right: 0px;'
                     })
@@ -795,6 +800,8 @@ var bookingModalInvoker = function ($) {
                 });
             } else {
                 roomTypeDIV.find('.edit-rate-btn').css('cursor', 'not-allowed');
+                roomTypeDIV.find('[name="discount_type"], [name="discount_value"], [name="discount_scope"]').prop('disabled', true);
+                roomTypeDIV.find('.booking-discount-panel').addClass('is-disabled');
             }
 
             // if walk-in, disable check-in date
@@ -1294,6 +1301,12 @@ var bookingModalInvoker = function ($) {
             $("[name='children_count']").val(that.booking.children_count);
             $("[name='pay_period']").val(that.booking.pay_period);
             $("[name='rate']").val(that.booking.rate);
+            $("[name='discount_type']").val(that.booking.discount_type || 0);
+            $("[name='discount_value']").val(that.booking.discount_value || '');
+            $("[name='discount_scope']").val(that.booking.discount_scope != null ? that.booking.discount_scope : 0);
+            that.$modalBody.find('.booking-discount-panel').each(function () {
+                that._syncDiscountPanelState($(this));
+            });
 
             this._updateRoomTypeDDL();
             this._updatePayPeriodDropdown();
@@ -1501,8 +1514,12 @@ var bookingModalInvoker = function ($) {
             var payPeriod = 0;
 
             if (rateArray && taxArray) {
+                var discountTypeArr = parseInt($parentEle.find('[name="discount_type"]').val() || 0, 10);
+                var discountValueArr = parseFloat($parentEle.find('[name="discount_value"]').val() || 0);
+                var discountScopeArr = parseInt($parentEle.find('[name="discount_scope"]').val() || 0, 10);
+                var nightsArr = parseInt(that.$modalBody.find('input[name="number_of_days"]').val(), 10) || 1;
                 for (var key in rateArray) {
-                    var rate = parseFloat(rateArray[key]['rate']);
+                    var rate = that._applyDiscount(parseFloat(rateArray[key]['rate']), discountTypeArr, discountValueArr, discountScopeArr, nightsArr);
                     var taxedRate = rate * (1 + parseFloat(taxArray.percentage)) + parseFloat(taxArray.flat_rate);
                     var inclusiveTaxedRate = rate * (parseFloat(taxArray.inclusive_tax_percentage)) + parseFloat(taxArray.inclusive_tax_flat_rate);
 
@@ -1517,7 +1534,17 @@ var bookingModalInvoker = function ($) {
                 rateWithTax = parseFloat(this.rateWithTax);
 
                 numberOfDays = parseInt(this.$modalBody.find('input[name="number_of_days"]').val());
-                rateNoTax = parseFloat($parentEle.find('input[name="rate"]').val());
+                var rawRateNoTax = parseFloat($parentEle.find('input[name="rate"]').val()) || 0;
+                var discountType = parseInt($parentEle.find('[name="discount_type"]').val() || 0, 10);
+                var discountValue = parseFloat($parentEle.find('[name="discount_value"]').val() || 0);
+                var discountScope = parseInt($parentEle.find('[name="discount_scope"]').val() || 0, 10);
+                numberOfDays = numberOfDays || 1;
+
+                rateNoTax = rawRateNoTax;
+                if (discountScope === 0) {
+                    rateNoTax = that._applyDiscount(rateNoTax, discountType, discountValue, 0, numberOfDays);
+                }
+
                 payPeriod = $parentEle.find('select[name="pay_period"]').val();
                 avgRate = rateNoTax;
                 totalPreTaxRate = numberOfDays * rateNoTax;
@@ -1558,6 +1585,17 @@ var bookingModalInvoker = function ($) {
                         totalInclusivePreTaxRate += ((rateInclusiveTax / 30) * dayDiff);
                     }
                     avgRate = (totalPreTaxRate / numberOfDays);
+                }
+
+                if (discountScope === 1 && discountType > 0 && discountValue > 0) {
+                    var adjusted = that._applyDiscountToStayTotals(
+                        totalPreTaxRate, totalRate, totalInclusivePreTaxRate,
+                        discountType, discountValue, discountScope
+                    );
+                    totalPreTaxRate = adjusted.totalPreTax;
+                    totalRate = adjusted.totalWithTax;
+                    totalInclusivePreTaxRate = adjusted.totalInclusive;
+                    avgRate = numberOfDays > 0 ? (totalPreTaxRate / numberOfDays) : 0;
                 }
             }
             totalPreTaxRate -= totalInclusivePreTaxRate;
@@ -2506,9 +2544,16 @@ var bookingModalInvoker = function ($) {
                                                                 )
                                                         )
                                                 )// rate end
-
-
                                         )
+                                )
+                                .append(
+                                    $('<div/>', {
+                                        class: 'col-sm-12 booking-discount-row-wrap clearfix'
+                                    }).append(this._getDiscountBlock(
+                                        that.booking.discount_type || 0,
+                                        that.booking.discount_value || '',
+                                        that.booking.discount_scope || 0
+                                    ))
                                 )
                                 .append(
                                     $("<div/>", {
@@ -4943,7 +4988,10 @@ var bookingModalInvoker = function ($) {
                     charge_type_id: chargeTypeID,
                     pay_period: $(this).find("[name='pay_period']").val(),
                     adult_count: $(this).find("[name='adult_count'] option:selected").val(),
-                    children_count: $(this).find("[name='children_count'] option:selected").val()
+                    children_count: $(this).find("[name='children_count'] option:selected").val(),
+                    discount_type: $(this).find("[name='discount_type']").val() || 0,
+                    discount_value: $(this).find("[name='discount_value']").val() || 0,
+                    discount_scope: $(this).find("[name='discount_scope']").val() || 0
                 });
 
             });
@@ -4966,6 +5014,9 @@ var bookingModalInvoker = function ($) {
                 booked_by: booked_by_id,
                 add_daily_charge: (that.booking.add_daily_charge == 0 ? 0 : 1),
                 residual_rate: (that.booking.residual_rate ? that.booking.residual_rate : 0),
+                discount_type: $("[name='discount_type']").first().val() || 0,
+                discount_value: $("[name='discount_value']").first().val() || 0,
+                discount_scope: $("[name='discount_scope']").first().val() || 0,
                 color: $("[name='color']").val()
             };
             var bookingData = {
@@ -7072,6 +7123,225 @@ var bookingModalInvoker = function ($) {
                 });
             }
         },
+        _dl: function (phraseKey, fallback) {
+            var translated = l(phraseKey);
+            if (!translated || translated === phraseKey || translated === phraseKey.toLowerCase()) {
+                return fallback;
+            }
+            return translated;
+        },
+        _applyDiscount: function (rate, discountType, discountValue, discountScope, numberOfNights) {
+            rate = parseFloat(rate) || 0;
+            discountType = parseInt(discountType, 10) || 0;
+            discountValue = parseFloat(discountValue) || 0;
+            discountScope = parseInt(discountScope, 10) || 0;
+            numberOfNights = Math.max(1, parseInt(numberOfNights, 10) || 1);
+
+            if (discountType === 0 || discountValue <= 0) {
+                return rate;
+            }
+
+            if (discountType === 1) {
+                discountValue = Math.min(100, discountValue);
+                return Math.max(0, Math.round(rate * (1 - discountValue / 100) * 100) / 100);
+            }
+
+            if (discountType === 2) {
+                if (discountScope === 1) {
+                    var stayTotal = rate * numberOfNights;
+                    return Math.max(0, Math.round((stayTotal - discountValue) / numberOfNights * 100) / 100);
+                }
+                return Math.max(0, Math.round((rate - discountValue) * 100) / 100);
+            }
+
+            return rate;
+        },
+        _applyDiscountToStayTotals: function (totalPreTax, totalWithTax, totalInclusive, discountType, discountValue, discountScope) {
+            totalPreTax = parseFloat(totalPreTax) || 0;
+            totalWithTax = parseFloat(totalWithTax) || 0;
+            totalInclusive = parseFloat(totalInclusive) || 0;
+            discountType = parseInt(discountType, 10) || 0;
+            discountValue = parseFloat(discountValue) || 0;
+
+            if (discountType === 0 || discountValue <= 0 || discountScope !== 1) {
+                return {
+                    totalPreTax: totalPreTax,
+                    totalWithTax: totalWithTax,
+                    totalInclusive: totalInclusive
+                };
+            }
+
+            var oldPreTax = totalPreTax;
+
+            if (discountType === 1) {
+                var multiplier = 1 - (Math.min(100, discountValue) / 100);
+                totalPreTax *= multiplier;
+                totalWithTax *= multiplier;
+                totalInclusive *= multiplier;
+            } else if (discountType === 2) {
+                totalPreTax = Math.max(0, totalPreTax - discountValue);
+                if (oldPreTax > 0) {
+                    var ratio = totalPreTax / oldPreTax;
+                    totalWithTax *= ratio;
+                    totalInclusive *= ratio;
+                } else {
+                    totalWithTax = 0;
+                    totalInclusive = 0;
+                }
+            }
+
+            return {
+                totalPreTax: totalPreTax,
+                totalWithTax: totalWithTax,
+                totalInclusive: totalInclusive
+            };
+        },
+        _syncDiscountPanelState: function ($panel) {
+            var that = this;
+            if (!$panel || !$panel.length) {
+                return;
+            }
+            var type = $panel.find('[name="discount_type"]').val();
+            var isActive = type !== '0' && type !== 0;
+            // Type dropdown stays visible; only scope, amount, and hint hide when "No discount"
+            $panel.find('.booking-discount-panel__extras').toggle(isActive);
+            $panel.find('.booking-discount-panel__hint').toggle(isActive);
+
+            var scope = $panel.find('[name="discount_scope"]').val();
+            var hint = $panel.find('.booking-discount-panel__hint');
+            if (type === '1') {
+                hint.text(scope === '1'
+                    ? that._dl('discount_hint_percent_total', 'Percentage is applied to the total stay amount.')
+                    : that._dl('discount_hint_percent_night', 'Percentage is applied to each night\'s rate.'));
+                $panel.find('.discount-value-suffix').text('%');
+            } else if (type === '2') {
+                hint.text(scope === '1'
+                    ? that._dl('discount_hint_fixed_total', 'Fixed amount is deducted from the total stay.')
+                    : that._dl('discount_hint_fixed_night', 'Fixed amount is deducted from each night\'s rate.'));
+                $panel.find('.discount-value-suffix').text('');
+            } else {
+                $panel.find('.discount-value-suffix').text('');
+            }
+        },
+        _getDiscountBlock: function (initialType, initialValue, initialScope) {
+            var that = this;
+            initialType = initialType || 0;
+            initialValue = initialValue !== undefined && initialValue !== null ? initialValue : '';
+            initialScope = initialScope !== undefined && initialScope !== null ? initialScope : 0;
+
+            var discountTypeSelect = $('<select/>', {
+                class: 'form-control discount-type-select',
+                name: 'discount_type'
+            })
+                .append($('<option/>', { value: '0', text: that._dl('discount_none', 'No discount') }))
+                .append($('<option/>', { value: '1', text: that._dl('discount_percent', 'Percentage (%)') }))
+                .append($('<option/>', { value: '2', text: that._dl('discount_fixed', 'Fixed amount') }))
+                .val(String(initialType));
+
+            var discountScopeSelect = $('<select/>', {
+                class: 'form-control discount-scope-select',
+                name: 'discount_scope'
+            })
+                .append($('<option/>', { value: '0', text: that._dl('discount_per_night', 'Per night') }))
+                .append($('<option/>', { value: '1', text: that._dl('discount_on_total', 'Total stay') }))
+                .val(String(initialScope));
+
+            var discountValueInput = $('<input/>', {
+                class: 'form-control discount-value-input',
+                name: 'discount_value',
+                type: 'number',
+                min: 0,
+                step: '0.01',
+                placeholder: '0',
+                value: initialValue
+            });
+
+            var valueGroup = $('<div/>', { class: 'input-group' })
+                .append(discountValueInput)
+                .append($('<span/>', { class: 'input-group-addon discount-value-suffix', text: '' }));
+
+            var panel = $('<div/>', { class: 'booking-discount-panel' })
+                .append(
+                    $('<div/>', { class: 'booking-discount-panel__header' })
+                        .append($('<i/>', { class: 'fa fa-tag', 'aria-hidden': true }))
+                        .append($('<span/>', { text: that._dl('discount', 'Discount') }))
+                )
+                .append(
+                    $('<div/>', { class: 'booking-discount-panel__fields' })
+                        .append(
+                            $('<div/>', { class: 'booking-discount-field booking-discount-field--type' })
+                                .append($('<label/>', { text: that._dl('discount_type', 'Type') }))
+                                .append(discountTypeSelect)
+                        )
+                        .append(
+                            $('<div/>', {
+                                class: 'booking-discount-panel__extras',
+                                style: (parseInt(initialType, 10) === 0 ? 'display:none;' : '')
+                            })
+                                .append(
+                                    $('<div/>', { class: 'booking-discount-field' })
+                                        .append($('<label/>', { text: that._dl('discount_scope', 'Apply to') }))
+                                        .append(discountScopeSelect)
+                                )
+                                .append(
+                                    $('<div/>', { class: 'booking-discount-field booking-discount-field--value' })
+                                        .append($('<label/>', { text: that._dl('discount_value', 'Amount') }))
+                                        .append(valueGroup)
+                                )
+                        )
+                )
+                .append(
+                    $('<div/>', {
+                        class: 'booking-discount-panel__hint',
+                        style: (parseInt(initialType, 10) === 0 ? 'display:none;' : '')
+                    })
+                );
+
+            var refreshDiscount = function () {
+                var roomTypeDIV = panel.closest('.room-type');
+                if (!roomTypeDIV.length) {
+                    roomTypeDIV = that.$modalBody.find('.room-type').first();
+                }
+                that._syncDiscountPanelState(panel);
+                that._updateRate(roomTypeDIV);
+                that._displayRateInfo(null, null, roomTypeDIV.length ? roomTypeDIV : null);
+            };
+
+            discountTypeSelect.on('change', function () {
+                if ($(this).val() === '0') {
+                    discountValueInput.val('');
+                }
+                refreshDiscount();
+            });
+
+            discountScopeSelect.on('change', refreshDiscount);
+            discountValueInput.on('change input', refreshDiscount);
+
+            that._syncDiscountPanelState(panel);
+
+            return panel;
+        },
+        _getEffectiveRateForTax: function (rate, discountType, discountValue, discountScope, numberOfNights, payPeriod) {
+            rate = parseFloat(rate) || 0;
+            discountType = parseInt(discountType, 10) || 0;
+            discountValue = parseFloat(discountValue) || 0;
+            discountScope = parseInt(discountScope, 10) || 0;
+            numberOfNights = Math.max(1, parseInt(numberOfNights, 10) || 1);
+
+            if (discountType === 0 || discountValue <= 0) {
+                return rate;
+            }
+
+            if (discountScope === 1 && discountType === 2 && (payPeriod == 0 || payPeriod === '0')) {
+                return this._applyDiscount(rate, discountType, discountValue, 1, numberOfNights);
+            }
+
+            if (discountScope === 1 && discountType === 1) {
+                return this._applyDiscount(rate, discountType, discountValue, 0, numberOfNights);
+            }
+
+            return this._applyDiscount(rate, discountType, discountValue, discountScope, numberOfNights);
+        },
         // returns array of [default_rate, default_rate_info]
         _updateRate: function (roomTypeDIV) {
             var that = this;
@@ -7079,6 +7349,14 @@ var bookingModalInvoker = function ($) {
                 roomTypeDIV.find("[name='rate']").attr("disabled", false);
                 roomTypeDIV.find("[name='pay_period']").attr("disabled", false);
                 var rate = roomTypeDIV.find("input[name='rate']").val();
+                var discountType = roomTypeDIV.find("[name='discount_type']").val() || 0;
+                var discountValue = roomTypeDIV.find("[name='discount_value']").val() || 0;
+                var discountScope = roomTypeDIV.find("[name='discount_scope']").val() || 0;
+                var numberOfNights = parseInt(that.$modalBody.find('input[name="number_of_days"]').val(), 10) || 1;
+                var payPeriod = roomTypeDIV.find('[name="pay_period"]').val();
+                rate = that._getEffectiveRateForTax(
+                    rate, discountType, discountValue, discountScope, numberOfNights, payPeriod
+                );
 
                 $.post(getBaseURL() + "rate_plan/get_tax_amount_from_room_charge_JSON/",
                     {

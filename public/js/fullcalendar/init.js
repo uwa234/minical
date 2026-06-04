@@ -98,9 +98,9 @@ innGrid.getRooms = function (callback) {
 
             rooms[index].room_type = roomObject.acronym ? roomObject.acronym : (roomObject.room_type && roomObject.room_type.length > 6 ? roomObject.room_type.substr(0, 6) : roomObject.room_type);
 
-            rooms[index].id = roomObject.room_id;
+            rooms[index].id = String(roomObject.room_id);
             rooms[index].room_type_id = roomObject.room_type_id;
-            rooms[index].room_type_name = roomObject.room_type_name || '';
+            rooms[index].room_type_name = roomObject.room_type_name || roomObject.room_type || 'Other';
 
             rooms[index].sort_order = roomObject.sort_order ? parseInt(roomObject.sort_order) : 0;
 
@@ -239,7 +239,7 @@ innGrid.buildCalendar = function (rooms) {
         contentHeight: 'auto',
 
         header: {
-            left: (innGrid.enableHourlyBooking ? 'customCreateBooking, customDayView,customMonthView, prev,customToday,next, customStartDatePicker' : 'customCreateBooking, prev,customToday,next, customStartDatePicker'),
+            left: (innGrid.enableHourlyBooking ? 'customCreateBooking, customDayView, customMonthView, prev, customToday, next, customStartDatePicker' : 'customCreateBooking, customMonthView, prev, customToday, next, customStartDatePicker'),
             right: null,
             center: null
         },
@@ -364,6 +364,11 @@ innGrid.buildCalendar = function (rooms) {
             $("#hidden-start-date-picker").val(date);
 
             addCalendarHeaderFilters();
+            if (innGrid.lastCalendarEvents && innGrid.lastCalendarEvents.length) {
+                setTimeout(function () {
+                    paintCalendarBookingEvents(innGrid.lastCalendarEvents);
+                }, 50);
+            }
         },
         dayRender: function (info) {
             if (innGrid.color && innGrid.color.length) {
@@ -384,7 +389,7 @@ innGrid.buildCalendar = function (rooms) {
             }
         },
         resourceRender: function (renderInfo) {
-            var status = renderInfo.resource.extendedProps.status;
+            var status = (renderInfo.resource.extendedProps && renderInfo.resource.extendedProps.status) || renderInfo.resource.status;
             renderInfo.el.classList.remove('room-status-dirty', 'room-status-inspected');
             if (status === "Dirty") {
                 renderInfo.el.classList.add('room-status-dirty');
@@ -417,6 +422,24 @@ innGrid.buildCalendar = function (rooms) {
         eventResize: innGrid.bookingResized,
         eventDrop: occupacyMoved,
         eventSources: [getCalendarBookings],
+        eventRender: function (eventOrInfo, element) {
+            var el = element || (eventOrInfo && eventOrInfo.el);
+            var fcEvent = (eventOrInfo && eventOrInfo.event) ? eventOrInfo.event : eventOrInfo;
+            var eventData = fcEvent && fcEvent.extendedProps ? fcEvent.extendedProps.data : null;
+            if (!el || !eventData || parseInt(eventData.state, 10) !== 7) {
+                return;
+            }
+            el.classList.remove('border-red');
+            el.classList.add('unconfirmed-booking');
+            el.style.background = 'linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%)';
+            el.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+            el.style.color = '#78350f';
+            var bgEl = el.querySelector('.fc-bg');
+            if (bgEl) {
+                bgEl.style.background = 'transparent';
+                bgEl.style.opacity = '1';
+            }
+        },
     };
 
     if (innGrid.isDisplayTooltip) {
@@ -506,8 +529,9 @@ innGrid.buildCalendar = function (rooms) {
                 room_type_id: info.resource && info.resource.extendedProps ? info.resource.extendedProps.room_type_id : '',
                 room_name: info.resource ? info.resource.title : ''
             };
-            var start = moment(info.start).format('YYYY-MM-DD HH:mm:ss');
-            var end = moment(info.end).format('YYYY-MM-DD HH:mm:ss');
+            var stayDates = calendarSelectionToBookingDates(info.start, info.end);
+            var start = stayDates.checkIn;
+            var end = stayDates.checkOut;
             var pos = info.jsEvent ? { left: info.jsEvent.pageX + 12, top: info.jsEvent.pageY + 12 } : null;
 
             if (typeof innGrid.showCalendarRangeActions === 'function' && roomId && roomId.indexOf('unassigned') !== 0) {
@@ -528,6 +552,9 @@ innGrid.buildCalendar = function (rooms) {
     setTimeout(function () {
         if (innGrid.calendar) {
             innGrid.calendar.updateSize();
+            if (innGrid.calendar.refetchEvents) {
+                innGrid.calendar.refetchEvents();
+            }
         }
         syncBookingRoomTypeChipsFromSelect();
     }, 150);
@@ -539,7 +566,66 @@ innGrid.buildCalendar = function (rooms) {
 
 //Get booking data
 //Format is decided by Full Calendar format. See FullCalendar online documentation.
+var calendarBookingFetchTimer = null;
+var calendarBookingFetchPending = null;
+var CHECK_OUT_DATE_HACK_DAYS = (typeof check_out_dateHack !== 'undefined') ? check_out_dateHack : 1;
+
+/**
+ * Convert a FullCalendar selection range to booking check-in / check-out dates.
+ * Selection end is exclusive (day after the last highlighted cell). Checkout day
+ * is not counted as an occupied night (see check_out_dateHack on displayed events).
+ */
+function calendarSelectionToBookingDates(selectionStart, selectionEnd) {
+    var checkIn = moment(selectionStart).startOf('day');
+    var checkOut = moment(selectionEnd).startOf('day');
+    if (CHECK_OUT_DATE_HACK_DAYS) {
+        checkOut.subtract(CHECK_OUT_DATE_HACK_DAYS, 'days');
+    }
+    return {
+        checkIn: checkIn.format('YYYY-MM-DD HH:mm:ss'),
+        checkOut: checkOut.format('YYYY-MM-DD HH:mm:ss')
+    };
+}
+
+function normalizeBookingList(bookingObjects) {
+    if ($.isArray(bookingObjects)) {
+        return bookingObjects;
+    }
+    if (bookingObjects && typeof bookingObjects === 'object') {
+        return $.map(bookingObjects, function (value) {
+            return value;
+        });
+    }
+    return [];
+}
+
 function getCalendarBookings(data, successCallback, failureCallback) {
+    calendarBookingFetchPending = {
+        data: data,
+        successCallback: successCallback,
+        failureCallback: failureCallback
+    };
+
+    if (calendarBookingFetchTimer) {
+        clearTimeout(calendarBookingFetchTimer);
+    }
+
+    calendarBookingFetchTimer = setTimeout(function () {
+        calendarBookingFetchTimer = null;
+        runCalendarBookingFetch();
+    }, 150);
+}
+
+function runCalendarBookingFetch() {
+    var pending = calendarBookingFetchPending;
+    if (!pending) {
+        return;
+    }
+    calendarBookingFetchPending = null;
+
+    var data = pending.data;
+    var successCallback = pending.successCallback;
+    var failureCallback = pending.failureCallback;
     var start = data.start;
     var end = data.end;
     var room_type_id = $('[name=room-type]').val();
@@ -563,65 +649,116 @@ function getCalendarBookings(data, successCallback, failureCallback) {
 
     var param = 'start=' + encodeURIComponent(start.toUTCString()) + '&end=' + encodeURIComponent(moment(end).add(1, 'day').toDate().toUTCString()) + '&room_type_id=' + room_type_id + '&group_id=' + group_id + '&floor_id=' + floor_id + '&location_id=' + location_id + '&reservation_type=' + reservation_type + '&booking_source=' + booking_source;
 
-    if (typeof get_bookings_AJAX_request !== "undefined" && get_bookings_AJAX_request)
-        get_bookings_AJAX_request.abort();
-
     get_bookings_AJAX_request = $.ajax({
         type: "POST",
         url: getBaseURL() + 'booking/get_bookings_in_JSON',
         data: param,
         dataType: "json",
         success: function (bookingObjects) {
-            var bookingsArray = new Array();
-            $(bookingObjects).each(function (index, value) {
-                bookingsArray[index] = new Object();
-                bookingsArray[index].booking_id = value.booking_id;
-                bookingsArray[index].room_id = (value.room_id == 0 || value.room_id == null) ? l('unassigned', true)+'-' + value.brh_room_type_id : value.room_id;
-                bookingsArray[index].room_type_id = value.room_type_id;
-                bookingsArray[index].room_name = value.room_name;
-                bookingsArray[index].warning_message = value.warning_message;
-                bookingsArray[index].border_color = value.border_color;
-                bookingsArray[index].color = value.color;
-                bookingsArray[index].customer_type_id = value.customer_type_id;
-
-                numberOfStayingGuests = parseInt(value.guest_count);
-
-                if (value.is_group_booking != null) {
-                    bookingsArray[index].group_booking = 'group-booking';
-                }
-                if (value.state == 3) {
-                    bookingsArray[index].customer_name = l('maintenance', true) || 'Maintenance';
-                }
-                // if there is more than one "staying" customer
-                else if (numberOfStayingGuests > 1) {
-                    bookingsArray[index].customer_name = value.customer_name + ", " + value.guest_name + " "+l('and')+" " + (numberOfStayingGuests - 1) + " "+ l('other(s)');
-                } else if (numberOfStayingGuests === 1) {
-                    bookingsArray[index].customer_name = value.customer_name + " "+l('with')+" " + value.guest_name;
-                } else {
-                    bookingsArray[index].customer_name = value.customer_name;
-                }
-
-                bookingsArray[index].staying_customers = value.staying_customers;
-                bookingsArray[index].booking_customer = value.customer_name;
-
-                bookingsArray[index].check_in_date = value.check_in_date;
-                bookingsArray[index].check_out_date = value.check_out_date;
-                bookingsArray[index].state = value.state;
-                bookingsArray[index].booking_source = value.source;
-                bookingsArray[index].id_group_booking = value.is_group_booking;
-                bookingsArray[index].group_name = value.group_name;
-                bookingsArray[index].payment_total = value.payment_total;
-                bookingsArray[index].balance = value.balance;
-                bookingsArray[index].booking_notes = value.booking_notes;
-            });
-            bookings = convertToEvents(bookingsArray);
-
-            if (successCallback !== undefined && !innGrid.isOverviewCalendar) {
-                successCallback(bookings);
+            applyCalendarBookingResponse(bookingObjects, successCallback, failureCallback);
+            if (calendarBookingFetchPending) {
+                runCalendarBookingFetch();
             }
         },
-        error: innGrid.ajaxError
+        error: function (xhr, textStatus) {
+            if (textStatus === 'abort') {
+                if (calendarBookingFetchPending) {
+                    runCalendarBookingFetch();
+                }
+                return;
+            }
+            applyCalendarBookingResponse([], successCallback, failureCallback);
+            if (calendarBookingFetchPending) {
+                runCalendarBookingFetch();
+            }
+        }
     });
+}
+
+function applyCalendarBookingResponse(bookingObjects, successCallback, failureCallback) {
+    bookingObjects = normalizeBookingList(bookingObjects);
+    var bookingsArray = [];
+
+    if (bookingObjects.length) {
+        $(bookingObjects).each(function (index, value) {
+            bookingsArray.push({
+                booking_id: value.booking_id,
+                room_id: (value.room_id == 0 || value.room_id == null)
+                    ? l('unassigned', true) + '-' + (value.brh_room_type_id || value.room_type_id)
+                    : String(value.room_id),
+                room_type_id: value.room_type_id,
+                room_name: value.room_name,
+                warning_message: value.warning_message,
+                border_color: value.border_color,
+                color: value.color,
+                customer_type_id: value.customer_type_id,
+                group_booking: value.is_group_booking != null ? 'group-booking' : undefined,
+                customer_name: buildBookingCustomerLabel(value),
+                staying_customers: value.staying_customers,
+                booking_customer: value.customer_name,
+                check_in_date: value.check_in_date,
+                check_out_date: value.check_out_date,
+                state: value.state,
+                booking_source: value.source,
+                id_group_booking: value.is_group_booking,
+                group_name: value.group_name,
+                payment_total: value.payment_total,
+                balance: value.balance,
+                booking_notes: value.booking_notes
+            });
+        });
+    }
+
+    var events = convertToEvents(bookingsArray);
+    bookings = events;
+    innGrid.lastCalendarEvents = events;
+
+    if (innGrid.isOverviewCalendar) {
+        return;
+    }
+
+    if (typeof successCallback === 'function') {
+        successCallback(events);
+    }
+
+    paintCalendarBookingEvents(events);
+}
+
+function buildBookingCustomerLabel(value) {
+    var numberOfStayingGuests = parseInt(value.guest_count, 10) || 0;
+
+    if (value.state == 3) {
+        return l('maintenance', true) || 'Maintenance';
+    }
+    if (numberOfStayingGuests > 1) {
+        return value.customer_name + ", " + value.guest_name + " " + l('and') + " " + (numberOfStayingGuests - 1) + " " + l('other(s)');
+    }
+    if (numberOfStayingGuests === 1) {
+        return value.customer_name + " " + l('with') + " " + value.guest_name;
+    }
+    return value.customer_name;
+}
+
+function paintCalendarBookingEvents(events) {
+    if (!innGrid.calendar || innGrid.isOverviewCalendar) {
+        return;
+    }
+
+    var calendar = innGrid.calendar;
+    var existing = calendar.getEvents();
+    for (var i = 0; i < existing.length; i++) {
+        existing[i].remove();
+    }
+
+    if (!events || !events.length) {
+        return;
+    }
+
+    for (var j = 0; j < events.length; j++) {
+        if (events[j]) {
+            calendar.addEvent(events[j]);
+        }
+    }
 }
 
 innGrid.ajaxError = function (XMLHttpRequest, textStatus, errorThrown) {
@@ -635,9 +772,13 @@ innGrid.ajaxError = function (XMLHttpRequest, textStatus, errorThrown) {
 
 //Converts booking entry (taken from XML) to event used by calendar
 function convertToEvents(data) {
-    var bookings = new Array();
+    var bookings = [];
 
-    for (var i in data) {
+    for (var i = 0; i < data.length; i++) {
+        if (!data[i]) {
+            continue;
+        }
+
         var flag = '';
         if (data[i].customer_type_id == '-1') {
             flag = 'blacklist';
@@ -645,43 +786,79 @@ function convertToEvents(data) {
             flag = 'vip';
         }
 
-        bookings[i] = new Object();
-        bookings[i].id = data[i].booking_id;
-        bookings[i].title = "" + data[i].customer_name;
-        bookings[i].resourceId = "" + data[i].room_id;
-        bookings[i].start = moment(data[i].check_in_date).format("YYYY-MM-DD HH:mm:ss");
-        bookings[i].end = moment(data[i].check_out_date).format("YYYY-MM-DD HH:mm:ss");
-        if (parseInt(data[i].state, 10) === 3) {
-            bookings[i].title = l('maintenance', true) || 'Maintenance';
-            bookings[i].backgroundColor = '#000000';
-            bookings[i].borderColor = '#000000';
-            bookings[i].textColor = '#ffffff';
-            bookings[i].classNames = [flag, data[i].group_booking, 'maintenance-block'];
-        } else {
-            bookings[i].backgroundColor = (data[i].color && data[i].color != 'transparent') ? "#" + data[i].color : getdefaultStateBGColor(parseInt(data[i].state));
-            bookings[i].borderColor = bookings[i].backgroundColor;
-            bookings[i].textColor = getdefaultStateTextColor(parseInt(data[i].state));
-            bookings[i].classNames = [flag, data[i].group_booking, "border-" + data[i].border_color];
+        var startMoment = moment(data[i].check_in_date);
+        var endMoment = moment(data[i].check_out_date);
+        if (!startMoment.isValid() || !endMoment.isValid()) {
+            continue;
         }
 
-        bookings[i].data = new Object();
-        bookings[i].data.booking_id = data[i].booking_id;
-        bookings[i].data.color = "" + data[i].color;
-        bookings[i].data.check_in_date = "" + data[i].check_in_date;
-        bookings[i].data.check_out_date = "" + data[i].check_out_date;
-        bookings[i].data.booking_source = "" + data[i].booking_source;
-        bookings[i].data.id_group_booking = "" + data[i].id_group_booking;
-        bookings[i].data.group_name = "" + data[i].group_name;
-        bookings[i].data.payment_total = "" + data[i].payment_total;
-        bookings[i].data.balance = "" + data[i].balance;
-        bookings[i].data.room_name = "" + data[i].room_name;
-        bookings[i].data.booking_customer = "" + data[i].booking_customer;
-        bookings[i].data.staying_customers = "" + data[i].staying_customers;
-        bookings[i].data.customer_type_id = "" + data[i].customer_type_id;
-        bookings[i].data.room_id = "" + data[i].room_id;
-        bookings[i].data.state = parseInt(data[i].state);
-        bookings[i].data.warning_message = data[i].warning_message;
-        bookings[i].data.booking_notes = data[i].booking_notes;
+        if (CHECK_OUT_DATE_HACK_DAYS) {
+            endMoment = endMoment.clone().subtract(CHECK_OUT_DATE_HACK_DAYS, 'days');
+        }
+        // Same-day / zero-night stays collapse to start after checkout hack; use 1 day
+        // so the bar fills a timeline slot (24h), not a 1h sliver (~1px wide).
+        if (!endMoment.isAfter(startMoment)) {
+            endMoment = startMoment.clone().add(1, 'day');
+        }
+
+        var resourceId = String(data[i].room_id);
+
+        var event = {
+            id: String(data[i].booking_id),
+            title: "" + (data[i].customer_name || ''),
+            resourceId: resourceId,
+            resourceIds: [resourceId],
+            start: startMoment.format("YYYY-MM-DD HH:mm:ss"),
+            end: endMoment.format("YYYY-MM-DD HH:mm:ss")
+        };
+
+        if (parseInt(data[i].state, 10) === 3) {
+            event.title = l('maintenance', true) || 'Maintenance';
+            event.backgroundColor = '#000000';
+            event.borderColor = '#000000';
+            event.textColor = '#ffffff';
+            event.classNames = [flag, data[i].group_booking, 'maintenance-block'].filter(Boolean);
+        } else {
+            var bookingState = parseInt(data[i].state, 10);
+            event.backgroundColor = (data[i].color && data[i].color != 'transparent') ? "#" + data[i].color : getdefaultStateBGColor(bookingState);
+            event.borderColor = event.backgroundColor;
+            event.textColor = getdefaultStateTextColor(bookingState);
+            event.classNames = [flag, data[i].group_booking].filter(Boolean);
+            if (bookingState !== 7) {
+                event.classNames.push("border-" + data[i].border_color);
+            }
+            if (bookingState === 7) {
+                event.classNames.push('unconfirmed-booking');
+                event.backgroundColor = '#fef3c7';
+                event.borderColor = '#fcd34d';
+                event.textColor = '#78350f';
+            }
+        }
+
+        event.extendedProps = {
+            data: {
+                booking_id: data[i].booking_id,
+                color: "" + data[i].color,
+                check_in_date: "" + data[i].check_in_date,
+                check_out_date: "" + data[i].check_out_date,
+                booking_source: "" + data[i].booking_source,
+                id_group_booking: "" + data[i].id_group_booking,
+                group_name: "" + data[i].group_name,
+                payment_total: "" + data[i].payment_total,
+                balance: "" + data[i].balance,
+                room_name: "" + data[i].room_name,
+                booking_customer: "" + data[i].booking_customer,
+                staying_customers: "" + data[i].staying_customers,
+                customer_type_id: "" + data[i].customer_type_id,
+                room_id: resourceId,
+                state: parseInt(data[i].state, 10),
+                warning_message: data[i].warning_message,
+                booking_notes: data[i].booking_notes
+            }
+        };
+        event.data = event.extendedProps.data;
+
+        bookings.push(event);
     }
 
     return bookings;
@@ -757,16 +934,16 @@ function occupacyMoved(info) {
 
 function getdefaultStateBGColor(state) {
     var defaultColors = {
-        "0": "#3b82f6", // reservation
-        "1": "#16a34a", // in-house
-        "2": "#ea580c", // checked-out
-        "3": "#374151", // maintenance / out of order
+        "0": "#2563eb", // reservation
+        "1": "#059669", // in-house
+        "2": "#d97706", // checked-out
+        "3": "#334155", // maintenance / out of order
         "4": "#94a3b8", // cancelled
         "5": "#dc2626", // no show
-        "6": "#f3f4f6", // deleted
-        "7": "#ffffff" // unconfirmed reservation
+        "6": "#f1f5f9", // deleted
+        "7": "#fef3c7" // unconfirmed reservation
     };
-    return defaultColors[state] ? defaultColors[state] : '#3b82f6';
+    return defaultColors[state] ? defaultColors[state] : '#2563eb';
 }
 
 function getdefaultStateTextColor(state) {
@@ -775,7 +952,7 @@ function getdefaultStateTextColor(state) {
         "4": "#1f2937",
         "5": "#ffffff",
         "6": "#6b7280",
-        "7": "#1f2937"
+        "7": "#78350f"
     };
     return defaultColors[state] ? defaultColors[state] : '#ffffff';
 }
@@ -1070,9 +1247,43 @@ innGrid.saveRoom = function (roomID, proceedToNextRoom) {
     });
 };
 
+function addCalendarViewSwitcher() {
+    var $toolbar = $('.fc-toolbar.fc-header-toolbar');
+    if (!$toolbar.length || $toolbar.find('.booking-cal-view-switch').length) {
+        return;
+    }
+
+    var isOverview = innGrid.isOverviewCalendar;
+    var $switch = $('<div/>', { class: 'booking-cal-view-switch', role: 'group', 'aria-label': l('Booking calendar view', true) })
+        .append(
+            $('<a/>', {
+                href: getBaseURL() + 'booking',
+                class: 'booking-cal-view-switch__btn' + (isOverview ? '' : ' is-active'),
+                title: l('Booking calendar view', true),
+                html: '<i class="fa fa-calendar" aria-hidden="true"></i>'
+            })
+        )
+        .append(
+            $('<a/>', {
+                href: getBaseURL() + 'booking/overview',
+                class: 'booking-cal-view-switch__btn' + (isOverview ? ' is-active' : ''),
+                title: l('Room Type availability view', true),
+                html: '<i class="fa fa-th" aria-hidden="true"></i>'
+            })
+        );
+
+    $toolbar.find('.fc-left').prepend($switch);
+}
+
 function addCalendarHeaderFilters() {
     var $toolbar = $('.fc-toolbar.fc-header-toolbar');
-    if (!$toolbar.length || $toolbar.find('#booking_search').length) {
+    if (!$toolbar.length) {
+        return;
+    }
+
+    addCalendarViewSwitcher();
+
+    if ($toolbar.find('#booking_search').length) {
         return;
     }
 
@@ -1095,10 +1306,10 @@ function addCalendarHeaderFilters() {
                                 class: "input-group-btn"
                             })
                                 .append(
-                                    $('<button/>', {class: 'btn btn-light', type: 'submit'})
+                                    $('<button/>', {class: 'btn btn-light', type: 'submit', 'aria-label': l('search_bookings', true)})
                                         .append(
-                                            $("<span/>", {
-                                                class: "glyphicon glyphicon-search"
+                                            $("<i/>", {
+                                                class: "fa fa-search"
                                             })
                                         )
                                 )
@@ -1106,11 +1317,15 @@ function addCalendarHeaderFilters() {
                 )
                 .append(
                     $("<button/>", {
+                        type: 'button',
                         href: '#',
                         class: 'btn btn-light filter-booking m-040',
                         text: l('More Filters', true)
                     }).on('click', function () {
-                        $('#filter-booking').slideToggle();
+                        var $panel = $('#filter-booking');
+                        $panel.slideToggle(200, function () {
+                            $panel.attr('aria-hidden', $panel.is(':visible') ? 'false' : 'true');
+                        });
                     })
                 )
         );

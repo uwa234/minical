@@ -603,7 +603,7 @@ if ( ! function_exists('auto_version'))
 	function auto_version($file)
 	{
         $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-		$saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+		$saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io', 'app.travelhub247.com');
 		if (
             $is_hosted_prod_service === '1' || $is_hosted_prod_service === 'true' || $is_hosted_prod_service === true
             || in_array($_SERVER['HTTP_HOST'], $saas_app_hosts, true)

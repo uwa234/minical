@@ -16,6 +16,13 @@ if ($has_logo) {
         $logo_url = base_url() . 'images/' . $whitelabel_detail['logo'];
     }
 }
+if (!$has_logo) {
+    $platform_logo_url = platform_website_logo_url();
+    if ($platform_logo_url !== '') {
+        $has_logo = true;
+        $logo_url = $platform_logo_url;
+    }
+}
 
 $use_username = $this->config->item('use_username', 'tank_auth');
 $login_label = $use_username ? 'Email or login' : 'Email address';

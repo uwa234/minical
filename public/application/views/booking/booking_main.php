@@ -1,7 +1,4 @@
-
-<div class="main-card mb-3 card">
-    <div class="card-body booking-page-body">
-<?php 
+<?php
     $flag = 1;
     $permissions = $this->session->userdata('permissions');
     if(isset($permissions) && $permissions != NULL)
@@ -10,124 +7,132 @@
         {
             $flag = 0;
         }
-    }    
+    }
+    $is_overview_view = !empty($is_overview_calendar);
 ?>
 
+<div class="booking-page" id="booking-page">
+    <div class="booking-page__surface">
+        <header class="booking-page__header">
+            <div class="booking-page__header-text">
+                <h1 class="booking-page__title"><?php echo l('bookings', true); ?></h1>
+                <?php if ($is_overview_view): ?>
+                <p class="booking-page__subtitle" id="booking-page-subtitle"><?php echo l('Room Type availability view', true); ?></p>
+                <?php endif; ?>
+            </div>
+        </header>
 
+        <div id="filter-booking" class="booking-calendar-filters" style="display: none;" aria-hidden="true">
+            <div class="booking-calendar-filters__head">
+                <strong class="booking-calendar-filters__title"><?php echo l('filters'); ?></strong>
+            </div>
+            <div class="booking-calendar-filters__grid">
+                <div class="booking-calendar-filters__field">
+                    <label class="booking-calendar-filters__label" for="filter-room-type"><?php echo l('all_room_types'); ?></label>
+                    <select name="room-type" id="filter-room-type" class="form-control" onchange="filter_data()">
+                        <option value=""><?php echo l('all_room_types'); ?></option>
+                        <?php foreach ($room_types as $room_type): ?>
+                        <option value="<?php echo (int) $room_type['id']; ?>"><?php echo htmlspecialchars($room_type['name'].' ('.$room_type['acronym'].')', ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="booking-calendar-filters__field">
+                    <label class="booking-calendar-filters__label"><?php echo l('all_floors'); ?></label>
+                    <select name="room-floor" class="form-control" onchange="filter_data()">
+                        <option value=""><?php echo l('all_floors'); ?></option>
+                        <?php foreach ($room_floor as $floors): ?>
+                        <option value="<?php echo (int) $floors['id']; ?>"><?php echo htmlspecialchars($floors['floor_name'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="booking-calendar-filters__field">
+                    <label class="booking-calendar-filters__label"><?php echo l('all_locations'); ?></label>
+                    <select name="room-location" class="form-control" onchange="filter_data()">
+                        <option value=""><?php echo l('all_locations'); ?></option>
+                        <?php foreach ($room_location as $locations): ?>
+                        <option value="<?php echo (int) $locations['id']; ?>"><?php echo htmlspecialchars($locations['location_name'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="booking-calendar-filters__field">
+                    <label class="booking-calendar-filters__label"><?php echo l('all_bookings_except_cancelled'); ?></label>
+                    <select name="reservation-type" class="form-control" onchange="filter_data()">
+                        <option value=""><?php echo l('all_bookings_except_cancelled'); ?></option>
+                        <option value="-1"><?php echo l('all_bookings'); ?></option>
+                        <option value="0"><?php echo l('reservation'); ?></option>
+                        <option value="1"><?php echo l('checked_in'); ?></option>
+                        <option value="2"><?php echo l('checked_out'); ?></option>
+                        <option value="4"><?php echo l('cancelled'); ?></option>
+                        <option value="7"><?php echo l('unconfirmed_reservation'); ?></option>
+                        <option value="5"><?php echo l('no_show'); ?></option>
+                    </select>
+                </div>
+                <div class="booking-calendar-filters__field">
+                    <label class="booking-calendar-filters__label"><?php echo l('All Booking Sources'); ?></label>
+                    <select name="booking-source" class="form-control" onchange="filter_data()" id="new-select">
+                        <option value=""><?php echo l('All Booking Sources'); ?></option>
+                        <?php foreach ($booking_sources as $booking_source): ?>
+                        <option value="<?php echo (int) $booking_source['id']; ?>"><?php echo htmlspecialchars($booking_source['name'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="booking-calendar-filters__field booking-calendar-filters__field--action">
+                    <button type="button" class="btn btn-default booking-calendar-filters__groups-btn" onclick="$(this).openSearchGroupModel();"><?php echo l('Search Groups', true); ?></button>
+                </div>
+            </div>
+        </div>
 
-<div id="filter-booking" class="booking-calendar-filters" style="display: none;">
-    <div class="pull-left h4">
-        <strong><?php echo l('filters'); ?></strong>
+        <?php if (!empty($room_types) && count($room_types) > 1): ?>
+        <div class="booking-room-type-chips" id="booking-room-type-chips" role="tablist" aria-label="<?php echo l('all_room_types', true); ?>">
+            <span class="booking-room-type-chips__label"><?php echo l('view_by_room_type', true); ?></span>
+            <div class="booking-room-type-chips__scroll">
+                <button type="button" class="booking-room-type-chip is-active" data-room-type-id="" role="tab" aria-selected="true"><?php echo l('all_room_types'); ?></button>
+                <?php foreach ($room_types as $room_type): ?>
+                <button type="button" class="booking-room-type-chip" data-room-type-id="<?php echo (int) $room_type['id']; ?>" role="tab" aria-selected="false"><?php echo htmlspecialchars($room_type['name'], ENT_QUOTES, 'UTF-8'); ?></button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="booking-calendar-shell booking-calendar-shell--scrollable">
+            <div id="calendar" class="tab_btn_calendar booking-calendar-mount" role="region" aria-live="polite" aria-busy="true">
+                <div class="booking-calendar-loading">
+                    <span class="booking-calendar-loading__spinner" aria-hidden="true"></span>
+                    <span class="booking-calendar-loading__text"><?php echo l('Loading', true); ?>...</span>
+                </div>
+            </div>
+            <div id="overview_calendar" class="tab_btn_calendar booking-calendar-mount" role="region" aria-label="<?php echo l('Room Type availability view', true); ?>"></div>
+        </div>
+
+        <div class="booking-calendar-legend" id="booking-calendar-legend" aria-label="<?php echo l('legend', true); ?>">
+            <button type="button" class="booking-calendar-legend__toggle btn btn-link btn-sm" id="booking-calendar-legend-toggle" aria-expanded="false" aria-controls="booking-calendar-legend-items">
+                <span class="booking-calendar-legend__toggle-label"><?php echo l('legend', true); ?></span>
+                <span class="caret"></span>
+            </button>
+            <div class="booking-calendar-legend__items" id="booking-calendar-legend-items">
+                <span class="booking-calendar-legend__item" data-status="reservation"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--reservation"></span><?php echo l('reservation', true); ?></span>
+                <span class="booking-calendar-legend__item" data-status="checked-in"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--checked-in"></span><?php echo l('checked_in', true); ?></span>
+                <span class="booking-calendar-legend__item" data-status="checked-out"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--checked-out"></span><?php echo l('checked_out', true); ?></span>
+                <span class="booking-calendar-legend__item" data-status="unconfirmed"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--unconfirmed"></span><?php echo l('unconfirmed_reservation', true); ?></span>
+                <span class="booking-calendar-legend__item" data-status="no-show"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--no-show"></span><?php echo l('no_show', true); ?></span>
+                <span class="booking-calendar-legend__item" data-status="maintenance"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--maintenance"></span><?php echo l('maintenance', true); ?></span>
+            </div>
+        </div>
     </div>
-    <div class="col-sm-3 col-md-2 col-lg-2 col-xs-12">
-        <select name="room-type" class="form-control" onchange="filter_data()" id="filter-sapce">
-            <option value=""><?php echo l('all_room_types'); ?></option>
-            <?php
-                foreach($room_types as $room_type)
-                {
-                    echo "<option value='".$room_type['id']."'>".$room_type['name'].'('.$room_type['acronym'].")</option>\n";
-                }
-            ?>
-        </select>
-    </div> 
 
-     <div class="col-sm-2 col-md-2 col-lg-2 col-xs-2">
-        <select name="room-floor" class="form-control col-sm-4 col-md-4 col-lg-4 col-xs-4" onchange="filter_data()">
-            <option value=""><?php echo l('all_floors'); ?></option>    
-            <?php
-                foreach($room_floor as $key => $floors)
-                {
-                    echo "<option value='".$floors['id']."'>".$floors['floor_name']."</option>";
-                }
-            ?>
-        </select>
+    <div id="notification-drag-box" class="booking-range-popover" role="dialog" aria-label="<?php echo l('create_new_booking', true); ?>">
+        <p class="booking-range-popover__row"><?php echo l('from'); ?>: <span class="from"></span></p>
+        <p class="booking-range-popover__row"><?php echo l('to'); ?>: <span class="to"></span></p>
+        <p class="booking-range-popover__row"><?php echo l('room'); ?>: <span class="room"></span></p>
+        <div class="calendar-range-actions booking-range-popover__actions">
+            <button type="button" class="btn btn-primary btn-sm btn-block" id="calendar-action-new-booking">
+                <?php echo l('create_new_booking', true); ?>
+            </button>
+            <button type="button" class="btn btn-default btn-sm btn-block" id="calendar-action-maintenance">
+                <?php echo l('block_for_maintenance', true); ?>
+            </button>
+        </div>
     </div>
-        
-    <div class="col-sm-2 col-md-2 col-lg-2 col-xs-2">
-        <select name="room-location" class="form-control col-sm-4 col-md-4 col-lg-4 col-xs-4" onchange="filter_data()">
-            <option value=""><?php echo l('all_locations'); ?></option>    
-            <?php
-                foreach($room_location as $key => $locations)
-                {
-                    echo "<option value='".$locations['id']."'>".$locations['location_name']."</option>";
-                }
-            ?>
-        </select>
-    </div>    
-
-    <div class="col-sm-3 col-md-2 col-lg-2 col-xs-12">
-        <select name="reservation-type" class="form-control col-sm-4 col-md-4 col-lg-4 col-xs-4" onchange="filter_data()" id="filter-sapce">
-            <option value=""><?php echo l('all_bookings_except_cancelled'); ?></option>
-            <option value="-1"><?php echo l('all_bookings'); ?></option>
-            <option value="0"><?php echo l('reservation'); ?></option>
-            <option value="1"><?php echo l('checked_in'); ?></option>
-            <option value="2"><?php echo l('checked_out'); ?></option>
-            <option value="4"><?php echo l('cancelled'); ?></option>
-            <option value="7"><?php echo l('unconfirmed_reservation'); ?></option>
-            <option value="5"><?php echo l('no_show'); ?></option>
-        </select>
-    </div>
-
-    <div class="col-sm-3 col-md-2 col-lg-2 col-xs-12">
-        <select name="booking-source" class="form-control" onchange="filter_data()" id="new-select">
-            <option value=""><?php echo l('All Booking Sources'); ?></option>
-            <?php
-                foreach($booking_sources as $booking_source)
-                {
-                    echo "<option value='".$booking_source['id']."'>".$booking_source['name']."</option>\n";
-                }
-            ?>
-        </select>
-    </div>    
-    <button class="btn btn-light" style="padding: 6px 8px;margin-left: 4px;" onclick="$(this).openSearchGroupModel();"><?php echo l('Search Groups', true); ?></button>
-</div>    
-<!--<input name="create_new_booking" type="hidden" value="<?php //echo l('create_new_booking'); ?>" />-->
-<?php if (!empty($room_types) && count($room_types) > 1): ?>
-<div class="booking-room-type-chips" id="booking-room-type-chips" role="tablist" aria-label="<?php echo l('all_room_types', true); ?>">
-    <span class="booking-room-type-chips__label"><?php echo l('view_by_room_type', true); ?></span>
-    <div class="booking-room-type-chips__scroll">
-        <button type="button" class="booking-room-type-chip is-active" data-room-type-id="" role="tab" aria-selected="true"><?php echo l('all_room_types'); ?></button>
-        <?php foreach ($room_types as $room_type): ?>
-        <button type="button" class="booking-room-type-chip" data-room-type-id="<?php echo (int) $room_type['id']; ?>" role="tab" aria-selected="false"><?php echo htmlspecialchars($room_type['name'], ENT_QUOTES, 'UTF-8'); ?></button>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
-<div class="booking-calendar-shell booking-calendar-shell--scrollable">
-<div id="calendar" class="tab_btn_calendar"><?php echo l('Loading', true); ?>...</div>
-<div id="overview_calendar" class="tab_btn_calendar"></div>
-</div>
-<div class="booking-calendar-legend" id="booking-calendar-legend" aria-label="<?php echo l('legend', true); ?>">
-    <button type="button" class="booking-calendar-legend__toggle btn btn-link btn-sm" id="booking-calendar-legend-toggle" aria-expanded="false" aria-controls="booking-calendar-legend-items">
-        <span class="booking-calendar-legend__toggle-label"><?php echo l('legend', true); ?></span>
-        <span class="caret"></span>
-    </button>
-    <div class="booking-calendar-legend__items" id="booking-calendar-legend-items">
-        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#3b82f6;"></span><?php echo l('reservation', true); ?></span>
-        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#16a34a;"></span><?php echo l('checked_in', true); ?></span>
-        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#ea580c;"></span><?php echo l('checked_out', true); ?></span>
-        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch booking-calendar-legend__swatch--outline"></span><?php echo l('unconfirmed_reservation', true); ?></span>
-        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#dc2626;"></span><?php echo l('no_show', true); ?></span>
-        <span class="booking-calendar-legend__item"><span class="booking-calendar-legend__swatch" style="background-color:#374151;"></span><?php echo l('maintenance', true); ?></span>
-    </div>
-</div>
-<div id="notification-drag-box">
-    <p><?php echo l('from'); ?>: <span class="from"></span></p>
-	<p><?php echo l('to'); ?>: <span class="to"></span></p>
-	<p><?php echo l('room'); ?>: <span class="room"></span></p>
-    <div class="calendar-range-actions" style="margin-top:8px;">
-        <button type="button" class="btn btn-primary btn-sm btn-block" id="calendar-action-new-booking">
-            <?php echo l('create_new_booking', true); ?>
-        </button>
-        <button type="button" class="btn btn-default btn-sm btn-block" id="calendar-action-maintenance" style="margin-top:6px;">
-            <?php echo l('block_for_maintenance', true); ?>
-        </button>
-    </div>
-</div>
-
-
-</div>
-
 </div>
 
 <div class="modal fade" id="dialog-onhold-message" data-backdrop="static" 
@@ -379,7 +384,7 @@
 
                                 <?php
                                 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-                                $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io');
+                                $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io', 'app.travelhub247.com');
                                 $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
                                 if ($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)) {?>
                                     <br/><br/>
@@ -543,6 +548,8 @@
 </style>
 <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
 <script>
+	window.innGrid = window.innGrid || {};
+
 	$(document).ready(function(){
             var registration_session = $('#registration_session').val();
             if(registration_session!=''){

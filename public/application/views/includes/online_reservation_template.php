@@ -37,7 +37,7 @@ $ifieldKey = getenv('CARDKNOX_IFIELD_KEY');
 		<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/bootstrap-override.css"  />	
 		<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/smoothness/jquery-ui.min.css" />	
 		<link rel="stylesheet" type="text/css" href="<?php echo base_url();?>css/lightbox.css" />	
-		<link rel="shortcut icon" href="<?php echo base_url();?>images/favicon.ico" type="image/x-icon" />
+		<?php echo platform_branding_favicon_link_html(); ?>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />

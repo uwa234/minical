@@ -1,5 +1,177 @@
-.booking-page-body {
-    padding: 1rem 1.15rem 1.25rem;
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap");
+
+/* Booking calendar page shell */
+.booking-page {
+    --booking-page-bg: #f4f2ef;
+    --booking-surface: #ffffff;
+    --booking-ink: #0c1222;
+    --booking-ink-muted: #5c6478;
+    --booking-accent: #4f46e5;
+    --booking-accent-deep: #4338ca;
+    font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --booking-border: #e2e8f0;
+    --booking-radius: 14px;
+    --booking-radius-sm: 8px;
+    margin: -0.5rem -0.65rem 0;
+    padding: 0 0 1.25rem;
+    background: linear-gradient(165deg, #faf9f7 0%, var(--booking-page-bg) 50%, #ebe8e3 100%);
+    min-height: calc(100vh - 120px);
+}
+
+.booking-page__surface {
+    max-width: 100%;
+}
+
+.booking-page__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.15rem 0.85rem;
+}
+
+.booking-page__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--booking-ink);
+    line-height: 1.2;
+}
+
+.booking-page__subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--booking-ink-muted);
+    font-weight: 500;
+}
+
+.booking-calendar-mount {
+    min-height: 220px;
+}
+
+.booking-calendar-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 280px;
+    color: var(--booking-ink-muted);
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.booking-calendar-loading__spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--booking-border);
+    border-top-color: var(--booking-accent);
+    border-radius: 50%;
+    animation: booking-cal-spin 0.7s linear infinite;
+}
+
+@keyframes booking-cal-spin {
+    to { transform: rotate(360deg); }
+}
+
+.booking-page .booking-calendar-shell {
+    margin: 0 1rem 0;
+}
+
+.booking-page .booking-room-type-chips {
+    margin: 0 1rem 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--booking-surface);
+    border: 1px solid var(--booking-border);
+    border-radius: var(--booking-radius);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.booking-page .booking-calendar-legend {
+    margin: 0 1rem;
+}
+
+/* Filter panel */
+.booking-calendar-filters {
+    margin: 0 1rem 0.75rem !important;
+    padding: 1rem 1.1rem 1.1rem !important;
+    background: var(--booking-surface) !important;
+    border: 1px solid var(--booking-border) !important;
+    border-radius: var(--booking-radius) !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.booking-calendar-filters__head {
+    margin-bottom: 0.75rem;
+}
+
+.booking-calendar-filters__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--booking-ink-muted);
+}
+
+.booking-calendar-filters__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem 1rem;
+    align-items: end;
+}
+
+.booking-calendar-filters__label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--booking-ink-muted);
+}
+
+.booking-calendar-filters__field .form-control {
+    border-radius: var(--booking-radius-sm);
+    border-color: var(--booking-border);
+    font-size: 0.875rem;
+    height: 36px;
+}
+
+.booking-calendar-filters__field--action {
+    display: flex;
+    align-items: flex-end;
+}
+
+.booking-calendar-filters__groups-btn {
+    width: 100%;
+    border-radius: var(--booking-radius-sm);
+    font-weight: 500;
+}
+
+/* Legacy calendar header (old FullCalendar) */
+.booking-page .fc-header.pad-btn {
+    margin: 0 1rem 0.75rem !important;
+    padding: 0.85rem 1rem !important;
+    background: var(--booking-surface) !important;
+    border: 1px solid var(--booking-border) !important;
+    border-radius: var(--booking-radius) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.booking-page .btn_calendar_view {
+    border-radius: var(--booking-radius-sm) !important;
+}
+
+.booking-page .btn_calendar_view.active {
+    background: var(--booking-accent-deep) !important;
+    border-color: var(--booking-accent-deep) !important;
+}
+
+.booking-page .create-new-booking {
+    background: var(--booking-accent) !important;
+    border-color: var(--booking-accent) !important;
+    border-radius: var(--booking-radius-sm) !important;
+    font-weight: 600;
 }
 
 #calendar.tab_btn_calendar {
@@ -50,6 +222,109 @@
 /*booking hover background*/
 .hover-bg{
     background-color: #FFFF00 !important;
+}
+
+/* Booking discount panel */
+#booking-modal .booking-discount-panel {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px 12px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+#booking-modal .booking-discount-panel.is-disabled {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+#booking-modal .booking-discount-panel__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+#booking-modal .booking-discount-panel__header .fa {
+    color: #0ea5e9;
+    font-size: 13px;
+}
+
+#booking-modal .booking-discount-panel__fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+#booking-modal .booking-discount-panel__extras {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+    min-width: 0;
+}
+
+#booking-modal .booking-discount-field--type {
+    flex: 0 1 200px;
+    min-width: 160px;
+}
+
+#booking-modal .booking-discount-field {
+    flex: 1 1 120px;
+    min-width: 100px;
+}
+
+#booking-modal .booking-discount-field label {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+#booking-modal .booking-discount-field .form-control {
+    height: 32px;
+    font-size: 13px;
+    border-color: #cbd5e1;
+    box-shadow: none;
+}
+
+#booking-modal .booking-discount-field--value {
+    flex: 1 1 140px;
+}
+
+#booking-modal .booking-discount-panel .input-group .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+#booking-modal .booking-discount-panel .input-group-addon {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #64748b;
+    font-size: 12px;
+    min-width: 36px;
+}
+
+#booking-modal .booking-discount-panel__hint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+#booking-modal .booking-discount-row-wrap {
+    padding-left: 0;
+    padding-right: 0;
+    margin-top: 2px;
 }
 
 /*New Booking Modal*/

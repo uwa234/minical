@@ -938,13 +938,12 @@ class Tokenex {
             $config['mailtype'] = 'html';
             $this->ci->email->initialize($config);
 
+            $this->ci->load->helper('email');
             $whitelabelinfo = $this->ci->session->userdata('white_label_information');
 
-            $from_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
-            
             $to_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
 
-            $this->ci->email->from($from_email);
+            $this->ci->email->from(minical_smtp_from_email($whitelabelinfo));
             $this->ci->email->to($to_email);
             $this->ci->email->subject("CC token is missing in Tokenex vault.");
             $this->ci->email->message($content);

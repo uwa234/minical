@@ -140,6 +140,8 @@ class Admin extends MY_Controller {
             'email_templates' => count($this->Platform_communication_model->get_email_templates()),
             'webhooks_configured' => $this->_webhooks_configured(),
         );
+        $data['website_logo_url'] = platform_website_logo_url();
+        $data['website_favicon_url'] = platform_website_favicon_url();
         $data['main_content'] = 'admin/dashboard';
         $data['js_files'] = array();
         $data['css_files'] = array();
@@ -349,6 +351,7 @@ class Admin extends MY_Controller {
         }
 
         $this->load->library('email');
+        $this->load->helper('email');
         $sent = 0;
         $skipped = 0;
         foreach ($company_ids as $company_id) {
@@ -369,7 +372,7 @@ class Admin extends MY_Controller {
 
             $html_body = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
             $this->email->clear(true);
-            $this->email->from('donotreply@veurion.com', 'Veurion Support');
+            $this->email->from(minical_smtp_from_email(), 'Veurion Support');
             $this->email->to($recipient);
             $this->email->subject($subject);
             $this->email->message($html_body);
@@ -927,7 +930,8 @@ class Admin extends MY_Controller {
         ));
 
         $this->load->library('email');
-        $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+        $this->load->helper('email');
+        $from_email = minical_smtp_from_email();
         $from_name = 'Veurion';
 
         $this->email->from($from_email, $from_name);
@@ -1348,6 +1352,54 @@ class Admin extends MY_Controller {
     {
         $this->_require_platform_admin();
 
+        if ($this->input->post('save_website_logo')) {
+            $result = platform_save_branding_upload('logo');
+            if ($result['ok']) {
+                $this->_log_platform_audit('settings.branding', array(
+                    'target_type' => 'settings',
+                    'details' => 'Uploaded website logo',
+                ));
+                $this->session->set_flashdata('admin_message', $result['message']);
+            } else {
+                $this->session->set_flashdata('admin_error', $result['message']);
+            }
+            redirect('admin/settings#branding');
+        }
+
+        if ($this->input->post('save_website_favicon')) {
+            $result = platform_save_branding_upload('favicon');
+            if ($result['ok']) {
+                $this->_log_platform_audit('settings.branding', array(
+                    'target_type' => 'settings',
+                    'details' => 'Uploaded website favicon',
+                ));
+                $this->session->set_flashdata('admin_message', $result['message']);
+            } else {
+                $this->session->set_flashdata('admin_error', $result['message']);
+            }
+            redirect('admin/settings#branding');
+        }
+
+        if ($this->input->post('remove_website_logo')) {
+            platform_remove_branding_asset('logo');
+            $this->_log_platform_audit('settings.branding', array(
+                'target_type' => 'settings',
+                'details' => 'Removed website logo',
+            ));
+            $this->session->set_flashdata('admin_message', 'Website logo removed.');
+            redirect('admin/settings#branding');
+        }
+
+        if ($this->input->post('remove_website_favicon')) {
+            platform_remove_branding_asset('favicon');
+            $this->_log_platform_audit('settings.branding', array(
+                'target_type' => 'settings',
+                'details' => 'Removed website favicon',
+            ));
+            $this->session->set_flashdata('admin_message', 'Favicon removed.');
+            redirect('admin/settings#branding');
+        }
+
         if ($this->input->post('save_settings')) {
             $trial_days = (int) $this->input->post('default_trial_days');
             if ($trial_days < 1) {
@@ -1415,6 +1467,8 @@ class Admin extends MY_Controller {
         $data['default_currency'] = $this->Platform_settings_model->get_default_currency();
         $data['marketing_hero_title'] = $this->Platform_settings_model->get('marketing_hero_title', '');
         $data['marketing_hero_subtitle'] = $this->Platform_settings_model->get('marketing_hero_subtitle', '');
+        $data['website_logo_url'] = platform_website_logo_url();
+        $data['website_favicon_url'] = platform_website_favicon_url();
         $data['pricing_tiers'] = $this->Platform_settings_model->get_pricing_tiers(false);
         $data['edit_tier'] = null;
         $edit_id = (int) $this->input->get('edit_tier');

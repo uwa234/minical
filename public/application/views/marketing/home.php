@@ -1,37 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Veurion — Hotel property management software</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <?php foreach ($css_files as $css) { ?>
-        <link rel="stylesheet" href="<?php echo $css; ?>">
-    <?php } ?>
-</head>
-<body class="mc-marketing">
-<a class="mc-skip" href="#main">Skip to content</a>
-
-<header class="mc-nav" id="mc-nav">
-    <div class="mc-nav-inner">
-        <a class="mc-logo" href="<?php echo base_url(); ?>">
-            <span class="mc-logo-mark" aria-hidden="true"></span>
-            Veurion
-        </a>
-        <button type="button" class="mc-nav-toggle" id="mc-nav-toggle" aria-label="Open menu" aria-expanded="false">
-            <span></span><span></span><span></span>
-        </button>
-        <nav class="mc-nav-links" id="mc-nav-links">
-            <a href="#features">Features</a>
-            <a href="#benefits">Benefits</a>
-            <a href="#pricing">Pricing</a>
-            <a href="<?php echo base_url('auth/login'); ?>" class="mc-nav-ghost">Sign in</a>
-            <a href="<?php echo base_url('auth/register'); ?>" class="mc-btn mc-btn-sm mc-btn-solid">Start free trial</a>
-        </nav>
-    </div>
-</header>
+<?php
+$platform_feature_groups = isset($platform_feature_groups) ? $platform_feature_groups : marketing_platform_feature_groups();
+$saas_highlights = isset($saas_highlights) ? $saas_highlights : marketing_saas_highlights();
+$platform_extensions = isset($platform_extensions) ? $platform_extensions : array();
+$extensions_contact_email = getenv('SEO_ORG_EMAIL') ?: getenv('MAIL_REPLY_TO');
+?>
+<?php $this->load->view('includes/marketing_head', marketing_layout_view_vars(get_defined_vars())); ?>
 
 <main id="main">
     <section class="mc-hero">
@@ -49,7 +22,7 @@
                 </div>
                 <ul class="mc-hero-trust">
                     <li>No credit card required</li>
-                    <li>Full feature access</li>
+                    <li>Full feature access during trial</li>
                     <li>Setup in minutes</li>
                 </ul>
             </div>
@@ -87,41 +60,81 @@
         <div class="mc-container">
             <header class="mc-section-head">
                 <p class="mc-eyebrow mc-eyebrow-dark">Platform</p>
-                <h2>Everything your hotel needs to run smoothly</h2>
-                <p class="mc-section-sub">From the front desk to distribution and revenue — one connected system instead of scattered spreadsheets.</p>
+                <h2>Complete hotel management software</h2>
+                <p class="mc-section-sub">From front desk and night audit to distribution, payments, revenue, and reporting — everything your team needs in one connected Veurion workspace.</p>
             </header>
-            <div class="mc-features">
-                <article class="mc-feature-card mc-feature-large">
-                    <div class="mc-feature-icon" aria-hidden="true">&#128197;</div>
-                    <h3>Front desk calendar</h3>
-                    <p>Manage arrivals, departures, and room assignments from one intuitive calendar built for busy front desks.</p>
-                </article>
-                <article class="mc-feature-card">
-                    <div class="mc-feature-icon" aria-hidden="true">&#128225;</div>
-                    <h3>Channel manager</h3>
-                    <p>Sync availability and rates with OTAs. Fewer overbookings, less manual updating.</p>
-                </article>
-                <article class="mc-feature-card">
-                    <div class="mc-feature-icon" aria-hidden="true">&#127760;</div>
-                    <h3>Booking engine</h3>
-                    <p>Accept direct reservations on your site and keep more revenue in-house.</p>
-                </article>
-                <article class="mc-feature-card">
-                    <div class="mc-feature-icon" aria-hidden="true">&#128179;</div>
-                    <h3>Payments &amp; invoicing</h3>
-                    <p>Deposits, card tokenization, and guest balances with integrated gateways.</p>
-                </article>
-                <article class="mc-feature-card">
-                    <div class="mc-feature-icon" aria-hidden="true">&#128200;</div>
-                    <h3>Revenue management</h3>
-                    <p>Forecast demand and optimize rates with built-in revenue tools.</p>
-                </article>
-                <article class="mc-feature-card">
-                    <div class="mc-feature-icon" aria-hidden="true">&#128202;</div>
-                    <h3>Reporting</h3>
-                    <p>Occupancy, revenue, and ops reports — run your property with confidence.</p>
-                </article>
+
+            <?php foreach ($platform_feature_groups as $group) { ?>
+                <div class="mc-feature-group" id="features-<?php echo htmlspecialchars($group['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                    <header class="mc-feature-group-head">
+                        <h3><?php echo htmlspecialchars($group['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                        <p><?php echo htmlspecialchars($group['summary'], ENT_QUOTES, 'UTF-8'); ?></p>
+                    </header>
+                    <div class="mc-features mc-features--compact">
+                        <?php foreach ($group['features'] as $feature) { ?>
+                            <article class="mc-feature-card">
+                                <div class="mc-feature-icon" aria-hidden="true"><?php echo $feature['icon']; ?></div>
+                                <h4><?php echo htmlspecialchars($feature['title'], ENT_QUOTES, 'UTF-8'); ?></h4>
+                                <p><?php echo htmlspecialchars($feature['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                            </article>
+                        <?php } ?>
+                    </div>
+                </div>
+            <?php } ?>
+        </div>
+    </section>
+
+    <section id="saas" class="mc-section mc-saas-section">
+        <div class="mc-container">
+            <header class="mc-section-head">
+                <p class="mc-eyebrow mc-eyebrow-dark">SaaS</p>
+                <h2>Hosted on Veurion — subscribe and scale</h2>
+                <p class="mc-section-sub">Veurion is offered as a secure cloud service with room-based plans, online billing, and a full trial so you can evaluate every capability before you commit.</p>
+            </header>
+            <div class="mc-saas-grid">
+                <?php foreach ($saas_highlights as $highlight) { ?>
+                    <article class="mc-saas-card">
+                        <div class="mc-feature-icon" aria-hidden="true"><?php echo $highlight['icon']; ?></div>
+                        <h3><?php echo htmlspecialchars($highlight['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                        <p><?php echo htmlspecialchars($highlight['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                    </article>
+                <?php } ?>
             </div>
+            <div class="mc-saas-plans-note">
+                <p><strong>Subscription tiers</strong> — Starter, Growth, Professional, and Enterprise plans include front desk tools, direct booking, channel connectivity, payment integrations, revenue management, analytics, and support matched to your property size. See <a href="#pricing">pricing</a> for room-based monthly rates.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="extensions" class="mc-section mc-extensions-section">
+        <div class="mc-container">
+            <header class="mc-section-head">
+                <p class="mc-eyebrow mc-eyebrow-dark">Extensions</p>
+                <h2>Integrations that extend your PMS</h2>
+                <p class="mc-section-sub">Activate powerful add-ons inside Veurion — from OTA connectivity and direct bookings to smart locks and WhatsApp guest journeys.</p>
+            </header>
+            <?php if (!empty($platform_extensions)) { ?>
+                <div class="mc-extensions-grid">
+                    <?php foreach ($platform_extensions as $extension) { ?>
+                        <article class="mc-extension-card">
+                            <div class="mc-extension-card-head">
+                                <h3><?php echo htmlspecialchars($extension['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                                <?php if (!empty($extension['categories'])) { ?>
+                                    <ul class="mc-extension-tags">
+                                        <?php foreach ($extension['categories'] as $tag) { ?>
+                                            <li><?php echo htmlspecialchars($tag, ENT_QUOTES, 'UTF-8'); ?></li>
+                                        <?php } ?>
+                                    </ul>
+                                <?php } ?>
+                            </div>
+                            <p><?php echo htmlspecialchars($extension['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                        </article>
+                    <?php } ?>
+                </div>
+            <?php } else { ?>
+                <p class="mc-section-sub">Extensions are available from the in-app marketplace after you create your property.</p>
+            <?php } ?>
+            <p class="mc-extensions-footnote">Need something specific? Custom integrations can be added for your property at an additional charge — <?php if ($extensions_contact_email) { ?><a href="mailto:<?php echo htmlspecialchars($extensions_contact_email, ENT_QUOTES, 'UTF-8'); ?>">contact us</a><?php } else { ?>get in touch via your account manager<?php } ?> to discuss your requirements.</p>
         </div>
     </section>
 
@@ -137,28 +150,28 @@
                     <span class="mc-benefit-num">01</span>
                     <div>
                         <strong>Save hours every week</strong>
-                        <p>Automate repetitive front-desk and distribution tasks.</p>
+                        <p>Automate night audit, distribution updates, and repetitive front-desk tasks.</p>
                     </div>
                 </li>
                 <li>
                     <span class="mc-benefit-num">02</span>
                     <div>
                         <strong>Fewer costly mistakes</strong>
-                        <p>One source of truth for reservations across every channel.</p>
+                        <p>One source of truth for reservations, folios, and availability across every channel.</p>
                     </div>
                 </li>
                 <li>
                     <span class="mc-benefit-num">03</span>
                     <div>
                         <strong>More direct revenue</strong>
-                        <p>Own the guest relationship and reduce OTA commission pressure.</p>
+                        <p>Own the guest relationship with your booking engine and reduce OTA commission pressure.</p>
                     </div>
                 </li>
                 <li>
                     <span class="mc-benefit-num">04</span>
                     <div>
                         <strong>Scale without chaos</strong>
-                        <p>From boutique inns to multi-property portfolios.</p>
+                        <p>From boutique inns to multi-property portfolios — add rooms, staff, and integrations as you grow.</p>
                     </div>
                 </li>
             </ul>
@@ -222,7 +235,7 @@
     <section class="mc-cta-band">
         <div class="mc-container mc-cta-inner">
             <h2>Ready to modernize your hotel operations?</h2>
-            <p>Join properties using Veurion to simplify reservations, payments, and distribution.</p>
+            <p>Join properties using Veurion for reservations, night audit, channel sync, payments, and guest-facing integrations.</p>
             <a class="mc-btn mc-btn-lg mc-btn-solid mc-btn-light" href="<?php echo base_url('auth/register'); ?>">
                 Start your <?php echo (int) $default_trial_days; ?>-day trial
             </a>
@@ -230,25 +243,5 @@
     </section>
 </main>
 
-<footer class="mc-footer">
-    <div class="mc-container mc-footer-inner">
-        <div class="mc-footer-brand">
-            <span class="mc-logo-mark" aria-hidden="true"></span>
-            <span>Veurion</span>
-        </div>
-        <nav class="mc-footer-links">
-            <a href="<?php echo base_url('auth/show_terms_of_service'); ?>">Terms</a>
-            <a href="<?php echo base_url('auth/show_privacy_policy'); ?>">Privacy</a>
-            <a href="<?php echo base_url('auth/login'); ?>">Hotel login</a>
-            <a href="<?php echo base_url('admin'); ?>">Platform admin</a>
-        </nav>
-        <p class="mc-footer-copy">&copy; <?php echo date('Y'); ?> Veurion. All rights reserved.</p>
-    </div>
-</footer>
-
-<?php foreach ($js_files as $js) { ?>
-    <script src="<?php echo $js; ?>"></script>
-<?php } ?>
 <script>window.mcMaxRooms = <?php echo (int) max(isset($max_slider) ? $max_slider : 150, 50); ?>;</script>
-</body>
-</html>
+<?php $this->load->view('includes/marketing_footer', marketing_layout_view_vars(get_defined_vars())); ?>

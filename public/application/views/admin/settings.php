@@ -7,7 +7,64 @@
 
 <div class="pa-page-header">
     <h1>Platform settings</h1>
-    <p>Configure trials, billing defaults, marketing copy, and public pricing tiers.</p>
+    <p>Configure trials, billing defaults, branding, marketing copy, and public pricing tiers.</p>
+</div>
+
+<div class="pa-card pa-branding-card" id="branding">
+    <div class="pa-card-header"><h2>Website branding</h2></div>
+    <div class="pa-card-body">
+        <p class="pa-meta-note" style="margin-top: 0;">
+            Upload a logo and favicon for the marketing site, login pages, and tenant app chrome. Recommended logo: PNG or SVG, at least 200&times;48px. Favicon: ICO or PNG, 32&times;32px or 64&times;64px.
+        </p>
+        <div class="pa-branding-grid">
+            <div class="pa-branding-block">
+                <h3 class="pa-branding-label">Website logo</h3>
+                <div class="pa-branding-preview" id="pa-logo-preview">
+                    <?php if (!empty($website_logo_url)) { ?>
+                        <img src="<?php echo htmlspecialchars($website_logo_url, ENT_QUOTES, 'UTF-8'); ?>" alt="Current website logo" />
+                    <?php } else { ?>
+                        <span class="pa-branding-placeholder">No logo uploaded</span>
+                    <?php } ?>
+                </div>
+                <form method="post" action="<?php echo base_url('admin/settings'); ?>" enctype="multipart/form-data" class="pa-branding-form">
+                    <input type="hidden" name="save_website_logo" value="1" />
+                    <div class="form-group">
+                        <input type="file" name="website_logo" accept=".png,.jpg,.jpeg,.gif,.webp,.svg,image/*" class="form-control pa-branding-file" data-preview="pa-logo-preview" />
+                    </div>
+                    <button type="submit" class="pa-btn pa-btn-primary pa-btn-sm">Upload logo</button>
+                </form>
+                <?php if (!empty($website_logo_url)) { ?>
+                    <form method="post" action="<?php echo base_url('admin/settings'); ?>" class="pa-branding-remove-form" onsubmit="return confirm('Remove the website logo?');">
+                        <input type="hidden" name="remove_website_logo" value="1" />
+                        <button type="submit" class="pa-btn pa-btn-sm pa-branding-remove-btn">Remove logo</button>
+                    </form>
+                <?php } ?>
+            </div>
+            <div class="pa-branding-block">
+                <h3 class="pa-branding-label">Favicon</h3>
+                <div class="pa-branding-preview pa-branding-preview--favicon" id="pa-favicon-preview">
+                    <?php if (!empty($website_favicon_url)) { ?>
+                        <img src="<?php echo htmlspecialchars($website_favicon_url, ENT_QUOTES, 'UTF-8'); ?>" alt="Current favicon" />
+                    <?php } else { ?>
+                        <span class="pa-branding-placeholder">Default favicon</span>
+                    <?php } ?>
+                </div>
+                <form method="post" action="<?php echo base_url('admin/settings'); ?>" enctype="multipart/form-data" class="pa-branding-form">
+                    <input type="hidden" name="save_website_favicon" value="1" />
+                    <div class="form-group">
+                        <input type="file" name="website_favicon" accept=".ico,.png,image/x-icon,image/png" class="form-control pa-branding-file" data-preview="pa-favicon-preview" data-favicon="1" />
+                    </div>
+                    <button type="submit" class="pa-btn pa-btn-primary pa-btn-sm">Upload favicon</button>
+                </form>
+                <?php if (!empty($website_favicon_url)) { ?>
+                    <form method="post" action="<?php echo base_url('admin/settings'); ?>" class="pa-branding-remove-form" onsubmit="return confirm('Remove the custom favicon?');">
+                        <input type="hidden" name="remove_website_favicon" value="1" />
+                        <button type="submit" class="pa-btn pa-btn-sm pa-branding-remove-btn">Remove favicon</button>
+                    </form>
+                <?php } ?>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="pa-settings-grid">

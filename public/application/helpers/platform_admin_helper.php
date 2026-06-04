@@ -404,6 +404,209 @@ function veurion_use_text_login_logo($whitelabel)
 }
 
 /**
+ * Directory for platform-wide logo and favicon uploads.
+ */
+function platform_branding_upload_dir()
+{
+    $dir = rtrim(FCPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'platform' . DIRECTORY_SEPARATOR;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    $index = $dir . 'index.html';
+    if (!is_file($index)) {
+        @file_put_contents($index, '');
+    }
+    return $dir;
+}
+
+function platform_branding_relative_path_is_valid($path)
+{
+    $path = str_replace('\\', '/', (string) $path);
+    return $path !== '' && strpos($path, 'uploads/platform/') === 0 && strpos($path, '..') === false;
+}
+
+function platform_delete_branding_file($relative_path)
+{
+    if (!platform_branding_relative_path_is_valid($relative_path)) {
+        return;
+    }
+    $full = rtrim(FCPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
+    if (is_file($full)) {
+        @unlink($full);
+    }
+}
+
+function platform_website_logo_path()
+{
+    $CI =& get_instance();
+    if (!isset($CI->Platform_settings_model)) {
+        $CI->load->model('Platform_settings_model');
+    }
+    return (string) $CI->Platform_settings_model->get('website_logo', '');
+}
+
+function platform_website_favicon_path()
+{
+    $CI =& get_instance();
+    if (!isset($CI->Platform_settings_model)) {
+        $CI->load->model('Platform_settings_model');
+    }
+    return (string) $CI->Platform_settings_model->get('website_favicon', '');
+}
+
+function platform_website_logo_url()
+{
+    $path = platform_website_logo_path();
+    if ($path === '' || !platform_branding_relative_path_is_valid($path)) {
+        return '';
+    }
+    $full = rtrim(FCPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+    if (!is_file($full)) {
+        return '';
+    }
+    return base_url() . $path;
+}
+
+function platform_website_favicon_url()
+{
+    $path = platform_website_favicon_path();
+    if ($path === '' || !platform_branding_relative_path_is_valid($path)) {
+        return '';
+    }
+    $full = rtrim(FCPATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+    if (!is_file($full)) {
+        return '';
+    }
+    return base_url() . $path;
+}
+
+function platform_branding_favicon_mime_type($url)
+{
+    if (stripos((string) $url, '.png') !== false) {
+        return 'image/png';
+    }
+    if (stripos((string) $url, '.svg') !== false) {
+        return 'image/svg+xml';
+    }
+    return 'image/x-icon';
+}
+
+function platform_branding_favicon_link_html()
+{
+    $url = platform_website_favicon_url();
+    if ($url === '') {
+        $url = base_url() . 'images/favicon.ico';
+    }
+    $type = platform_branding_favicon_mime_type($url);
+    return '<link rel="shortcut icon" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8')
+        . '" type="' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '" />';
+}
+
+/**
+ * Save platform website logo or favicon from $_FILES.
+ *
+ * @param string $asset logo|favicon
+ * @return array{ok:bool,message:string}
+ */
+function platform_save_branding_upload($asset)
+{
+    $CI =& get_instance();
+    if (!isset($CI->Platform_settings_model)) {
+        $CI->load->model('Platform_settings_model');
+    }
+
+    $asset = ($asset === 'favicon') ? 'favicon' : 'logo';
+    $input_name = ($asset === 'favicon') ? 'website_favicon' : 'website_logo';
+    $setting_key = ($asset === 'favicon') ? 'website_favicon' : 'website_logo';
+    $basename = ($asset === 'favicon') ? 'website_favicon' : 'website_logo';
+
+    if (!isset($_FILES[$input_name]) || empty($_FILES[$input_name]['tmp_name']) || !is_uploaded_file($_FILES[$input_name]['tmp_name'])) {
+        return array('ok' => false, 'message' => 'No file was uploaded.');
+    }
+
+    $file = $_FILES[$input_name];
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return array('ok' => false, 'message' => 'Upload failed. Please try again.');
+    }
+
+    $max_bytes = ($asset === 'favicon') ? 512000 : 2097152;
+    if ($file['size'] > $max_bytes) {
+        $label = ($asset === 'favicon') ? '512 KB' : '2 MB';
+        return array('ok' => false, 'message' => 'File is too large (max ' . $label . ').');
+    }
+
+    $parts = explode('.', $file['name']);
+    $extension = strtolower((string) end($parts));
+    $allowed = ($asset === 'favicon')
+        ? array('ico', 'png')
+        : array('png', 'jpg', 'jpeg', 'gif', 'webp', 'svg');
+    if (!in_array($extension, $allowed, true)) {
+        return array('ok' => false, 'message' => 'Invalid file type.');
+    }
+
+    if ($extension !== 'svg' && $extension !== 'ico') {
+        $info = @getimagesize($file['tmp_name']);
+        if ($info === false) {
+            return array('ok' => false, 'message' => 'Invalid image file.');
+        }
+    }
+
+    $dir = platform_branding_upload_dir();
+    $filename = $basename . '.' . $extension;
+    $relative = 'uploads/platform/' . $filename;
+    $full = $dir . $filename;
+
+    $old = (string) $CI->Platform_settings_model->get($setting_key, '');
+    if ($old !== '' && $old !== $relative) {
+        platform_delete_branding_file($old);
+    }
+    foreach (glob($dir . $basename . '.*') ?: array() as $old_file) {
+        if (is_file($old_file)) {
+            @unlink($old_file);
+        }
+    }
+
+    if (!move_uploaded_file($file['tmp_name'], $full)) {
+        return array('ok' => false, 'message' => 'Could not save uploaded file.');
+    }
+
+    $CI->Platform_settings_model->set($setting_key, $relative);
+    $label = ($asset === 'favicon') ? 'Favicon' : 'Website logo';
+    return array('ok' => true, 'message' => $label . ' saved.');
+}
+
+/**
+ * Remove platform website logo or favicon.
+ *
+ * @param string $asset logo|favicon
+ * @return array{ok:bool,message:string}
+ */
+function platform_remove_branding_asset($asset)
+{
+    $CI =& get_instance();
+    if (!isset($CI->Platform_settings_model)) {
+        $CI->load->model('Platform_settings_model');
+    }
+
+    $asset = ($asset === 'favicon') ? 'favicon' : 'logo';
+    $setting_key = ($asset === 'favicon') ? 'website_favicon' : 'website_logo';
+    $basename = ($asset === 'favicon') ? 'website_favicon' : 'website_logo';
+
+    $old = (string) $CI->Platform_settings_model->get($setting_key, '');
+    if ($old !== '') {
+        platform_delete_branding_file($old);
+    }
+    foreach (glob(platform_branding_upload_dir() . $basename . '.*') ?: array() as $old_file) {
+        if (is_file($old_file)) {
+            @unlink($old_file);
+        }
+    }
+    $CI->Platform_settings_model->set($setting_key, '');
+    $label = ($asset === 'favicon') ? 'Favicon' : 'Website logo';
+    return array('ok' => true, 'message' => $label . ' removed.');
+}
+
+/**
  * Human-readable legacy subscription level (company_subscription.subscription_level).
  */
 /**
@@ -1817,7 +2020,8 @@ function send_saas_subscription_receipt_email($company_id, $reference)
     $email_content = build_saas_subscription_receipt_email($company, $receipt);
 
     $CI->load->library('email');
-    $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+    $CI->load->helper('email');
+    $from_email = minical_smtp_from_email();
     $CI->email->from($from_email, 'Veurion');
     $CI->email->to($recipient);
     $CI->email->subject($email_content['subject']);
@@ -1900,7 +2104,8 @@ function send_subscription_grace_extended_email($company_id, $context = array())
     $email_content = build_subscription_grace_extended_email($company, $context);
 
     $CI->load->library('email');
-    $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+    $CI->load->helper('email');
+    $from_email = minical_smtp_from_email();
     $CI->email->from($from_email, 'Veurion');
     $CI->email->to($recipient);
     $CI->email->subject($email_content['subject']);
@@ -2201,7 +2406,8 @@ function send_platform_email($to, $subject, $body_html)
 
     $CI =& get_instance();
     $CI->load->library('email');
-    $from_email = minical_env('SMTP_USER', minical_env('MAIL_FROM', 'donotreply@veurion.com'));
+    $CI->load->helper('email');
+    $from_email = minical_smtp_from_email();
 
     $CI->email->clear(true);
     $CI->email->from($from_email, 'Veurion');

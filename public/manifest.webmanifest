@@ -1,7 +1,7 @@
 {
   "name": "Veurion PMS",
   "short_name": "Veurion",
-  "description": "Property management with offline change queue",
+  "description": "Cloud hotel property management: reservations, channel manager, booking engine, and revenue tools.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",

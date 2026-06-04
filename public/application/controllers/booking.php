@@ -679,8 +679,9 @@ class Booking extends MY_Controller
 
         $data['rows'] = array_values($data['rows']);
 
-        $rows = json_encode($data['rows']);
-        print_r($rows);
+        $this->output
+            ->set_content_type('application/json', 'utf-8')
+            ->set_output(json_encode($data['rows']));
     }
 
     function print_registration_card($booking_id='') {
@@ -1117,6 +1118,16 @@ class Booking extends MY_Controller
 
             $booking_data['pay_period'] = isset($room['pay_period']) ? $room['pay_period'] : $pay_period;
 
+            if (isset($room['discount_type'])) {
+                $booking_data['discount_type'] = (int) $room['discount_type'];
+            }
+            if (isset($room['discount_value'])) {
+                $booking_data['discount_value'] = (float) $room['discount_value'];
+            }
+            if (isset($room['discount_scope'])) {
+                $booking_data['discount_scope'] = (int) $room['discount_scope'];
+            }
+
             if (isset($room['room_count'])) { // book multiple rooms
                 $available_rooms = $this->Room_model->get_available_rooms(
                     $room['check_in_date'], $room['check_out_date'], $room['room_type_id']
@@ -1140,6 +1151,9 @@ class Booking extends MY_Controller
                     );
                     $this->Booking_linked_group_model->insert_booking_x_booking_linked_group($booking_group_data);
                 }
+
+                $this->load->helper('booking_discount');
+                sync_booking_room_charges_with_discount($booking_id);
 
                 $balance = $this->Booking_model->update_booking_balance($booking_id);
                 if(!$this->is_total_balance_include_forecast)
@@ -1488,8 +1502,23 @@ class Booking extends MY_Controller
                 return;
             }
 
+            $this->load->helper('booking_discount');
+            $hourly_discount_nights = 1;
+            if (isset($new_data['rooms'][0]['check_in_date'], $new_data['rooms'][0]['check_out_date'])) {
+                $hourly_discount_nights = booking_discount_night_count(array(
+                    'check_in_date' => $new_data['rooms'][0]['check_in_date'],
+                    'check_out_date' => $new_data['rooms'][0]['check_out_date'],
+                ));
+            }
+            $hourly_charge_amount = apply_booking_discount(
+                $new_data['booking']['rate'],
+                isset($new_data['booking']['discount_type']) ? $new_data['booking']['discount_type'] : 0,
+                isset($new_data['booking']['discount_value']) ? $new_data['booking']['discount_value'] : 0,
+                isset($new_data['booking']['discount_scope']) ? $new_data['booking']['discount_scope'] : 0,
+                $hourly_discount_nights
+            );
             $charge_data = Array(
-                            'amount' => $new_data['booking']['rate'],
+                            'amount' => $hourly_charge_amount,
                             'booking_id' => $booking_id,
                             'date_time' => gmdate('Y-m-d H:i:s'),
                             'customer_id' => isset($new_data['customers']['paying_customer']['customer_id']) ? $new_data['customers']['paying_customer']['customer_id'] : null,
@@ -1858,6 +1887,22 @@ class Booking extends MY_Controller
                 $booking['rate_plan_id'] = isset($room['rate_plan_id']) ? $room['rate_plan_id'] : NULL;
                 $booking['charge_type_id'] = isset($room['charge_type_id']) ? $room['charge_type_id'] : NULL;
 
+                if (isset($room['discount_type'])) {
+                    $booking['discount_type'] = (int) $room['discount_type'];
+                } elseif (isset($new_data['booking']['discount_type'])) {
+                    $booking['discount_type'] = (int) $new_data['booking']['discount_type'];
+                }
+                if (isset($room['discount_value'])) {
+                    $booking['discount_value'] = (float) $room['discount_value'];
+                } elseif (isset($new_data['booking']['discount_value'])) {
+                    $booking['discount_value'] = (float) $new_data['booking']['discount_value'];
+                }
+                if (isset($room['discount_scope'])) {
+                    $booking['discount_scope'] = (int) $room['discount_scope'];
+                } elseif (isset($new_data['booking']['discount_scope'])) {
+                    $booking['discount_scope'] = (int) $new_data['booking']['discount_scope'];
+                }
+
                 $booking['booked_by'] = isset($new_data['booking']['booked_by']) && $new_data['booking']['booked_by'] ? $new_data['booking']['booked_by'] : NULL;
 
                 $booking_existing_data = $this->Booking_model->get_booking($booking_id);
@@ -2171,11 +2216,26 @@ class Booking extends MY_Controller
                 $last_room_charge = $this->Charge_model->get_last_applied_charge($booking_id, $room_charge_type_id, null, true);
                 if(empty($last_room_charge))
                 {
+                    $this->load->helper('booking_discount');
+                    $one_time_nights = 1;
+                    if (isset($new_data['rooms'][0]['check_in_date'], $new_data['rooms'][0]['check_out_date'])) {
+                        $one_time_nights = booking_discount_night_count(array(
+                            'check_in_date' => $new_data['rooms'][0]['check_in_date'],
+                            'check_out_date' => $new_data['rooms'][0]['check_out_date'],
+                        ));
+                    }
+                    $one_time_amount = apply_booking_discount(
+                        $new_data['booking']['rate'],
+                        isset($new_data['booking']['discount_type']) ? $new_data['booking']['discount_type'] : 0,
+                        isset($new_data['booking']['discount_value']) ? $new_data['booking']['discount_value'] : 0,
+                        isset($new_data['booking']['discount_scope']) ? $new_data['booking']['discount_scope'] : 0,
+                        $one_time_nights
+                    );
                     $charge_data = array();
                     $charge_data[] = Array(
                         'description' => "One Time Charge",
                         'charge_type_id' => $room_charge_type_id,
-                        'amount' => $new_data['booking']['rate'],
+                        'amount' => $one_time_amount,
                         'booking_id' => $booking_id,
                         'user_id' => isset($new_data['customers']['paying_customer']['customer_id']) ? $new_data['customers']['paying_customer']['customer_id'] : null,
                         'pay_period' => ONE_TIME,
@@ -2200,6 +2260,9 @@ class Booking extends MY_Controller
         ) {
             $this->send_booking_cancellation_email($booking_id);
         }
+
+        $this->load->helper('booking_discount');
+        sync_booking_room_charges_with_discount($booking_id);
 
         $return_type = $this->is_total_balance_include_forecast ? 'balance' : 'balance_without_forecast';
         $balance = $this->Booking_model->update_booking_balance($booking_id, $return_type);

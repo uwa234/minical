@@ -14,6 +14,13 @@ if ($has_logo) {
         $logo_url = base_url() . 'images/' . $whitelabel_detail['logo'];
     }
 }
+if (!$has_logo) {
+    $platform_logo_url = platform_website_logo_url();
+    if ($platform_logo_url !== '') {
+        $has_logo = true;
+        $logo_url = $platform_logo_url;
+    }
+}
 
 function auth_trial_success_brand_markup($brand_name, $has_logo, $logo_url) {
     if ($has_logo) {

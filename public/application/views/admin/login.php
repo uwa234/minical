@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Platform Admin — Veurion</title>
+    <?php echo platform_branding_favicon_link_html(); ?>
     <link rel="stylesheet" href="<?php echo base_url('css/bootstrap.min.css'); ?>">
     <link rel="stylesheet" href="<?php echo base_url() . auto_version('css/admin/platform-admin.css'); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +15,12 @@
     <div class="pa-login-wrap">
         <div class="pa-login-card">
             <div class="pa-login-header">
-                <div class="pa-login-logo" aria-hidden="true"></div>
+                <?php $pa_login_logo = platform_website_logo_url(); ?>
+                <?php if ($pa_login_logo !== '') { ?>
+                    <img class="pa-login-logo-img" src="<?php echo htmlspecialchars($pa_login_logo, ENT_QUOTES, 'UTF-8'); ?>" alt="Platform logo" />
+                <?php } else { ?>
+                    <div class="pa-login-logo" aria-hidden="true"></div>
+                <?php } ?>
                 <h1>Platform Admin</h1>
                 <p>Sign in to manage tenants and platform settings</p>
             </div>

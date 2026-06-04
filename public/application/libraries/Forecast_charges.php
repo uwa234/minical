@@ -24,6 +24,14 @@ class Forecast_charges
     function _get_forecast_charges($booking_id, $get_amount_only = false, $booking_details = false)
     {
         $booking_details = $booking_details ? $booking_details : $this->ci->Booking_model->get_booking_detail($booking_id);
+        $this->ci->load->helper('booking_discount');
+        $booking_discount_type = isset($booking_details['discount_type']) ? (int) $booking_details['discount_type'] : 0;
+        $booking_discount_value = isset($booking_details['discount_value']) ? $booking_details['discount_value'] : 0;
+        $booking_discount_scope = isset($booking_details['discount_scope']) ? (int) $booking_details['discount_scope'] : 0;
+        $booking_discount_nights = booking_discount_night_count($booking_details);
+        if (empty($booking_details['use_rate_plan'])) {
+            $booking_details = apply_booking_discount_to_booking_details($booking_details);
+        }
         $company_details = isset($this->ci->company_data) && $this->ci->company_data ? $this->ci->company_data : $this->ci->Company_model->get_company($booking_details['company_id']);
 
         if (!$booking_details || $booking_details['state'] == CANCELLED || $booking_details['state'] == CHECKOUT || $booking_details['state'] == NO_SHOW)
@@ -188,7 +196,13 @@ class Forecast_charges
 				// change key names (i.e. date => selling_date, rate => amount
 				foreach ($rate_array as $index => $rate)
 				{
-					$amount = $rate['rate'];
+					$amount = apply_booking_discount(
+						$rate['rate'],
+						$booking_discount_type,
+						$booking_discount_value,
+						$booking_discount_scope,
+						$booking_discount_nights
+					);
 					if(!($last_tax_rate_amount && $last_tax_rate_amount == $amount)) {
 						$tax_rates = $this->ci->Charge_type_model->get_taxes($rate_plan['charge_type_id'], $amount);
 						$last_tax_rate_amount = $amount;
@@ -196,7 +210,7 @@ class Forecast_charges
 					
 					$rate_array[$index]['selling_date'] = $rate_array[$index]['date'];
 					unset($rate_array[$index]['date']);
-					$rate_array[$index]['amount'] = $rate_array[$index]['rate'];
+					$rate_array[$index]['amount'] = $amount;
 					unset($rate_array[$index]['rate']);
 					$rate_array[$index]['description'] = $rate_plan['rate_plan_name'];
 					$rate_array[$index]['charge_type_id'] = $charge_type['id'];
@@ -927,6 +941,15 @@ class Forecast_charges
 		if(!$booking_details){
             return array("total_charges" => 0, "total_taxes" => array(), "next_expected_charge_date" => null);
         }
+
+        $this->ci->load->helper('booking_discount');
+        $booking_discount_type = isset($booking_details['discount_type']) ? (int) $booking_details['discount_type'] : 0;
+        $booking_discount_value = isset($booking_details['discount_value']) ? $booking_details['discount_value'] : 0;
+        $booking_discount_scope = isset($booking_details['discount_scope']) ? (int) $booking_details['discount_scope'] : 0;
+        $booking_discount_nights = booking_discount_night_count($booking_details);
+        if (empty($booking_details['use_rate_plan'])) {
+            $booking_details = apply_booking_discount_to_booking_details($booking_details);
+        }
         
         $check_in_date = date('Y-m-d', strtotime($booking_details['check_in_date']));
         $check_out_date = date('Y-m-d', strtotime($booking_details['check_out_date']));
@@ -1025,7 +1048,13 @@ class Forecast_charges
             // change key names (i.e. date => selling_date, rate => amount
             foreach ($rate_array as $index => $rate)
             {
-				$amount = $rate['rate'];
+				$amount = apply_booking_discount(
+                    $rate['rate'],
+                    $booking_discount_type,
+                    $booking_discount_value,
+                    $booking_discount_scope,
+                    $booking_discount_nights
+                );
 				if(!($last_tax_rate_amount && $last_tax_rate_amount == $amount)) {
 					$rate_plan_tax_rates = $this->ci->Tax_model->get_tax_rates_by_charge_type_id($charge_type_id, null, $amount);
 					$last_tax_rate_amount = $amount;
@@ -1033,7 +1062,7 @@ class Forecast_charges
 				
                 $rate_array[$index]['selling_date'] = $rate_array[$index]['date'];
                 unset($rate_array[$index]['date']);
-                $rate_array[$index]['amount'] = $rate_array[$index]['rate'];
+                $rate_array[$index]['amount'] = $amount;
                 unset($rate_array[$index]['rate']);
                 $rate_array[$index]['pay_period'] = DAILY; // temporary fix as all rate plans are daily only for now. eventually this may allow weekly & monthly,
                 $rate_array[$index]['taxes'] = $rate_plan_tax_rates;

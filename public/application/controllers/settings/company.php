@@ -389,15 +389,15 @@ class Company extends MY_Controller
     {
         $whitelabelinfo = $this->session->userdata('white_label_information');
 
-        $from_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : $this->config->item('webmaster_email', 'tank_auth');
-        
+        $this->load->helper('email');
+        $from_email = minical_smtp_from_email($whitelabelinfo);
         $from_name = isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name'] : $this->config->item('website_name', 'tank_auth');
 
         $reply_to_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : $this->config->item('webmaster_email', 'tank_auth');
         
         $reply_to_name = isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name'] : $this->config->item('website_name', 'tank_auth');
 
-        $data['support_email'] = $from_email;
+        $data['support_email'] = $reply_to_email;
         $this->email->from($from_email, $from_name);
         $this->email->reply_to($reply_to_email, $reply_to_name);
         $this->email->to($email);

@@ -83,7 +83,7 @@ class Extensions extends MY_Controller
         $i = 0;
         $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
 
-        $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com');
+        $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com', 'app.travelhub247.com');
         $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
 
         if($extensions && count($extensions) > 0) {

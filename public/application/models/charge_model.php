@@ -305,14 +305,13 @@ class Charge_model extends CI_Model {
 			
 			// email error report
 			$this->load->library('email');
+			$this->load->helper('email');
 
 			$whitelabelinfo = $this->session->userdata('white_label_information');
 
-            $from_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
-            
             $to_email = isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
 
-			$this->email->from($from_email);
+			$this->email->from(minical_smtp_from_email($whitelabelinfo));
 			$this->email->to($to_email);
 			$this->email->subject("insert_charges error");
 			$this->email->message($response);

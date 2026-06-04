@@ -15,6 +15,16 @@ $lang['maintenance'] = 'Maintenance';
 $lang['remove_maintenance'] = 'Remove maintenance';
 
 //Calendar
+$lang['stay_view'] = 'Stay View';
+$lang['stay_view_subtitle'] = 'Room timeline with live occupancy';
+$lang['stay_status_all'] = 'All';
+$lang['stay_status_vacant'] = 'Vacant';
+$lang['stay_status_occupied'] = 'Occupied';
+$lang['stay_status_reserved'] = 'Reserved';
+$lang['stay_status_blocked'] = 'Blocked';
+$lang['stay_status_due_out'] = 'Due Out';
+$lang['available_inventory'] = 'Available Inventory';
+$lang['occupancy_percent'] = 'Occupancy (%)';
 $lang['view_by_room_type'] = 'View';
 $lang['create_new_booking'] = 'Create New Booking';
 $lang['today'] = 'Today';
