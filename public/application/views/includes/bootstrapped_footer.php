@@ -184,13 +184,24 @@ if ( isset($this->user_id) && $this->user_id
 
     function l(phrase_key)
     {
-        <?php if($this->user_id === SUPER_ADMIN_USER_ID) { ?>
-        if (language_phrases[phrase_key] === undefined) {
-            nonTranslatedKeys.push(phrase_key);
-        }
-        <?php } ?>
+        var key = phrase_key.toString();
+        var keyLower = key.toLowerCase();
+        var phrase = language_phrases[key] || language_phrases[keyLower];
 
-        return language_phrases[phrase_key] || (language_phrases[phrase_key.toString().toLowerCase()] || phrase_key);
+        if (!phrase && typeof lang === 'function') {
+            phrase = lang(key);
+        }
+
+        if (!phrase) {
+            <?php if($this->user_id === SUPER_ADMIN_USER_ID) { ?>
+            if (language_phrases[key] === undefined && language_phrases[keyLower] === undefined) {
+                nonTranslatedKeys.push(key);
+            }
+            <?php } ?>
+            phrase = key.replace(/_/g, ' ');
+        }
+
+        return phrase;
     }
 
     // add non-translated-keys to DB 

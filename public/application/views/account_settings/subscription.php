@@ -98,7 +98,11 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
     <?php endif; ?>
 
     <?php if ($trial_context && !$trial_expired): ?>
-        <?php $this->load->view('dashboard/trial_banner', array('trial_context' => $trial_context)); ?>
+        <?php $this->load->view('dashboard/trial_banner', array(
+            'trial_context' => $trial_context,
+            'paystack_configured' => $paystack_configured,
+            'subscription_state' => $subscription_state,
+        )); ?>
     <?php elseif ($trial_context || $current_plan_name): ?>
         <div class="dashboard-trial-plan-current" style="margin-bottom: 1.5rem;">
             <p class="dashboard-trial-plan-label"><?php echo l('trial_current_plan', true); ?></p>
@@ -111,75 +115,77 @@ if ($trial_context && !empty($trial_context['trial_expiry_date'])) {
         </div>
     <?php endif; ?>
 
-    <div class="dashboard-trial-plans">
-        <header class="dashboard-trial-plans-header">
-            <h3><?php echo $trial_lockout_mode ? 'Choose a plan to continue' : 'Choose a plan'; ?></h3>
-            <p>
-                <?php if ($trial_lockout_mode): ?>
-                    Payment unlocks your account immediately after confirmation.
-                <?php elseif ($paid_plan_active): ?>
-                    Your subscription is active. You can extend it anytime — each payment adds one billing period from your current expiry date.
-                <?php else: ?>
-                    Choose a plan and pay to start or renew your subscription.
-                <?php endif; ?>
-            </p>
-        </header>
+    <?php if (!($trial_context && !$trial_expired)): ?>
+        <div class="dashboard-trial-plans">
+            <header class="dashboard-trial-plans-header">
+                <h3><?php echo $trial_lockout_mode ? 'Choose a plan to continue' : 'Choose a plan'; ?></h3>
+                <p>
+                    <?php if ($trial_lockout_mode): ?>
+                        Payment unlocks your account immediately after confirmation.
+                    <?php elseif ($paid_plan_active): ?>
+                        Your subscription is active. You can extend it anytime — each payment adds one billing period from your current expiry date.
+                    <?php else: ?>
+                        Choose a plan and pay to start or renew your subscription.
+                    <?php endif; ?>
+                </p>
+            </header>
 
-        <?php if (!$paystack_configured): ?>
-            <div class="alert alert-warning">
-                Platform Paystack billing is not configured. Set `PAYSTACK_SAAS_SECRET_KEY` in `.env`.
-            </div>
-        <?php elseif (empty($pricing_tiers)): ?>
-            <div class="alert alert-warning">
-                No active pricing tiers are available yet.
-            </div>
-        <?php else: ?>
-            <div class="dashboard-trial-plans-grid">
-                <?php foreach ($pricing_tiers as $tier):
-                    $max_rooms = ($tier['max_rooms'] === null || $tier['max_rooms'] === '') ? '' : (int) $tier['max_rooms'];
-                    $tier_room_range = $max_rooms === '' ? ((int) $tier['min_rooms']) . '+ rooms' : ((int) $tier['min_rooms']) . '-' . $max_rooms . ' rooms';
-                    $fits_room_count = $room_count >= (int) $tier['min_rooms'] && ($max_rooms === '' || $room_count <= $max_rooms);
-                    $is_subscribed_tier = $current_saas_tier && (int) $tier['id'] === (int) $current_saas_tier['id'];
-                    $tier_button_label = resolve_subscription_tier_button_label(
-                        $tier,
-                        $current_saas_tier,
-                        $subscription_state,
-                        $plan_expiry_context,
-                        $trial_expired
-                    );
-                ?>
-                    <article class="dashboard-trial-plan-card<?php echo $is_subscribed_tier ? ' dashboard-trial-plan-card--current' : ''; ?>">
-                        <?php if ($is_subscribed_tier): ?>
-                            <span class="dashboard-trial-plan-tag dashboard-trial-plan-tag--current">Current plan</span>
-                        <?php elseif ($fits_room_count): ?>
-                            <span class="dashboard-trial-plan-tag">Recommended for your property</span>
-                        <?php endif; ?>
-                        <h4><?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?></h4>
-                        <p class="dashboard-trial-plan-rooms"><?php echo htmlspecialchars($tier_room_range, ENT_QUOTES, 'UTF-8'); ?></p>
-                        <p class="dashboard-trial-plan-price">
-                            <span><?php echo saas_currency_symbol($tier['currency']); ?></span>
-                            <?php echo format_saas_price_amount($tier['monthly_price']); ?>
-                            <span class="dashboard-trial-plan-period">/mo</span>
-                        </p>
-                        <?php if (!empty($tier['features']) && is_array($tier['features'])): ?>
-                            <ul class="dashboard-trial-plan-features">
-                                <?php foreach ($tier['features'] as $feature): ?>
-                                    <li><?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8'); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        <?php endif; ?>
-                        <button
-                            type="button"
-                            class="btn btn-primary btn-block js-paystack-subscribe"
-                            data-tier-id="<?php echo (int) $tier['id']; ?>"
-                            data-tier-name="<?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?>"
-                            data-renewal-period="month"
-                        >
-                            <?php echo htmlspecialchars($tier_button_label, ENT_QUOTES, 'UTF-8'); ?>
-                        </button>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
+            <?php if (!$paystack_configured): ?>
+                <div class="alert alert-warning">
+                    Platform Paystack billing is not configured. Set `PAYSTACK_SAAS_SECRET_KEY` in `.env`.
+                </div>
+            <?php elseif (empty($pricing_tiers)): ?>
+                <div class="alert alert-warning">
+                    No active pricing tiers are available yet.
+                </div>
+            <?php else: ?>
+                <div class="dashboard-trial-plans-grid">
+                    <?php foreach ($pricing_tiers as $tier):
+                        $max_rooms = ($tier['max_rooms'] === null || $tier['max_rooms'] === '') ? '' : (int) $tier['max_rooms'];
+                        $tier_room_range = $max_rooms === '' ? ((int) $tier['min_rooms']) . '+ rooms' : ((int) $tier['min_rooms']) . '-' . $max_rooms . ' rooms';
+                        $fits_room_count = $room_count >= (int) $tier['min_rooms'] && ($max_rooms === '' || $room_count <= $max_rooms);
+                        $is_subscribed_tier = $current_saas_tier && (int) $tier['id'] === (int) $current_saas_tier['id'];
+                        $tier_button_label = resolve_subscription_tier_button_label(
+                            $tier,
+                            $current_saas_tier,
+                            $subscription_state,
+                            $plan_expiry_context,
+                            $trial_expired
+                        );
+                    ?>
+                        <article class="dashboard-trial-plan-card<?php echo $is_subscribed_tier ? ' dashboard-trial-plan-card--current' : ''; ?>">
+                            <?php if ($is_subscribed_tier): ?>
+                                <span class="dashboard-trial-plan-tag dashboard-trial-plan-tag--current">Current plan</span>
+                            <?php elseif ($fits_room_count): ?>
+                                <span class="dashboard-trial-plan-tag">Recommended for your property</span>
+                            <?php endif; ?>
+                            <h4><?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?></h4>
+                            <p class="dashboard-trial-plan-rooms"><?php echo htmlspecialchars($tier_room_range, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <p class="dashboard-trial-plan-price">
+                                <span><?php echo saas_currency_symbol($tier['currency']); ?></span>
+                                <?php echo format_saas_price_amount($tier['monthly_price']); ?>
+                                <span class="dashboard-trial-plan-period">/mo</span>
+                            </p>
+                            <?php if (!empty($tier['features']) && is_array($tier['features'])): ?>
+                                <ul class="dashboard-trial-plan-features">
+                                    <?php foreach ($tier['features'] as $feature): ?>
+                                        <li><?php echo htmlspecialchars($feature, ENT_QUOTES, 'UTF-8'); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
+                            <button
+                                type="button"
+                                class="btn btn-primary btn-block js-paystack-subscribe"
+                                data-tier-id="<?php echo (int) $tier['id']; ?>"
+                                data-tier-name="<?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-renewal-period="month"
+                            >
+                                <?php echo htmlspecialchars($tier_button_label, ENT_QUOTES, 'UTF-8'); ?>
+                            </button>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 </div>

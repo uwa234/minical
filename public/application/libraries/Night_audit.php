@@ -35,7 +35,7 @@ class Night_audit {
 		log_message('debug', "Night audit initialized");
 	}
 
-	function run_night_audit($company_id)
+	function run_night_audit($company_id, $target_date = null, $run_context = null)
 	{		
 		//Prevent people from accidently running night audit too far.				
 		$this->ci->load->helper('timezone');
@@ -58,6 +58,36 @@ class Night_audit {
 		$actual_date = convert_to_local_time(new DateTime(), $company_time_zone)->format("Y-m-d");
 		$selling_date = $this->ci->Company_model->get_selling_date($company_id);
 		$company = $this->ci->Company_model->get_company($company_id);
+
+		if ($run_context === null)
+		{
+			$run_context = array(
+				'starting_selling_date' => $selling_date,
+				'target_date' => $target_date,
+			);
+		}
+		elseif ($target_date === null && !empty($run_context['target_date']))
+		{
+			$target_date = $run_context['target_date'];
+		}
+
+		if ($target_date !== null && $target_date !== '')
+		{
+			if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $target_date))
+			{
+				return "Target date must be a valid date (YYYY-MM-DD).";
+			}
+
+			if ($target_date > $actual_date)
+			{
+				return "Target date cannot be later than today ($actual_date).";
+			}
+
+			if ($target_date <= $selling_date)
+			{
+				return "Target date must be later than the current selling date ($selling_date).";
+			}
+		}
 		
 		if ($selling_date > $actual_date)
 		{
@@ -105,19 +135,34 @@ class Night_audit {
 				$this->ci->Booking_model->auto_check_out_guests($company_id, $new_selling_date);
 			}
 			
-			//If Auto Night auditing multiple days is enabled in night-audit-settings,
-			//Repeat night audit process until selling_date is equal to actual_date.
-			if ($company['night_audit_multiple_days'] &&	$new_selling_date < $actual_date)
+			$catch_up_target_date = null;
+			if ($target_date !== null && $target_date !== '')
 			{
-				return $this->run_night_audit($company_id);
+				$catch_up_target_date = $target_date;
 			}
-			else
+			elseif ($company['night_audit_multiple_days'] && $new_selling_date < $actual_date)
 			{
-				// log night audit
-				$this->ci->load->model('Night_audit_model');
-				$this->ci->Night_audit_model->log_night_audit($company_id, $selling_date, $user_id);
-				return $response;
+				$catch_up_target_date = $actual_date;
 			}
+
+			// Repeat night audit until selling_date reaches the selected target date.
+			if ($catch_up_target_date && $new_selling_date < $catch_up_target_date)
+			{
+				return $this->run_night_audit($company_id, $catch_up_target_date, $run_context);
+			}
+
+			// log night audit
+			$this->ci->load->model('Night_audit_model');
+			$this->ci->Night_audit_model->log_night_audit($company_id, $run_context['starting_selling_date'], $user_id);
+
+			$starting_selling_date = $run_context['starting_selling_date'];
+			if ($starting_selling_date !== $new_selling_date)
+			{
+				$days_processed = (int) round((strtotime($new_selling_date) - strtotime($starting_selling_date)) / 86400);
+				return $response . " Selling date advanced {$days_processed} day(s) from {$starting_selling_date} to {$new_selling_date}.";
+			}
+
+			return $response;
 		}
 		
 	}

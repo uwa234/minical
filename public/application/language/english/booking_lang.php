@@ -256,7 +256,7 @@ $lang['charging_with'] = 'charging with';
 $lang['with_rate'] = 'with rate';
 $lang['book'] = 'Book';
 
-$lang['guest_room_move'] = 'Change room (room move)';
+$lang['guest_room_move'] = 'Change room';
 $lang['room_exchange'] = 'Room exchange';
 $lang['unassign_room'] = 'Unassign room';
 $lang['room_exchange_inhouse_only'] = 'Room exchange is only available for checked-in guests.';
@@ -266,7 +266,7 @@ $lang['room_exchange_success'] = 'Rooms exchanged successfully.';
 $lang['room_exchange_log'] = 'Room exchanged with booking';
 $lang['room_exchange_with'] = 'Exchange room with';
 $lang['select_room_for_move'] = 'Select new room';
-$lang['select_rate_plan_for_move'] = 'Rate plan (if room type changes)';
+$lang['select_rate_plan_for_move'] = 'Select rate plan';
 $lang['update_folio_rates'] = 'Update folio rates for remaining nights';
 $lang['unassign_room_success'] = 'Room unassigned successfully.';
 $lang['unassign_room_already'] = 'This stay has no room assigned.';

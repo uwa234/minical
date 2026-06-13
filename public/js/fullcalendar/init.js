@@ -466,15 +466,9 @@ innGrid.buildCalendar = function (rooms) {
 
             var notes = info.event.extendedProps.data.booking_notes.length > 120 ? info.event.extendedProps.data.booking_notes.substr(0, info.event.extendedProps.data.booking_notes.lastIndexOf(' ', 120)) + '...' : info.event.extendedProps.data.booking_notes;
 
-            // calculate number of nights
-            // if(innGrid.enableHourlyBooking) {
-            //     var checkInDate = moment(info.event.start).format('YYYY-MM-DD');
-            //     var checkOutDate = moment(info.event.end || info.event.start).format('YYYY-MM-DD');
-            // } else {
-                var checkInDate = moment(info.event.start).format('YYYY-MM-DD');
-                var checkOutDate = moment(info.event.end || info.event.start).format('YYYY-MM-DD');
-            // }
-
+            // Use stored booking dates (not rendered event range) for accurate night count
+            var checkInDate = moment(info.event.extendedProps.data.check_in_date).format('YYYY-MM-DD');
+            var checkOutDate = moment(info.event.extendedProps.data.check_out_date).format('YYYY-MM-DD');
             var diffDays = moment(checkOutDate).diff(moment(checkInDate), 'days');
             var warning_message = info.event.extendedProps.data.warning_message;
 
@@ -568,19 +562,15 @@ innGrid.buildCalendar = function (rooms) {
 //Format is decided by Full Calendar format. See FullCalendar online documentation.
 var calendarBookingFetchTimer = null;
 var calendarBookingFetchPending = null;
-var CHECK_OUT_DATE_HACK_DAYS = (typeof check_out_dateHack !== 'undefined') ? check_out_dateHack : 1;
 
 /**
  * Convert a FullCalendar selection range to booking check-in / check-out dates.
- * Selection end is exclusive (day after the last highlighted cell). Checkout day
- * is not counted as an occupied night (see check_out_dateHack on displayed events).
+ * Selection end is exclusive and already equals the checkout date (the day after
+ * the last occupied night).
  */
 function calendarSelectionToBookingDates(selectionStart, selectionEnd) {
     var checkIn = moment(selectionStart).startOf('day');
     var checkOut = moment(selectionEnd).startOf('day');
-    if (CHECK_OUT_DATE_HACK_DAYS) {
-        checkOut.subtract(CHECK_OUT_DATE_HACK_DAYS, 'days');
-    }
     return {
         checkIn: checkIn.format('YYYY-MM-DD HH:mm:ss'),
         checkOut: checkOut.format('YYYY-MM-DD HH:mm:ss')
@@ -792,11 +782,8 @@ function convertToEvents(data) {
             continue;
         }
 
-        if (CHECK_OUT_DATE_HACK_DAYS) {
-            endMoment = endMoment.clone().subtract(CHECK_OUT_DATE_HACK_DAYS, 'days');
-        }
-        // Same-day / zero-night stays collapse to start after checkout hack; use 1 day
-        // so the bar fills a timeline slot (24h), not a 1h sliver (~1px wide).
+        // FullCalendar end is exclusive; check_out_date is already the day after the
+        // last occupied night. Same-day stays need a 1-day span so the bar fills a slot.
         if (!endMoment.isAfter(startMoment)) {
             endMoment = startMoment.clone().add(1, 'day');
         }

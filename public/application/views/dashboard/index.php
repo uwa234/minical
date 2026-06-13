@@ -7,11 +7,16 @@ $analytics_days = isset($analytics_days) ? (int) $analytics_days : 14;
 $analytics_payload = isset($analytics_payload) ? $analytics_payload : array();
 $analytics_period_label = sprintf(l('analytics_period_days', true), $analytics_days);
 $trial_context = isset($trial_context) ? $trial_context : null;
+$subscription_state = isset($subscription_state) ? $subscription_state : 'trialing';
 ?>
 
 <div class="dashboard-page">
     <?php if ($trial_context): ?>
-        <?php $this->load->view('dashboard/trial_banner', array('trial_context' => $trial_context)); ?>
+        <?php $this->load->view('dashboard/trial_banner', array(
+            'trial_context' => $trial_context,
+            'paystack_configured' => !empty($paystack_configured),
+            'subscription_state' => $subscription_state,
+        )); ?>
     <?php endif; ?>
 
     <div class="dashboard-header">

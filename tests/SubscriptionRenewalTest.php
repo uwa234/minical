@@ -42,6 +42,40 @@ class SubscriptionRenewalTest extends TestCase
         $this->assertSame('Subscribe now', resolve_subscription_billing_button_label('trial_ended', null, true));
     }
 
+    public function testPendingCheckoutDoesNotCommitTierId()
+    {
+        $meta = array(
+            'pending_reference' => 'saas_1_test',
+            'tier_id' => 3,
+            'pending_tier_id' => 3,
+        );
+
+        $this->assertSame(0, saas_meta_committed_tier_id($meta));
+    }
+
+    public function testPaidTierIdIsCommittedAfterSuccessfulPayment()
+    {
+        $meta = array(
+            'last_reference' => 'saas_1_paid',
+            'tier_id' => 3,
+        );
+
+        $this->assertSame(3, saas_meta_committed_tier_id($meta));
+    }
+
+    public function testActivePlanKeepsCommittedTierDuringPendingUpgradeCheckout()
+    {
+        $meta = array(
+            'last_reference' => 'saas_1_paid',
+            'last_paid_at' => gmdate('c'),
+            'tier_id' => 2,
+            'pending_reference' => 'saas_1_new_checkout',
+            'pending_tier_id' => 3,
+        );
+
+        $this->assertSame(2, saas_meta_committed_tier_id($meta));
+    }
+
     public function testTierButtonShowsUpgradeAndDowngrade()
     {
         $current = array('id' => 2, 'sort_order' => 20, 'subscription_level' => 1);

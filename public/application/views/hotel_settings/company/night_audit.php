@@ -179,17 +179,23 @@
 	?>">
 		<br />
 		<div id="nightAuditMessage">					
-			<?php //echo l('running_night_audit_will').":";?>
+			<p>
+				<?php echo l('current_selling_date', true); ?>:
+				<span class="bold" id="night-audit-current-selling-date"><?php echo $company['selling_date']; ?></span>
+			</p>
+			<p>
+				<label for="night-audit-target-date"><?php echo l('advance_selling_date_to', true); ?></label>
+				<input type="text" class="form-control" id="night-audit-target-date" />
+			</p>
+			<p id="night-audit-days-summary" class="help-block"></p>
+			<p>
 				<?php 	
 					echo l('running_night_audit_will', true).' '.l('change_selling_date_to', true);
 				?>:
-				<br/>
-				<span class="bold" id="night-audit-resulting-date">
-				</span>
-				and 
-				<?php echo l('charge_staying_guests', true);
-				?>						
-			<br/>						
+				<span class="bold" id="night-audit-resulting-date"></span>
+				<?php echo l('and', true); ?>
+				<?php echo l('charge_staying_guests', true); ?>
+			</p>
 			<?php echo l('continue', true); ?>?
 			<br/>
 			<br/>

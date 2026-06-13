@@ -5,6 +5,9 @@ if (!$ctx) {
 }
 $upgrade_url = isset($ctx['upgrade_url']) ? $ctx['upgrade_url'] : base_url('account_settings/subscription');
 $tiers = isset($ctx['pricing_tiers']) ? $ctx['pricing_tiers'] : array();
+$paystack_configured = !empty($paystack_configured);
+$subscription_state = isset($subscription_state) ? (string) $subscription_state : 'trialing';
+$trial_expired = !empty($ctx['is_expired']);
 $expiry_label = '';
 if (!empty($ctx['trial_expiry_date'])) {
     $expiry_label = sprintf(l('trial_expires_on', true), date('F j, Y', strtotime($ctx['trial_expiry_date'])));
@@ -59,6 +62,11 @@ if (!empty($ctx['trial_expiry_date'])) {
                 <h3><?php echo l('trial_upgrade_heading', true); ?></h3>
                 <p><?php echo l('trial_upgrade_subheading', true); ?></p>
             </header>
+            <?php if (!$paystack_configured): ?>
+                <div class="alert alert-warning">
+                    Platform Paystack billing is not configured. Set `PAYSTACK_SAAS_SECRET_KEY` in `.env`.
+                </div>
+            <?php endif; ?>
             <div class="dashboard-trial-plans-grid">
                 <?php foreach ($tiers as $tier):
                     $max_rooms = ($tier['max_rooms'] === null || $tier['max_rooms'] === '') ? '' : (int) $tier['max_rooms'];
@@ -93,7 +101,29 @@ if (!empty($ctx['trial_expiry_date'])) {
                             </ul>
                         <?php endif; ?>
                         <?php if ($is_current): ?>
-                            <span class="btn btn-default btn-block dashboard-trial-plan-btn" disabled><?php echo l('trial_tier_current', true); ?></span>
+                            <?php if ($paystack_configured): ?>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-block dashboard-trial-plan-btn js-paystack-subscribe"
+                                    data-tier-id="<?php echo (int) $tier['id']; ?>"
+                                    data-tier-name="<?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-renewal-period="month"
+                                >
+                                    <?php echo htmlspecialchars(resolve_subscription_billing_button_label($subscription_state, null, $trial_expired), ENT_QUOTES, 'UTF-8'); ?>
+                                </button>
+                            <?php else: ?>
+                                <span class="btn btn-default btn-block dashboard-trial-plan-btn" disabled><?php echo l('trial_tier_current', true); ?></span>
+                            <?php endif; ?>
+                        <?php elseif ($is_upgrade && $paystack_configured): ?>
+                            <button
+                                type="button"
+                                class="btn btn-primary btn-block dashboard-trial-plan-btn js-paystack-subscribe"
+                                data-tier-id="<?php echo (int) $tier['id']; ?>"
+                                data-tier-name="<?php echo htmlspecialchars($tier['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-renewal-period="month"
+                            >
+                                <?php echo l('trial_choose_plan', true); ?>
+                            </button>
                         <?php else: ?>
                             <a class="btn btn-primary btn-block dashboard-trial-plan-btn" href="<?php echo htmlspecialchars($upgrade_url, ENT_QUOTES, 'UTF-8'); ?>">
                                 <?php echo $is_upgrade ? l('trial_choose_plan', true) : l('trial_tier_contact', true); ?>

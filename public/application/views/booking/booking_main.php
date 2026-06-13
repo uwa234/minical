@@ -582,7 +582,7 @@
                 // Convert the time difference to days
                 const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
                 
-                var url = '<?php echo base_url(); ?>settings/company/view_subscription';
+                var url = '<?php echo base_url('account_settings/subscription'); ?>';
                 if(days <= 5 && days >= 0)
                 {
                     if(days == '0')

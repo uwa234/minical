@@ -747,6 +747,60 @@ function resolve_subscription_level_for_tier($tier)
 }
 
 /**
+ * Parse company_subscription.meta_data JSON into an array.
+ *
+ * @param array|string|null $company_or_meta
+ * @return array<string, mixed>
+ */
+function parse_company_subscription_meta($company_or_meta)
+{
+    if (is_array($company_or_meta) && isset($company_or_meta['meta_data'])) {
+        $company_or_meta = $company_or_meta['meta_data'];
+    }
+
+    if (!is_string($company_or_meta) || trim($company_or_meta) === '') {
+        return array();
+    }
+
+    $decoded = json_decode($company_or_meta, true);
+    return is_array($decoded) ? $decoded : array();
+}
+
+/**
+ * Tier id that has been paid for / committed — ignores in-flight Paystack checkouts.
+ *
+ * @param array<string, mixed> $meta
+ * @return int
+ */
+function saas_meta_committed_tier_id($meta)
+{
+    if (!is_array($meta)) {
+        return 0;
+    }
+
+    $tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+    if ($tier_id < 1) {
+        return 0;
+    }
+
+    $has_payment_proof = !empty($meta['last_reference'])
+        || !empty($meta['last_paid_at'])
+        || !empty($meta['tier_updated_at']);
+
+    if ($has_payment_proof) {
+        return $tier_id;
+    }
+
+    $pending_reference = isset($meta['pending_reference']) ? trim((string) $meta['pending_reference']) : '';
+    if ($pending_reference === '') {
+        return $tier_id;
+    }
+
+    // Unpaid checkout attempt wrote tier_id (legacy bug) — ignore until payment succeeds.
+    return 0;
+}
+
+/**
  * Effective subscription level for a company (prefers assigned SaaS tier in meta_data).
  *
  * @param array $company Row from Company_model::get_company()
@@ -758,17 +812,15 @@ function resolve_company_subscription_level($company)
         return (int) BASIC;
     }
 
-    if (!empty($company['meta_data'])) {
-        $meta = json_decode($company['meta_data'], true);
-        if (is_array($meta) && !empty($meta['tier_id'])) {
-            $CI =& get_instance();
-            if (!isset($CI->Platform_settings_model)) {
-                $CI->load->model('Platform_settings_model');
-            }
-            $tier = $CI->Platform_settings_model->get_pricing_tier((int) $meta['tier_id']);
-            if ($tier) {
-                return resolve_subscription_level_for_tier($tier);
-            }
+    $tier_id = saas_meta_committed_tier_id(parse_company_subscription_meta($company));
+    if ($tier_id > 0) {
+        $CI =& get_instance();
+        if (!isset($CI->Platform_settings_model)) {
+            $CI->load->model('Platform_settings_model');
+        }
+        $tier = $CI->Platform_settings_model->get_pricing_tier($tier_id);
+        if ($tier) {
+            return resolve_subscription_level_for_tier($tier);
         }
     }
 
@@ -964,13 +1016,11 @@ function resolve_company_saas_tier($company, $room_count = null)
         $CI->load->model('Platform_settings_model');
     }
 
-    if (!empty($company['meta_data'])) {
-        $meta = json_decode($company['meta_data'], true);
-        if (is_array($meta) && !empty($meta['tier_id'])) {
-            $tier = $CI->Platform_settings_model->get_pricing_tier((int) $meta['tier_id']);
-            if ($tier) {
-                return $tier;
-            }
+    $tier_id = saas_meta_committed_tier_id(parse_company_subscription_meta($company));
+    if ($tier_id > 0) {
+        $tier = $CI->Platform_settings_model->get_pricing_tier($tier_id);
+        if ($tier) {
+            return $tier;
         }
     }
 
@@ -997,23 +1047,20 @@ function resolve_company_plan_display_name($company, $room_count = null)
         return subscription_level_display_name((int) BASIC);
     }
 
-    if (!empty($company['meta_data'])) {
-        $meta = json_decode($company['meta_data'], true);
-        if (is_array($meta)) {
-            if (!empty($meta['tier_id'])) {
-                $CI =& get_instance();
-                if (!isset($CI->Platform_settings_model)) {
-                    $CI->load->model('Platform_settings_model');
-                }
-                $tier = $CI->Platform_settings_model->get_pricing_tier((int) $meta['tier_id']);
-                if ($tier && !empty($tier['name'])) {
-                    return (string) $tier['name'];
-                }
-            }
-            if (!empty($meta['tier_name'])) {
-                return (string) $meta['tier_name'];
-            }
+    $meta = parse_company_subscription_meta($company);
+    $committed_tier_id = saas_meta_committed_tier_id($meta);
+    if ($committed_tier_id > 0) {
+        $CI =& get_instance();
+        if (!isset($CI->Platform_settings_model)) {
+            $CI->load->model('Platform_settings_model');
         }
+        $tier = $CI->Platform_settings_model->get_pricing_tier($committed_tier_id);
+        if ($tier && !empty($tier['name'])) {
+            return (string) $tier['name'];
+        }
+    }
+    if (!empty($meta['tier_name']) && $committed_tier_id > 0) {
+        return (string) $meta['tier_name'];
     }
 
     $tier = resolve_company_saas_tier($company, $room_count);
@@ -1212,15 +1259,8 @@ function resolve_subscription_debtor_amount_due($row, $tiers)
     }
 
     $amount_due = isset($row['renewal_cost']) ? (float) $row['renewal_cost'] : 0;
-    $meta = array();
-    if (!empty($row['meta_data'])) {
-        $decoded = json_decode($row['meta_data'], true);
-        if (is_array($decoded)) {
-            $meta = $decoded;
-        }
-    }
-
-    $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+    $meta = parse_company_subscription_meta($row);
+    $selected_tier_id = saas_meta_committed_tier_id($meta);
     foreach ($tiers as $tier) {
         if ($selected_tier_id > 0) {
             if ((int) $tier['id'] === $selected_tier_id) {
@@ -1291,15 +1331,7 @@ function compute_date_after_grace_extension($current_due_date, $grace_days)
  */
 function resolve_company_pricing_tier_id($company, $tiers)
 {
-    $meta = array();
-    if (!empty($company['meta_data'])) {
-        $decoded = json_decode($company['meta_data'], true);
-        if (is_array($decoded)) {
-            $meta = $decoded;
-        }
-    }
-
-    $selected_tier_id = isset($meta['tier_id']) ? (int) $meta['tier_id'] : 0;
+    $selected_tier_id = saas_meta_committed_tier_id(parse_company_subscription_meta($company));
     if ($selected_tier_id > 0) {
         return $selected_tier_id;
     }

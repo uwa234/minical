@@ -104,6 +104,11 @@ $lang['images'] = 'Images';
 
 $lang['running_night_audit_will'] = 'Running night audit will';
 $lang['change_selling_date_to'] = 'change selling date to';
+$lang['and'] = 'and';
+$lang['current_selling_date'] = 'Current selling date';
+$lang['advance_selling_date_to'] = 'Advance selling date to';
+$lang['night_audit_will_process_days'] = 'Night audit will process {days} days to catch up.';
+$lang['night_audit_will_process_one_day'] = 'Night audit will process 1 day.';
 $lang['and_do_following'] = 'and do following';
 $lang['guest_check_outs'] = 'Check-out scheduled guests';
 $lang['charge_staying_guests'] = 'Charge staying guests';

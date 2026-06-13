@@ -243,13 +243,17 @@ class Account_settings extends MY_Controller {
 			), 502);
 		}
 
+		$existing_meta = parse_company_subscription_meta(
+			$this->Company_subscription_model->get_company_subscription($this->company_id)
+		);
+		$existing_meta['pending_reference'] = $reference;
+		$existing_meta['pending_tier_id'] = (int) $tier['id'];
+		$existing_meta['pending_renewal_period'] = $renewal_period;
+		$existing_meta['checkout_initiated_at'] = gmdate('c');
+		unset($existing_meta['initiated_at']);
+
 		$this->Company_subscription_model->insert_or_update_company_subscription($this->company_id, array(
-			'meta_data' => json_encode(array(
-				'pending_reference' => $reference,
-				'tier_id' => (int) $tier['id'],
-				'renewal_period' => $renewal_period,
-				'initiated_at' => gmdate('c'),
-			)),
+			'meta_data' => json_encode($existing_meta),
 		));
 
 		return $this->_json_response(array(
@@ -314,6 +318,7 @@ class Account_settings extends MY_Controller {
 			redirect('/dashboard/');
 			return;
 		} else {
+			$this->_clear_pending_paystack_checkout($reference);
 			$this->session->set_flashdata('subscription_flash', array(
 				'type' => 'danger',
 				'message' => !empty($result['error']) ? $result['error'] : 'We could not verify this payment.',
@@ -505,6 +510,46 @@ class Account_settings extends MY_Controller {
 	private function _build_paystack_reference($company_id)
 	{
 		return 'saas_' . (int) $company_id . '_' . gmdate('YmdHis') . '_' . bin2hex(random_bytes(4));
+	}
+
+	private function _clear_pending_paystack_checkout($reference, $company_id = null)
+	{
+		$company_id = $company_id ? (int) $company_id : (int) $this->company_id;
+		if ($company_id < 1) {
+			return;
+		}
+
+		$subscription = $this->Company_subscription_model->get_company_subscription($company_id);
+		$meta = parse_company_subscription_meta($subscription);
+		if (empty($meta)) {
+			return;
+		}
+
+		$pending_reference = isset($meta['pending_reference']) ? trim((string) $meta['pending_reference']) : '';
+		$reference = trim((string) $reference);
+		if ($pending_reference === '' || $pending_reference !== $reference) {
+			return;
+		}
+
+        unset(
+            $meta['pending_reference'],
+            $meta['pending_tier_id'],
+            $meta['pending_renewal_period'],
+            $meta['checkout_initiated_at'],
+            $meta['initiated_at']
+        );
+
+        $has_payment_proof = !empty($meta['last_reference'])
+            || !empty($meta['last_paid_at'])
+            || !empty($meta['tier_updated_at']);
+
+        if (!$has_payment_proof) {
+            unset($meta['tier_id'], $meta['tier_name'], $meta['tier_updated_at']);
+        }
+
+		$this->Company_subscription_model->update_company_subscription($company_id, array(
+			'meta_data' => json_encode($meta),
+		));
 	}
 
 	private function _paystack_secret_key()

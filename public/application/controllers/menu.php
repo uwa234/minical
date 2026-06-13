@@ -121,29 +121,55 @@ class Menu extends MY_Controller
 	function run_night_audit()
 	{
 		$this->_create_employee_log("Manually ran Night Audit.");
-		echo $this->night_audit->run_night_audit($this->company_id);
+		$target_date = $this->input->get_post('target_date');
+		echo $this->night_audit->run_night_audit($this->company_id, $target_date);
 	}
 	
 	// returns the date which would be the resulting date after running night audit.
-	// so, if current date is 2013-02-18, then this function will return 2013-02-19
 	function get_night_audit_resulting_date() 
 	{
+		$this->load->helper('timezone');
+
 		$company = $this->Company_model->get_company($this->company_id);
-		
-		//if processing multiple days at once is enabled in Night Audit Settings,
-		//Display actual date time, otherwise, display current selling date's next day
-		if (
-			$company['night_audit_multiple_days'] &&
-			strtotime($this->selling_date) < strtotime($actual_date)
-		)
+		$company_time_zone = !empty($company['time_zone']) ? $company['time_zone'] : 'America/New_York';
+		$actual_date = convert_to_local_time(new DateTime(), $company_time_zone)->format('Y-m-d');
+		$selling_date = $this->selling_date;
+		$target_date = $this->input->get_post('target_date');
+
+		if (!$target_date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $target_date))
 		{
-			echo json_encode($actual_date);
+			if (
+				$company['night_audit_multiple_days'] &&
+				strtotime($selling_date) < strtotime($actual_date)
+			)
+			{
+				$target_date = $actual_date;
+			}
+			else
+			{
+				$target_date = date('Y-m-d', strtotime('+1 day', strtotime($selling_date)));
+			}
 		}
-		else
+
+		if ($target_date > $actual_date)
 		{
-			$next_day = strtotime("+1 day", strtotime($this->selling_date));
-			echo json_encode(Date("Y-M-d", $next_day));
+			$target_date = $actual_date;
 		}
+
+		if ($target_date <= $selling_date)
+		{
+			$target_date = date('Y-m-d', strtotime('+1 day', strtotime($selling_date)));
+		}
+
+		$days_to_process = (int) round((strtotime($target_date) - strtotime($selling_date)) / 86400);
+
+		echo json_encode(array(
+			'current_selling_date' => $selling_date,
+			'actual_date' => $actual_date,
+			'target_date' => $target_date,
+			'resulting_date' => $target_date,
+			'days_to_process' => $days_to_process,
+		));
 	}
 
 	function _create_employee_log($log) {

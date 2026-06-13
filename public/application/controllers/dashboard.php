@@ -47,6 +47,17 @@ class Dashboard extends MY_Controller
         }
 
         $trial_context = build_trial_subscription_context($this->company_data);
+        $paystack_configured = trim((string) minical_env('PAYSTACK_SAAS_SECRET_KEY', '')) !== ''
+            || trim((string) minical_env('PAYSTACK_SECRET_KEY', '')) !== '';
+
+        $js_files = array(
+            base_url() . 'js/moment.min.js',
+            base_url() . auto_version('js/booking/bookingModal.js'),
+            base_url() . auto_version('js/dashboard/dashboard.js'),
+        );
+        if ($trial_context) {
+            $js_files[] = base_url() . auto_version('js/account_settings/subscription.js');
+        }
 
         $data = array(
             'selling_date' => $selling_date,
@@ -57,15 +68,13 @@ class Dashboard extends MY_Controller
             'analytics_days' => $analytics_days,
             'analytics_payload' => $this->build_analytics_payload($analytics, $currency_symbol),
             'trial_context' => $trial_context,
+            'paystack_configured' => $paystack_configured,
+            'subscription_state' => $this->company_subscription_state,
             'selected_menu' => 'dashboard',
             'css_files' => array(
                 base_url() . auto_version('css/dashboard/dashboard.css'),
             ),
-            'js_files' => array(
-                base_url() . 'js/moment.min.js',
-                base_url() . auto_version('js/booking/bookingModal.js'),
-                base_url() . auto_version('js/dashboard/dashboard.js'),
-            ),
+            'js_files' => $js_files,
             'main_content' => 'dashboard/index',
         );
 
