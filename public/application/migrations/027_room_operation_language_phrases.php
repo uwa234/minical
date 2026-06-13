@@ -15,6 +15,7 @@ class Migration_Room_operation_language_phrases extends CI_Migration {
 		'room_exchange_success' => 'Rooms exchanged successfully.',
 		'room_exchange_log' => 'Room exchanged with booking',
 		'room_exchange_with' => 'Exchange room with',
+		'room_exchange_no_candidates' => 'No other checked-in guests with an assigned room are available to exchange with.',
 		'select_room_for_move' => 'Select new room',
 		'select_rate_plan_for_move' => 'Select rate plan',
 		'update_folio_rates' => 'Update folio rates for remaining nights',

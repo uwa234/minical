@@ -782,10 +782,40 @@ class Booking extends MY_Controller
         $booking_id = sqli_clean($this->security->xss_clean($this->input->post('booking_id')));
         $selling_date = $this->selling_date;
 
+        $booking = $this->Booking_model->get_booking($booking_id);
+        if (
+            empty($booking) ||
+            (int) $booking['company_id'] !== (int) $this->company_id ||
+            (int) $booking['state'] !== (int) INHOUSE
+        ) {
+            echo json_encode(array(
+                'success' => false,
+                'message' => l('room_exchange_inhouse_only', true),
+                'candidates' => array(),
+            ));
+            return;
+        }
+
+        $source_block = $this->Booking_room_history_model->get_latest_booking_room_history($booking_id);
+        if (empty($source_block['room_id'])) {
+            echo json_encode(array(
+                'success' => false,
+                'message' => l('room_exchange_requires_assigned_rooms', true),
+                'candidates' => array(),
+            ));
+            return;
+        }
+
         $sql = "
             SELECT DISTINCT b.booking_id, c.customer_name, r.room_name, r.room_id
             FROM booking AS b
-            INNER JOIN booking_block AS brh ON brh.booking_id = b.booking_id
+            INNER JOIN booking_block AS brh ON brh.booking_room_history_id = (
+                SELECT bb.booking_room_history_id
+                FROM booking_block AS bb
+                WHERE bb.booking_id = b.booking_id
+                ORDER BY bb.check_in_date DESC
+                LIMIT 1
+            )
             LEFT JOIN customer AS c ON c.customer_id = b.booking_customer_id
             LEFT JOIN room AS r ON r.room_id = brh.room_id AND r.is_deleted = '0'
             WHERE
@@ -795,13 +825,19 @@ class Booking extends MY_Controller
                 AND b.state = '" . INHOUSE . "'
                 AND DATE(brh.check_in_date) <= '{$selling_date}'
                 AND DATE(brh.check_out_date) > '{$selling_date}'
-                AND brh.room_id IS NOT NULL AND brh.room_id != 0
+                AND brh.room_id IS NOT NULL
+                AND brh.room_id != 0
+                AND brh.room_id != '" . (int) $source_block['room_id'] . "'
             ORDER BY r.room_name ASC, c.customer_name ASC
             LIMIT 100
         ";
 
         $rows = $this->db->query($sql)->result_array();
-        echo json_encode(array('success' => true, 'candidates' => $rows));
+        echo json_encode(array(
+            'success' => true,
+            'candidates' => $rows,
+            'message' => empty($rows) ? l('room_exchange_no_candidates', true) : '',
+        ));
     }
 
     function get_rate_plans_JSON($room_type_id = null, $previous_rate_plan_id = null, $isAJAX = true) {
@@ -954,15 +990,19 @@ class Booking extends MY_Controller
 
         //If current selling date is between check-in and check-out date
         //use current selling date as the check in date for checking available rooms
-        $current_booking_block = $this->Booking_room_history_model->get_booking_detail($booking_id);
+        $current_booking_block = $this->Booking_room_history_model->get_latest_booking_room_history($booking_id);
+        if (empty($current_booking_block)) {
+            $current_booking_block = $this->Booking_room_history_model->get_booking_detail($booking_id);
+        }
         $booking['check_in_date'] = (isset($current_booking_block['check_in_date'])) ? $current_booking_block['check_in_date'] : '';
         $booking['check_out_date'] = (isset($current_booking_block['check_out_date'])) ? $current_booking_block['check_out_date'] : '';
 
-        if (isset($current_booking_block['room_id'])) {
-            // get current room name
-            $room_info = $this->Room_model->get_room($current_booking_block['room_id']);
-            $booking['current_room_type_id'] = $this->Room_type_model->get_room_type_by_room_id($current_booking_block['room_id'])['id'];
-            $booking['current_room_id'] = $current_booking_block['room_id'];
+        $current_room_id = isset($current_booking_block['room_id']) ? (int) $current_booking_block['room_id'] : 0;
+        if ($current_room_id > 0) {
+            $room_info = $this->Room_model->get_room($current_room_id);
+            $room_type = $this->Room_type_model->get_room_type_by_room_id($current_room_id);
+            $booking['current_room_type_id'] = isset($room_type['id']) ? $room_type['id'] : null;
+            $booking['current_room_id'] = $current_room_id;
             $booking['current_room_name'] = isset($room_info['room_name']) ? $room_info['room_name'] : null;
         }
 

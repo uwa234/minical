@@ -265,6 +265,7 @@ $lang['room_exchange_same_room'] = 'Both guests are already in the same room.';
 $lang['room_exchange_success'] = 'Rooms exchanged successfully.';
 $lang['room_exchange_log'] = 'Room exchanged with booking';
 $lang['room_exchange_with'] = 'Exchange room with';
+$lang['room_exchange_no_candidates'] = 'No other checked-in guests with an assigned room are available to exchange with.';
 $lang['select_room_for_move'] = 'Select new room';
 $lang['select_rate_plan_for_move'] = 'Select rate plan';
 $lang['update_folio_rates'] = 'Update folio rates for remaining nights';

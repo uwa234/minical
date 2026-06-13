@@ -4551,7 +4551,7 @@ var bookingModalInvoker = function ($) {
             var state = this.booking.state;
             var modalFooter = $("#booking-modal").find(".modal-footer").html("");
             var todays = ($("#sellingDate").val() + ' 00:00:00');
-            var checkInDate = (this.booking.check_in_date);
+            var checkInDate = this._getEffectiveCheckInDate();
             var checkOutDate = (this.booking.check_out_date);
             var disableClass = '';
             if (moment(checkInDate).format('YYYY-MM-DD') > moment(todays).format('YYYY-MM-DD')) {
@@ -4560,7 +4560,7 @@ var bookingModalInvoker = function ($) {
             $('input[name=check_in_date], input[name=check_out_date]').prop('disabled', false);
 
             // reservation
-            if (state == 0) {
+            if (parseInt(state, 10) === 0) {
                 modalFooter
                     .append(
                         $("<button/>", {
@@ -4569,39 +4569,33 @@ var bookingModalInvoker = function ($) {
                             id: "button-check-in",
                             text: l("Check in")
                         }).on('click', function () {
+                            checkInDate = that._getEffectiveCheckInDate();
+                            todays = ($("#sellingDate").val() + ' 00:00:00');
 
-                            if (moment(checkInDate).format('YYYY-MM-DD') <= moment(todays).format('YYYY-MM-DD')) {
-                                that.button = $(this);
-                                that.button.prop('disabled', true);
-                                var bookingData = that._fetchBookingData();
-                                if (!bookingData['rooms'][0]['room_id']) {
-                                    $('#reservation-message')
-                                        .modal('show')
-                                        .on('hidden.bs.modal', function () {
-                                            if (($("#booking-modal").data('bs.modal') || {}).isShown)
-                                                $("body").addClass("modal-open");
-                                        });
-                                    $('#reservation-message .message').html(l('You must assign a room before checking the guest in'));
-                                    that.button.prop('disabled', false);
-                                    $('.confirm-customer').on('click', function () {
-                                        $('#reservation-message').modal('hide');
-                                        return false;
-                                    });
-                                } else {
-                                    bookingData.booking.state = 1;
-                                    that._updateBooking(bookingData, l("Successfully checked-in"));
-                                    that._makeRoomDirty(bookingData['rooms'][0]['room_id']);
-                                }
-
+                            if (moment(checkInDate).format('YYYY-MM-DD') > moment(todays).format('YYYY-MM-DD')) {
+                                that._showReservationMessage(l('You cannot check in before the check-in date'));
+                                return;
                             }
 
-                            //that._populateEditBookingModal();
+                            that.button = $(this);
+                            that.button.prop('disabled', true);
+                            var bookingData = that._fetchBookingData();
+                            if (!bookingData['rooms'][0]['room_id']) {
+                                that._showReservationMessage(l('You must assign a room before checking the guest in'));
+                                that.button.prop('disabled', false);
+                                return;
+                            }
+
+                            bookingData.booking.state = '1';
+                            $('select[name="state"]').val('1');
+                            that._updateBooking(bookingData, l("Successfully checked-in"));
+                            that._makeRoomDirty(bookingData['rooms'][0]['room_id']);
                         })
                     );
             }
 
             // checked-in
-            if (state == 1) {
+            if (parseInt(state, 10) === 1) {
                 modalFooter
                     .append(
                         $("<button/>", {
@@ -5057,6 +5051,71 @@ var bookingModalInvoker = function ($) {
             if(minutes<10) sMinutes = "0" + sMinutes;
             return (sHours + ":" + sMinutes);
         },
+        _showReservationMessage: function (message) {
+            $('#reservation-message .message').html(message);
+            $('#reservation-message')
+                .modal('show')
+                .off('hidden.bs.modal.reservationMessage')
+                .on('hidden.bs.modal.reservationMessage', function () {
+                    if (($("#booking-modal").data('bs.modal') || {}).isShown) {
+                        $("body").addClass("modal-open");
+                    }
+                });
+            $('.confirm-customer').off('click.reservationMessage').on('click.reservationMessage', function () {
+                $('#reservation-message').modal('hide');
+                return false;
+            });
+        },
+        _getEffectiveCheckInDate: function () {
+            var checkInDate = this.booking && this.booking.check_in_date ? this.booking.check_in_date : '';
+            if (this.$modalBody && this.$modalBody.find("[name='check_in_date']").length) {
+                var formCheckIn = innGrid._getBaseFormattedDate(this.$modalBody.find("[name='check_in_date']").val());
+                if (formCheckIn) {
+                    if (innGrid.enableHourlyBooking == 1 && this.$modalBody.find("[name='check_in_time']").length) {
+                        checkInDate = moment(formCheckIn + ' ' + this.convertTimeFormat(this.$modalBody.find("[name='check_in_time']").val())).format('YYYY-MM-DD HH:mm:ss');
+                    } else {
+                        checkInDate = formCheckIn + ' 00:00:00';
+                    }
+                }
+            }
+            return checkInDate;
+        },
+        _applyBookingUpdateSuccess: function (data, msg, action) {
+            var that = this;
+
+            $.each(data.booking, function (key, value) {
+                that.booking[key] = data.booking[key];
+            });
+
+            if (data.rooms && data.rooms[0] && data.rooms[0].room_id) {
+                that.booking.current_room_id = data.rooms[0].room_id;
+            }
+            if (data.rooms && data.rooms[0] && data.rooms[0].room_type_id) {
+                that.booking.current_room_type_id = data.rooms[0].room_type_id;
+            }
+
+            that._showAlert(msg);
+            that._updateModalContent();
+            that._getLinkedGroupBookingRoomList();
+
+            if (action === "early-check-out") {
+                $('[name="check_out_date"]').val(innGrid._getLocalFormattedDate(data.rooms[0].check_out_date));
+            }
+            if (data.booking.state != 4 && that.groupInfo != null) {
+                that.disableRoomBlock = '';
+                that.pointerNone = '';
+                that.$modalBody.find('.panel-booking').attr('style', that.disableRoomBlock);
+                that.$modalBody.find('.panel-booking .form-inline').attr('style', that.pointerNone);
+            }
+            if ($("#current-page").val() === 'show_reservation_report_cm') {
+                setTimeout(function () {
+                    location.reload();
+                }, 500);
+            }
+            if (data.booking.state == 2 && innGrid.companyID == '2637') {
+                that._makeRoomDirty(data['rooms'][0]['room_id']);
+            }
+        },
         _showAlert: function (msg) {
             if (msg) {
                 $(".alert-booking-created").text(msg).show(0, function () {
@@ -5213,6 +5272,7 @@ var bookingModalInvoker = function ($) {
                             that.booking = data.booking;
                             that.booking.booking_id = response[0].booking_id;
                             that.booking.balance = response[0].balance;
+                            that.booking.state = data.booking.state || '0';
 
                             if (String(data.booking.state) === '3') {
                                 that._showAlert(l('out_of_order_successfully_created', true) || l('Successfully created'));
@@ -5230,6 +5290,15 @@ var bookingModalInvoker = function ($) {
                             } else {
                                 that.booking.check_in_date = data.rooms[0].check_in_date;
                                 that.booking.check_out_date = data.rooms[0].check_out_date;
+                            }
+
+                            if (data.rooms && data.rooms[0]) {
+                                if (data.rooms[0].room_id) {
+                                    that.booking.current_room_id = data.rooms[0].room_id;
+                                }
+                                if (data.rooms[0].room_type_id) {
+                                    that.booking.current_room_type_id = data.rooms[0].room_type_id;
+                                }
                             }
 
                             that._showAlert(l("Successfully created"));
@@ -5347,6 +5416,7 @@ var bookingModalInvoker = function ($) {
         _updateBooking: function (data, msg, action = null) {
 
             var that = this;
+            var previousBooking = $.extend(true, {}, that.booking);
 
             if (!data['booking']['color']) {
                 var selectedColor = $('[name=color]').data('selected-color');
@@ -5355,25 +5425,6 @@ var bookingModalInvoker = function ($) {
                     data['booking']['color'] = selectedColor;
                 }
             }
-
-            // merge in the changes to booking
-            $.each(data.booking, function (key, value) {
-                that.booking[key] = data.booking[key];
-            });
-
-            // update availabilities of the dates prior to update
-            // why do we need it?
-
-            // var adult_count = $("select[name=adult_count]").children("option:selected").val();
-            // var children_count = $("select[name=children_count]").children("option:selected").val();
-            // var total_customer_length = parseInt(adult_count)+parseInt(children_count);
-
-            // var token_label_length = $('.tokenfield').find('.token-label').length;
-            
-            // if(token_label_length > total_customer_length){
-            //     alert('you are exceeding total customer count limit');
-            //     return false;
-            // }
 
             data.number_of_days = $("[name='number_of_days']").val();
 
@@ -5392,70 +5443,39 @@ var bookingModalInvoker = function ($) {
                     }
 
                     if (response.response == 'failure') {
-                        $('#reservation-message').modal('show');
-                        $('#reservation-message .message').html(response.message);
-                        $('.confirm-customer').on('click', function () {
-                            $('#reservation-message').modal('hide');
-                            $('#reservation-message').on('hidden.bs.modal', function () {
-                                $('body').addClass('modal-open');
-                            });
-                            return false;
-                        });
+                        that.booking = previousBooking;
+                        that._showReservationMessage(response.message || l('warning'));
+                        that.button.prop('disabled', false);
+                        return;
                     }
+
                     if (response.errors !== undefined) {
+                        that.booking = previousBooking;
                         var errorMsg = "";
                         response.errors.forEach(function (error) {
                             errorMsg += error + "\n";
                         });
-                        $('#reservation-message .message').html(errorMsg);
-                        $('#reservation-message').modal('show');
-                        $('.confirm-customer').on('click', function () {
-                            $('#reservation-message').modal('hide');
-                            return false;
-                        });
+                        that._showReservationMessage(errorMsg);
                         that.button.prop('disabled', false);
-                    } else {
-
-                        //that._closeBookingModal();
-                        //that._init();
-                        that._showAlert(msg);
-                        //that._populateEditBookingModal();
-                        that._updateModalContent();
-                        that._getLinkedGroupBookingRoomList();
-
-                        // update booking balance
-                        if (response && $.isNumeric(response.balance)) {
-                            $('.booking_balance').html(number_format(response.balance, 2, ".", ""));
-                        }
-
-                        // update availabilities of the dates after the update
-
-                        var bookingUpdatedEvent = new CustomEvent('booking_updated', { "detail" : {"reservation_id" : that.booking.booking_id, "booking_data" : data} });
-                        document.dispatchEvent(bookingUpdatedEvent);
-
-                        if (action === "early-check-out") {
-                            // update checkout date in modal in case of early checkout
-                            $('[name="check_out_date"]').val(innGrid._getLocalFormattedDate(data.rooms[0].check_out_date));
-                        }
-                        if (data.booking.state != 4 && that.groupInfo != null) {
-                            that.disableRoomBlock = '';
-                            that.pointerNone = '';
-                            that.$modalBody.find('.panel-booking').attr('style', that.disableRoomBlock);
-                            that.$modalBody.find('.panel-booking .form-inline').attr('style', that.pointerNone);
-
-                        }
-                        if ($("#current-page").val() === 'show_reservation_report_cm') {
-                            setTimeout(function () {
-                                location.reload();
-                            }, 500);
-                        }
-
-                        if (data.booking.state == 2 && innGrid.companyID == '2637'){
-                            that._makeRoomDirty(data['rooms'][0]['room_id']);
-                        }
+                        return;
                     }
 
+                    that._applyBookingUpdateSuccess(data, msg, action);
+
+                    // update booking balance
+                    if (response && $.isNumeric(response.balance)) {
+                        $('.booking_balance').html(number_format(response.balance, 2, ".", ""));
+                    }
+
+                    // update availabilities of the dates after the update
+                    var bookingUpdatedEvent = new CustomEvent('booking_updated', { "detail" : {"reservation_id" : that.booking.booking_id, "booking_data" : data} });
+                    document.dispatchEvent(bookingUpdatedEvent);
+
                     if (innGrid.reloadBookings) innGrid.reloadBookings();
+                },
+                error: function () {
+                    that.booking = previousBooking;
+                    that.button.prop('disabled', false);
                 }
             });
         },
@@ -5481,50 +5501,36 @@ var bookingModalInvoker = function ($) {
                     }
 
                     if (response.response == 'failure') {
-                        $('#reservation-message').modal('show');
-                        $('#reservation-message .message').html(response.message);
-                        $('.confirm-customer').on('click', function () {
-                            $('#reservation-message').modal('hide');
-                            $('#reservation-message').on('hidden.bs.modal', function () {
-                                $('body').addClass('modal-open');
-                            });
-                            return false;
-                        });
+                        that._showReservationMessage(response.message || l('warning'));
+                        return;
                     }
                     if (response.errors !== undefined) {
                         var errorMsg = "";
                         response.errors.forEach(function (error) {
                             errorMsg += error + "\n";
                         });
-//                        alert(errorMsg);
-                        $('#reservation-message .message').html(errorMsg);
-                        $('#reservation-message').modal('show');
-                        $('.confirm-customer').on('click', function () {
-                            $('#reservation-message').modal('hide');
-                            return false;
-                        });
-                    } else {
+                        that._showReservationMessage(errorMsg);
+                        return;
+                    }
 
-                        that._showAlert(msg);
+                    that._showAlert(msg);
 
-                        // update booking balance
-                        if (response && $.isNumeric(response.balance)) {
-                            $('.booking_balance').html(number_format(response.balance, 2, ".", ""));
-                        }
+                    // update booking balance
+                    if (response && $.isNumeric(response.balance)) {
+                        $('.booking_balance').html(number_format(response.balance, 2, ".", ""));
+                    }
 
-                        // update availabilities of the dates after the update
+                    // update availabilities of the dates after the update
+                    var bookingUpdatedEvent = new CustomEvent('booking_updated', { "detail" : {"reservation_id" : bookingId, "booking_data" : data} });
+                    document.dispatchEvent(bookingUpdatedEvent);
 
-                        var bookingUpdatedEvent = new CustomEvent('booking_updated', { "detail" : {"reservation_id" : bookingId, "booking_data" : data} });
-                        document.dispatchEvent(bookingUpdatedEvent);
-
-                        that._getLinkedGroupBookingRoomList();
-                        if (bookingId == that.booking.booking_id && cancelledTrue != '') {
-                            that.$modalBody.find("[name='state']").val('4');
-                            that.disableRoomBlock = 'cursor:not-allowed;background:#f2f2f2'; // disable room block section that is cancelled
-                            that.pointerNone = 'pointer-events:none';
-                            that.$modalBody.find('.panel-booking').attr('style', that.disableRoomBlock);
-                            that.$modalBody.find('.panel-booking .form-inline').attr('style', that.pointerNone);
-                        }
+                    that._getLinkedGroupBookingRoomList();
+                    if (bookingId == that.booking.booking_id && cancelledTrue != '') {
+                        that.$modalBody.find("[name='state']").val('4');
+                        that.disableRoomBlock = 'cursor:not-allowed;background:#f2f2f2'; // disable room block section that is cancelled
+                        that.pointerNone = 'pointer-events:none';
+                        that.$modalBody.find('.panel-booking').attr('style', that.disableRoomBlock);
+                        that.$modalBody.find('.panel-booking .form-inline').attr('style', that.pointerNone);
                     }
 
                     if (innGrid.reloadBookings) innGrid.reloadBookings();
@@ -5760,9 +5766,11 @@ var bookingModalInvoker = function ($) {
                     $actions = [
                         this.$allActions.showInvoice,
                         this.$allActions.guestRoomMove,
-                        this.$allActions.roomExchange,
                         this.$allActions.unassignRoom,
                     ];
+                    if (that._isCheckedInBooking() && that._getAssignedRoomId()) {
+                        $actions.splice(2, 0, this.$allActions.roomExchange);
+                    }
                     if (that.groupInfo !== null) {
                         $actions.push(this.$allActions.openGroupInvoice);
                         $actions.push(this.$allActions.manageGroupHub);
@@ -6009,6 +6017,35 @@ var bookingModalInvoker = function ($) {
                 $.fn.openBookingModal({id: that.booking.booking_id});
             }
         },
+        _getAssignedRoomId: function () {
+            var booking = this.booking || {};
+            if (booking.current_room_id && String(booking.current_room_id) !== '0') {
+                return String(booking.current_room_id);
+            }
+
+            var blocks = booking.booking_blocks || [];
+            for (var i = blocks.length - 1; i >= 0; i--) {
+                if (blocks[i].room_id && String(blocks[i].room_id) !== '0') {
+                    return String(blocks[i].room_id);
+                }
+            }
+
+            if (this.$modalBody) {
+                var selectedRoomId = this.$modalBody.find('[name="room_id"]').val();
+                if (selectedRoomId && String(selectedRoomId) !== '0') {
+                    return String(selectedRoomId);
+                }
+            }
+
+            return null;
+        },
+        _isCheckedInBooking: function () {
+            var state = this.booking && this.booking.state;
+            if (state === undefined || state === null || state === '') {
+                state = $("[name='state']").val();
+            }
+            return parseInt(state, 10) === 1;
+        },
         _openGuestRoomMoveDialog: function () {
             var that = this;
             if (!that.booking || !that.booking.booking_id) {
@@ -6109,14 +6146,27 @@ var bookingModalInvoker = function ($) {
             if (!that.booking || !that.booking.booking_id) {
                 return;
             }
+            if (!that._isCheckedInBooking()) {
+                alert(l('room_exchange_inhouse_only'));
+                return;
+            }
+            if (!that._getAssignedRoomId()) {
+                alert(l('room_exchange_requires_assigned_rooms'));
+                return;
+            }
             $.post(getBaseURL() + 'booking/get_room_exchange_candidates_AJAX', {
                 booking_id: that.booking.booking_id
             }, function (data) {
-                if (!data.success || !data.candidates || !data.candidates.length) {
-                    alert(l('room_exchange_inhouse_only'));
+                if (!data.success) {
+                    alert(data.message || l('room_exchange_inhouse_only'));
+                    return;
+                }
+                if (!data.candidates || !data.candidates.length) {
+                    alert(data.message || l('room_exchange_no_candidates'));
                     return;
                 }
                 var $select = $('<select class="form-control" id="room-exchange-target"/>');
+                $select.append($('<option/>', {value: '', text: l('please_select')}));
                 $.each(data.candidates, function (i, row) {
                     var label = (row.room_name ? row.room_name + ' — ' : '') +
                         (row.customer_name || ('#' + row.booking_id));
@@ -6128,6 +6178,7 @@ var bookingModalInvoker = function ($) {
                     $('<p/>').append($('<label/>', {text: l('room_exchange_with')})).append($select)
                 );
                 $('#reservation-message').find('.confirm-customer[flag=ok]').html(l('Save'));
+                $('#reservation-message').find('.confirm-customer[flag=cancel]').removeClass('hidden');
                 $('#reservation-message').modal('show');
 
                 $('.confirm-customer').off('click.roomExchange').on('click.roomExchange', function () {
@@ -6138,6 +6189,7 @@ var bookingModalInvoker = function ($) {
                     }
                     var otherId = $('#room-exchange-target').val();
                     if (!otherId) {
+                        alert(l('please_select'));
                         return false;
                     }
                     $.post(getBaseURL() + 'booking/room_exchange_AJAX', {
@@ -6145,6 +6197,9 @@ var bookingModalInvoker = function ($) {
                         exchange_booking_id: otherId
                     }, function (response) {
                         $('#reservation-message').modal('hide');
+                        if (response && response.success && response.message) {
+                            alert(response.message);
+                        }
                         that._reloadAfterRoomOperation(response);
                     }, 'json');
                     return false;

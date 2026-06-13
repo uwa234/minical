@@ -134,8 +134,8 @@ trait Booking_room_operations_trait
             empty($booking_a) || empty($booking_b) ||
             (int) $booking_a['company_id'] !== (int) $this->company_id ||
             (int) $booking_b['company_id'] !== (int) $this->company_id ||
-            (int) $booking_a['state'] !== INHOUSE ||
-            (int) $booking_b['state'] !== INHOUSE
+            (int) $booking_a['state'] !== (int) INHOUSE ||
+            (int) $booking_b['state'] !== (int) INHOUSE
         ) {
             return array('success' => false, 'message' => l('room_exchange_inhouse_only', true));
         }
@@ -154,27 +154,75 @@ trait Booking_room_operations_trait
             return array('success' => false, 'message' => l('room_exchange_same_room', true));
         }
 
-        $this->db->trans_start();
-
-        $unassign_a = $this->_unassign_guest_room($booking_id_a);
-        if (empty($unassign_a['success'])) {
-            $this->db->trans_rollback();
-            return $unassign_a;
+        $new_room_for_a = $this->Room_model->get_room($room_b);
+        $new_room_for_b = $this->Room_model->get_room($room_a);
+        if (empty($new_room_for_a) || empty($new_room_for_b)) {
+            return array('success' => false, 'message' => l('Warning: Selected cannot be modified', true));
         }
 
-        $move_b = $this->_move_guest_room($booking_id_b, $room_a, array('update_rates' => true));
+        $check_out_a = date('Y-m-d', strtotime($block_a['check_out_date']));
+        $check_out_b = date('Y-m-d', strtotime($block_b['check_out_date']));
+
+        $this->db->trans_start();
+
+        $move_b = $this->_apply_room_id_change_to_booking_blocks(
+            $booking_id_b,
+            $booking_b,
+            $block_b,
+            $room_a,
+            (int) $new_room_for_b['room_type_id'],
+            $check_out_b
+        );
         if (empty($move_b['success'])) {
             $this->db->trans_rollback();
             return $move_b;
         }
 
-        $move_a = $this->_move_guest_room($booking_id_a, $room_b, array('update_rates' => true));
+        $block_a = $this->Booking_room_history_model->get_latest_booking_room_history($booking_id_a);
+        $move_a = $this->_apply_room_id_change_to_booking_blocks(
+            $booking_id_a,
+            $booking_a,
+            $block_a,
+            $room_b,
+            (int) $new_room_for_a['room_type_id'],
+            $check_out_a
+        );
         if (empty($move_a['success'])) {
             $this->db->trans_rollback();
             return $move_a;
         }
 
+        $this->_apply_folio_rates_after_room_change(
+            $booking_id_b,
+            $room_b,
+            $room_a,
+            (int) $new_room_for_b['room_type_id'],
+            null,
+            $this->selling_date,
+            $check_out_b
+        );
+        $this->_apply_folio_rates_after_room_change(
+            $booking_id_a,
+            $room_a,
+            $room_b,
+            (int) $new_room_for_a['room_type_id'],
+            null,
+            $this->selling_date,
+            $check_out_a
+        );
+
+        $this->Booking_model->update_booking_balance($booking_id_a);
+        $this->Booking_model->update_booking_balance($booking_id_b);
+
         $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            return array('success' => false, 'message' => l('Warning: Selected cannot be modified', true));
+        }
+
+        $balance_a = $this->Booking_model->get_booking($booking_id_a);
+        $balance_b = $this->Booking_model->get_booking($booking_id_b);
+        $return_type = $this->is_total_balance_include_forecast ? 'balance' : 'balance_without_forecast';
 
         $this->_create_booking_log(
             $booking_id_a,
@@ -188,8 +236,12 @@ trait Booking_room_operations_trait
         return array(
             'success' => true,
             'message' => l('room_exchange_success', true),
-            'balance_a' => isset($move_a['balance']) ? $move_a['balance'] : null,
-            'balance_b' => isset($move_b['balance']) ? $move_b['balance'] : null,
+            'warning' => trim(
+                (isset($move_a['warning']) ? $move_a['warning'] : '') . ' ' .
+                (isset($move_b['warning']) ? $move_b['warning'] : '')
+            ),
+            'balance_a' => isset($balance_a[$return_type]) ? $balance_a[$return_type] : null,
+            'balance_b' => isset($balance_b[$return_type]) ? $balance_b[$return_type] : null,
         );
     }
 
