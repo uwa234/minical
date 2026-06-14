@@ -315,27 +315,19 @@ innGrid.createRate = function() {
 	$(".modifiable").each(function() {
             
 		var fieldname = $(this).prop("name");
+		var inputType = $(this).attr('type');
 
-        //var is_modified = $(this).parents(".input-group").find(".modified");
-
-		/*if (is_modified.is(':checked'))
-		{
+		if (inputType === 'radio') {
+			if (rateArray[fieldname] !== undefined) {
+				return;
+			}
+			var checkedRadio = $('input[name="' + fieldname + '"]:checked');
+			if (checkedRadio.length) {
+				rateArray[fieldname] = checkedRadio.val();
+			}
+		} else {
 			rateArray[fieldname] = $(this).val() ? $(this).val() : 'null';
 		}
-		else
-		{
-			rateArray[fieldname] = 'null';
-		}
-		*/
-      //  rateArray[fieldname] = $(this).val() ? $(this).val() : 'null';
-        var setValue = $('input[name='+fieldname+']:checked').val();
-        if(setValue){
-            rateArray[fieldname] = setValue;
-        }
-        else
-        {
-            rateArray[fieldname] = $(this).val() ? $(this).val() : 'null';
-        }
 
 	});
     $(".modifiable_2").each(function() {
@@ -447,26 +439,19 @@ innGrid.createSuppliedRate = function() {
 	$(".modifiable").each(function() {
             
 		var fieldname = $(this).prop("name");
+		var inputType = $(this).attr('type');
 
-    /*    var is_modified = $(this).parents(".input-group").find(".modified");
-
-		if (is_modified.is(':checked'))
-		{
+		if (inputType === 'radio') {
+			if (rateArray[fieldname] !== undefined) {
+				return;
+			}
+			var checkedRadio = $('input[name="' + fieldname + '"]:checked');
+			if (checkedRadio.length) {
+				rateArray[fieldname] = checkedRadio.val();
+			}
+		} else {
 			rateArray[fieldname] = $(this).val() ? $(this).val() : 'null';
 		}
-		else
-		{
-			rateArray[fieldname] = 'null';
-		}
-                */
-               var setValue = $('input[name='+fieldname+']:checked').val();
-                if(setValue){
-                    rateArray[fieldname] = setValue;
-                }
-                else
-                {
-                    rateArray[fieldname] = $(this).val() ? $(this).val() : 'null';
-                }
 
 	});
     console.log(rateArray);

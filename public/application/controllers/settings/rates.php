@@ -660,13 +660,13 @@ class Rates extends MY_Controller
                     foreach ($rate_array[$key] as $k=>$val)
                     {
                         if($tab_identification == 1){
-                            $apply_mon = $this->input->post($k . '_apply_change');
-                            $apply_tue = $this->input->post($k . '_apply_change');
-                            $apply_wed = $this->input->post($k . '_apply_change');
-                            $apply_thu = $this->input->post($k . '_apply_change');
-                            $apply_fri = $this->input->post($k . '_apply_change');
-                            $apply_sat = $this->input->post($k . '_apply_change');
-                            $apply_sun = $this->input->post($k . '_apply_change');
+                            $apply_change = $this->input->post($k . '_apply_change');
+
+                            if($apply_change == 1){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_change != 2 && $val != 'null' && $val !== '' && $val !== false){
+                                $rate_data[$k] = $val;
+                            }
                         }else{
                             $apply_mon = $this->input->post($k . '_apply_change_mon');
                             $apply_tue = $this->input->post($k . '_apply_change_tue');
@@ -675,71 +675,64 @@ class Rates extends MY_Controller
                             $apply_fri = $this->input->post($k . '_apply_change_fri');
                             $apply_sat = $this->input->post($k . '_apply_change_sat');
                             $apply_sun = $this->input->post($k . '_apply_change_sun');
-                        }
 
+                            if($apply_mon==1 && $day_string == 'monday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_mon!=2 && $day_string == 'monday'){
 
-                        if($apply_mon==1 && $day_string == 'monday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_mon!=2 && $day_string == 'monday'){
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
+                            }elseif($apply_tue==1 && $day_string == 'tuesday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_tue!=2 && $day_string == 'tuesday'){
 
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
+                            }elseif($apply_wed==1 && $day_string == 'wednesday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_wed!=2 && $day_string == 'wednesday'){
+
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
+                            }elseif($apply_thu==1 && $day_string == 'thursday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_thu!=2 && $day_string == 'thursday'){
+
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
+                            }elseif($apply_fri==1 && $day_string == 'friday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_fri!=2 && $day_string == 'friday'){
+
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
+                            }elseif($apply_sat==1 && $day_string == 'saturday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_sat!=2 && $day_string == 'saturday'){
+
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
+                            }elseif($apply_sun==1 && $day_string == 'sunday'){
+                                $rate_data[$k] = 'null';
+                            }elseif($apply_sun!=2 && $day_string == 'sunday'){
+
+                                if($val != 'null')
+                                {
+                                    $rate_data[$k] = $val;
+                                }
                             }
-                        }elseif($apply_tue==1 && $day_string == 'tuesday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_tue!=2 && $day_string == 'tuesday'){
-
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                        }elseif($apply_wed==1 && $day_string == 'wednesday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_wed!=2 && $day_string == 'wednesday'){
-
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                        }elseif($apply_thu==1 && $day_string == 'thursday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_thu!=2 && $day_string == 'thursday'){
-
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                        }elseif($apply_fri==1 && $day_string == 'friday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_fri!=2 && $day_string == 'friday'){
-
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                        }elseif($apply_sat==1 && $day_string == 'saturday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_sat!=2 && $day_string == 'saturday'){
-
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                        }elseif($apply_sun==1 && $day_string == 'sunday'){
-                            $rate_data[$k] = 'null';
-                        }elseif($apply_sun!=2 && $day_string == 'sunday'){
-
-                            if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                        }else{
-                           /* if($val != 'null')
-                            {
-                                $rate_data[$k] = $val;
-                            }
-                           */
                         }
                     }
 
@@ -993,111 +986,18 @@ class Rates extends MY_Controller
     }
 
     function format_general_rate_plan($rate_data_variables){
-       // print_r($rate_data_variables);die();
-        $rate_array = array();
-        $mon_array = array();
-        $tue_array = array();
-        $wed_array = array();
-        $thu_array = array();
-        $fri_array = array();
-        $sat_array = array();
-        $sun_array = array();
+        $general_array = array();
 
         foreach ($rate_data_variables as $var)
         {
-            if($var =='rate_plan_id') {
-                $rate_data[$var] = $this->input->post($var);
-            }
-            else{
-                $mon = $this->input->post($var);
-                $tue = $this->input->post($var);
-                $wed = $this->input->post($var);
-                $thu = $this->input->post($var);
-                $fri = $this->input->post($var);
-                $sat = $this->input->post($var);
-                $sun = $this->input->post($var);
-
-                $mon_array[$var] = $mon;
-                $tue_array[$var] = $tue;
-                $wed_array[$var] = $wed;
-                $thu_array[$var] = $thu;
-                $fri_array[$var] = $fri;
-                $sat_array[$var] = $sat;
-                $sun_array[$var] = $sun;
-                /*
-                                $apply_mon = $this->input->post($var . '_apply_change_mon');
-                                $apply_tue = $this->input->post($var . '_apply_change_tue');
-                                $apply_wed = $this->input->post($var . '_apply_change_wed');
-                                $apply_thu = $this->input->post($var . '_apply_change_thu');
-                                $apply_fri = $this->input->post($var . '_apply_change_fri');
-                                $apply_sat = $this->input->post($var . '_apply_change_sat');
-                                $apply_sun = $this->input->post($var . '_apply_change_sun');
-                                if($apply_mon == 1){
-                                    $mon_array[$var] = 'null';
-                                }elseif($apply_mon != 2){
-                                    $mon_array[$var] = $mon;
-                                }
-                                //$mon_array[$var] = $mon;
-                                if($apply_tue == 1){
-                                    $tue_array[$var] = 'null';
-                                }elseif($apply_tue != 2){
-                                    $tue_array[$var] = $tue;
-                                }
-                                if($apply_wed == 1){
-                                    $wed_array[$var] = 'null';
-                                }elseif($apply_wed != 2){
-                                    $wed_array[$var] = $wed;
-                                }
-                                if($apply_thu== 1){
-                                    $thu_array[$var] = 'null';
-                                }elseif($apply_thu!= 2){
-                                    $thu_array[$var] = $thu;
-                                }
-                                if($apply_fri == 1){
-                                    $fri_array[$var] = 'null';
-                                }elseif($apply_fri != 2){
-                                    $fri_array[$var] = $fri;
-                                }
-                                if($apply_sat == 1){
-                                    $sat_array[$var] = 'null';
-                                }elseif($apply_sat != 2){
-                                    $sat_array[$var] = $sat;
-                                }
-                                if($apply_sun == 1){
-                                    $sun_array[$var] = 'null';
-                                }elseif($apply_sun != 2){
-                                    $sun_array[$var] = $sun;
-                                }
-
-                */
-
-
-                foreach($rate_array as $key=>$rate){
-
-                }
+            if ($var != 'rate_plan_id') {
+                $general_array[$var] = $this->input->post($var);
             }
         }
 
-        $rate_array['monday'] = $mon_array;
-        $rate_array['tuesday'] = $tue_array;
-        $rate_array['wednesday'] = $wed_array;
-        $rate_array['thursday'] = $thu_array;
-        $rate_array['friday'] = $fri_array;
-        $rate_array['saturday'] = $sat_array;
-        $rate_array['sunday'] = $sun_array;
+        $general_array['days'] = 'monday,tuesday,wednesday,thursday,friday,saturday,sunday';
 
-        $unique_array = array();
-        foreach ($rate_array as $key=>$element)
-        {
-            if (in_array($element, $unique_array)) {
-                //
-            }
-            else{
-                $unique_array[$key] = $element;
-                $unique_array[$key]['days'] = $key;
-            }
-        }
-        return $unique_array;
+        return array('all_days' => $general_array);
     }
     
 	function edit_rates($rate_plan_id="")
