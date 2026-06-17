@@ -226,6 +226,10 @@ function company_billing_lockout_reason($company)
         return 'trial_ended';
     }
 
+    if (trim((string) $company['subscription_state']) === 'unpaid') {
+        return 'unpaid';
+    }
+
     $plan_ctx = build_paid_plan_expiry_context($company);
     if ($plan_ctx && !empty($plan_ctx['is_past_grace'])) {
         return 'plan_past_grace';
@@ -255,18 +259,97 @@ function company_requires_trial_lockout($company, $user_id = null, $user_email =
  */
 function billing_lockout_messages($reason, $billing_denied = false)
 {
-    if ($reason === 'plan_past_grace') {
+    if ($billing_denied) {
         return array(
-            'short' => 'Your subscription expired and the grace period has ended. Renew to restore access.',
-            'owner' => 'Your subscription expired and the grace period has ended. Renew your plan below to restore access.',
-            'employee' => 'Your subscription expired and the grace period has ended. Please ask your account owner to renew the subscription.',
+            'short' => 'Your subscription has expired. Please ask your account owner to make a payment to restore access.',
+            'owner' => 'Your subscription has expired. You need to make a payment before you can access your account.',
+            'employee' => 'Your subscription has expired. Please ask your account owner to make a payment to restore access.',
         );
     }
 
     return array(
-        'short' => 'Your trial has ended. Choose a plan to restore access.',
-        'owner' => 'Your trial has ended. Choose a plan below to restore access.',
-        'employee' => 'Your trial has ended. Please ask your account owner to renew the subscription.',
+        'short' => 'Your subscription has expired. Renew to restore access.',
+        'owner' => 'Your subscription has expired. You need to make a payment before you can access your account.',
+        'employee' => 'Your subscription has expired. Please ask your account owner to make a payment to restore access.',
+    );
+}
+
+/**
+ * Platform admin WhatsApp number for subscription support.
+ */
+function platform_admin_whatsapp_number()
+{
+    return '2348158037123';
+}
+
+/**
+ * WhatsApp chat URL for platform admin subscription support.
+ *
+ * @param string $message Optional pre-filled message
+ */
+function platform_admin_whatsapp_url($message = '')
+{
+    $url = 'https://wa.me/' . platform_admin_whatsapp_number();
+    $message = trim((string) $message);
+    if ($message !== '') {
+        $url .= '?text=' . rawurlencode($message);
+    }
+
+    return $url;
+}
+
+/**
+ * Whether Paystack SaaS billing is configured for subscription checkout.
+ */
+function saas_paystack_configured()
+{
+    return trim((string) minical_env('PAYSTACK_SAAS_SECRET_KEY', '')) !== ''
+        || trim((string) minical_env('PAYSTACK_SECRET_KEY', '')) !== '';
+}
+
+/**
+ * Popup payload when a property must pay before using the app.
+ *
+ * @param array|null $company Row from Company_model::get_company()
+ * @param int|null $user_id
+ * @param string|null $user_role
+ * @param array|null $permissions
+ * @return array|null
+ */
+function build_subscription_lockout_popup_data($company, $user_id = null, $user_role = null, $permissions = null)
+{
+    if (!company_requires_trial_lockout($company, $user_id)) {
+        return null;
+    }
+
+    $reason = company_billing_lockout_reason($company);
+    $can_pay = user_can_manage_billing(
+        (int) $user_id,
+        isset($company['company_id']) ? (int) $company['company_id'] : 0,
+        $user_role,
+        $permissions
+    );
+    $lockout_msgs = billing_lockout_messages($reason, !$can_pay);
+
+    $room_count = isset($company['number_of_rooms_actual']) ? (int) $company['number_of_rooms_actual'] : 1;
+    if ($room_count < 1) {
+        $room_count = 1;
+    }
+
+    $tier = resolve_company_saas_tier($company, $room_count);
+    $tier_id = $tier && isset($tier['id']) ? (int) $tier['id'] : 0;
+    $tier_name = $tier && !empty($tier['name']) ? (string) $tier['name'] : '';
+
+    return array(
+        'is_blocking' => 1,
+        'message' => $can_pay ? $lockout_msgs['owner'] : $lockout_msgs['employee'],
+        'show_link' => 0,
+        'can_pay' => $can_pay ? 1 : 0,
+        'tier_id' => $tier_id,
+        'tier_name' => $tier_name,
+        'paystack_configured' => saas_paystack_configured() ? 1 : 0,
+        'whatsapp_url' => platform_admin_whatsapp_url('Hi, I need help renewing my subscription.'),
+        'state' => isset($company['subscription_state']) ? (string) $company['subscription_state'] : $reason,
     );
 }
 
@@ -321,8 +404,9 @@ function is_trial_lockout_allowed_route($controller_name, $function_name)
     $function = strtolower(trim((string) $function_name));
 
     $allowed = array(
-        'account_settings' => array('subscription', 'paystack_checkout', 'paystack_callback', 'paystack_billing_health', 'subscription_receipt'),
-        'auth' => array('logout', 'get_subscription_state_extended', 'check_for_employee_auto_logout'),
+        'dashboard' => array('index', 'analytics'),
+        'account_settings' => array('paystack_checkout', 'paystack_callback', 'paystack_billing_health', 'subscription_receipt'),
+        'auth' => array('logout', 'get_subscription_state_extended', 'check_for_employee_auto_logout', 'forbidden'),
         'menu' => array('select_hotel'),
         'properties' => array('my_properties'),
     );
@@ -339,7 +423,7 @@ function is_trial_lockout_allowed_route($controller_name, $function_name)
  */
 function trial_lockout_subscription_url()
 {
-    return base_url('account_settings/subscription');
+    return base_url('dashboard/');
 }
 
 /**
@@ -1222,7 +1306,7 @@ function should_set_subscription_conversion_date($conversion_date)
  */
 function classify_saas_subscription_payment_type($prior_payment_count)
 {
-    return ((int) $prior_payment_count) > 0 ? 'Extension' : 'New subscription';
+    return ((int) $prior_payment_count) > 0 ? 'Renewal' : 'New subscription';
 }
 
 /**

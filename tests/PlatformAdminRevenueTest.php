@@ -17,8 +17,8 @@ class PlatformAdminRevenueTest extends TestCase
     public function testPaymentTypeLabels()
     {
         $this->assertSame('New subscription', classify_saas_subscription_payment_type(0));
-        $this->assertSame('Extension', classify_saas_subscription_payment_type(1));
-        $this->assertSame('Extension', classify_saas_subscription_payment_type(3));
+        $this->assertSame('Renewal', classify_saas_subscription_payment_type(1));
+        $this->assertSame('Renewal', classify_saas_subscription_payment_type(3));
     }
 
     public function testDebtorReasonLabels()

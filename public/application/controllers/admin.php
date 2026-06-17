@@ -122,6 +122,10 @@ class Admin extends MY_Controller {
 
         $data['state_counts'] = $this->Admin_model->get_subscription_state_counts();
         $data['subscription_revenue_lifetime'] = $this->Admin_model->get_subscription_revenue_lifetime_summary();
+        $month_start = date('Y-m-01');
+        $month_end = date('Y-m-d');
+        $data['month_revenue_summary'] = $this->Admin_model->get_subscription_revenue_summary_for_range($month_start, $month_end);
+        $data['recent_subscription_payments'] = $this->Admin_model->get_recent_saas_subscription_payments(10);
         $data['mrr_estimate'] = $mrr;
         $data['arr_estimate'] = round($mrr * 12, 2);
         $data['month_saas_metrics'] = is_array($month_metrics) ? $month_metrics : array();

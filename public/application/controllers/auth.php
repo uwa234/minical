@@ -2091,93 +2091,58 @@ class Auth extends MY_Controller
     public function get_subscription_state_extended()
     {
         $this->load->model('Company_subscription_model');
-        $whitelabelinfo = $this->session->userdata('white_label_information');
-        $reply_to_email = $whitelabelinfo && isset($whitelabelinfo['support_email']) && $whitelabelinfo['support_email'] ? $whitelabelinfo['support_email'] : 'support@veurion.com';
-        $subscription = null;
-        $response     = array(
+        $response = array(
             'is_blocking' => 0,
             'message'     => '',
             'state'       => 'active',
-            'show_link'   => 0
+            'show_link'   => 0,
         );
+
         if ($this->company_id) {
-            $subscription = $this->Company_subscription_model->get_company_subscription($this->company_id);
-        }
-        
-        if ($subscription) {
-            //itodo fix this
-            $is_manual = ($subscription['payment_method'] == 'manual');
-            switch ($subscription['subscription_state']) {
-               case 'deleted':
-                case 'past_due':
-                case 'unpaid':                  
+            $company = $this->Company_model->get_company($this->company_id);
+            if ($company) {
+                $lockout_popup = build_subscription_lockout_popup_data(
+                    $company,
+                    (int) $this->user_id,
+                    $this->session->userdata('user_role'),
+                    $this->session->userdata('permissions')
+                );
+                if ($lockout_popup) {
+                    echo json_encode($lockout_popup);
+                    return;
+                }
+
+                $plan_ctx = build_paid_plan_expiry_context($company);
+                if ($plan_ctx && !empty($plan_ctx['is_in_grace'])) {
+                    $room_count = isset($company['number_of_rooms_actual']) ? (int) $company['number_of_rooms_actual'] : 1;
+                    if ($room_count < 1) {
+                        $room_count = 1;
+                    }
+                    $tier = resolve_company_saas_tier($company, $room_count);
+                    $can_pay = user_can_manage_billing(
+                        (int) $this->user_id,
+                        (int) $this->company_id,
+                        $this->session->userdata('user_role'),
+                        $this->session->userdata('permissions')
+                    );
+
                     $response = array(
                         'is_blocking' => 0,
-                        'message'     => 'Your account payment is past due. '.($is_manual
-                                ? 'Please contact '.$reply_to_email
-                                : 'Please update your payment details. '),
+                        'message'     => 'Your plan expired on ' . date('M j, Y', strtotime($plan_ctx['expiration_date']))
+                            . '. Renew within ' . (int) $plan_ctx['grace_days_remaining'] . ' day'
+                            . ((int) $plan_ctx['grace_days_remaining'] === 1 ? '' : 's')
+                            . ' to keep access.',
                         'show_link'   => 1,
-                        'state'       => $subscription['subscription_state']
+                        'can_pay' => $can_pay ? 1 : 0,
+                        'tier_id' => $tier && isset($tier['id']) ? (int) $tier['id'] : 0,
+                        'paystack_configured' => saas_paystack_configured() ? 1 : 0,
+                        'whatsapp_url' => platform_admin_whatsapp_url('Hi, I need help renewing my subscription.'),
+                        'state'       => 'grace_period',
                     );
-                    break;
-                case 'trial_ended':
-                    $response = array(
-                        'is_blocking' => 1,
-                        'message'     => 'Your free trial has ended. Choose a plan below to restore access to your account.',
-                        'show_link'   => 1,
-                        'state'       => $subscription['subscription_state']
-                    );
-                    break;
-                // case 'canceled':
-                //     $response = array(
-                //         'is_blocking' => 1,
-                //         'message'     => 'Your account is about to be suspended. '.($is_manual
-                //                 ? 'Please contact '.$reply_to_email
-                //                 : 'Please update your payment details. '),
-                //         'show_link'   => $is_manual ? 0 : 1,
-                //         'state'       => $subscription['subscription_state']
-                //     );
-                //     break;
-                // case 'suspended':
-                //     $response = array(
-                //         'is_blocking' => 1,
-                //         'message'     => 'Your account was suspended <br/> For more information please contact '.$reply_to_email,
-                //         'show_link'   => 0,
-                //         'state'       => $subscription['subscription_state']
-                //     );
-                //     break;
-            }
-
-            if ((int) $response['is_blocking'] === 0 && $this->company_id) {
-                $company = $this->Company_model->get_company($this->company_id);
-                if ($company) {
-                    $lockout_reason = company_billing_lockout_reason($company);
-                    if ($lockout_reason === 'plan_past_grace') {
-                        $lockout_msgs = billing_lockout_messages('plan_past_grace');
-                        $response = array(
-                            'is_blocking' => 1,
-                            'message'     => $lockout_msgs['owner'],
-                            'show_link'   => 1,
-                            'state'       => 'plan_past_grace',
-                        );
-                    } else {
-                        $plan_ctx = build_paid_plan_expiry_context($company);
-                        if ($plan_ctx && !empty($plan_ctx['is_in_grace'])) {
-                            $response = array(
-                                'is_blocking' => 0,
-                                'message'     => 'Your plan expired on ' . date('M j, Y', strtotime($plan_ctx['expiration_date']))
-                                    . '. Renew within ' . (int) $plan_ctx['grace_days_remaining'] . ' day'
-                                    . ((int) $plan_ctx['grace_days_remaining'] === 1 ? '' : 's')
-                                    . ' to keep access.',
-                                'show_link'   => 1,
-                                'state'       => 'grace_period',
-                            );
-                        }
-                    }
                 }
             }
         }
-        $this->session->set_flashdata('flash', 'value');
+
         echo json_encode($response);
     }
 
@@ -2272,7 +2237,7 @@ class Auth extends MY_Controller
             return true;
         }
 
-        redirect('/account_settings/subscription');
+        redirect('/dashboard/');
         return true;
     }
 

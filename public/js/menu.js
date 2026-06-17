@@ -23,29 +23,46 @@ $(function () {
     });
 
     if(window.location.href.substr(-12) != 'subscription'){ // subscription
-        setTimeout(function () {
-            $.post(
-                getBaseURL() + 'auth/get_subscription_state_extended',
-                {},
-                function (response) {
-                    //itodo fix this
-                    if(response.message){
-                        $("#dialog-update-billing").modal("show");
-                        $('#dialog-update-billing .message').html(response.message);
-
-                        if(response.show_link){ // link to page
-                            $('#dialog-update-billing a').show();
-                        }
-
-                        if(response.is_blocking){
-                            $("#dialog-update-billing").find(".close").hide();
-                        }
-                    }
-                },
-                'json'
-            );
-        },2000);
+        showSubscriptionNotice();
     }
+
+    $('body').on('click', '.js-subscription-pay-now', function () {
+        var $button = $(this);
+        var tierId = parseInt($button.data('tier-id'), 10);
+        if (!tierId) {
+            window.alert('No billing plan is available. Please contact support via WhatsApp.');
+            return;
+        }
+
+        $button.prop('disabled', true);
+        var originalText = $button.text();
+        $button.text('Redirecting...');
+
+        $.ajax({
+            url: getBaseURL() + 'account_settings/paystack_checkout',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                tier_id: tierId,
+                renewal_period: 'month'
+            }
+        }).done(function (response) {
+            if (!response || !response.success || !response.authorization_url) {
+                window.alert(response && response.error ? response.error : 'Could not start payment.');
+                return;
+            }
+            window.location.href = response.authorization_url;
+        }).fail(function (xhr) {
+            var message = 'Could not start payment.';
+            if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                message = xhr.responseJSON.error;
+            }
+            window.alert(message);
+        }).always(function () {
+            $button.prop('disabled', false);
+            $button.text(originalText);
+        });
+    });
 
     // if (is_current_user_activated == "0") {
     //     $("#dialog-verify-email-notification").modal("show");
@@ -58,6 +75,68 @@ $(function () {
     updateCountryPhoneLang();
 
 });
+
+function showSubscriptionNotice(response) {
+    if (!response) {
+        var lockoutNode = document.getElementById('subscription-lockout-data');
+        if (lockoutNode) {
+            try {
+                response = JSON.parse(lockoutNode.textContent || lockoutNode.innerText);
+            } catch (e) {
+                response = null;
+            }
+        }
+    }
+
+    if (!response || !response.message) {
+        $.post(
+            getBaseURL() + 'auth/get_subscription_state_extended',
+            {},
+            function (ajaxResponse) {
+                if (ajaxResponse && ajaxResponse.message) {
+                    renderSubscriptionNotice(ajaxResponse);
+                }
+            },
+            'json'
+        );
+        return;
+    }
+
+    renderSubscriptionNotice(response);
+}
+
+function renderSubscriptionNotice(response) {
+    var $modal = $("#dialog-update-billing");
+    if (!$modal.length || !response || !response.message) {
+        return;
+    }
+
+    $modal.find('.message').html(response.message);
+
+    var $payButton = $modal.find('.js-subscription-pay-now');
+    var $whatsappLink = $modal.find('.subscription-expired-whatsapp');
+    var canPay = parseInt(response.can_pay, 10) === 1;
+    var paystackReady = parseInt(response.paystack_configured, 10) === 1;
+    var tierId = parseInt(response.tier_id, 10);
+
+    if (canPay && paystackReady && tierId > 0) {
+        $payButton
+            .data('tier-id', tierId)
+            .show();
+    } else {
+        $payButton.hide();
+    }
+
+    if (response.whatsapp_url) {
+        $whatsappLink.attr('href', response.whatsapp_url).show();
+    }
+
+    if (parseInt(response.is_blocking, 10) === 1) {
+        $modal.find('.close').hide();
+    }
+
+    $modal.modal('show');
+}
 
 function updateCountryPhoneLang()
 {

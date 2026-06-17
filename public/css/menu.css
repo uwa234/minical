@@ -153,8 +153,33 @@ a:link#main-logo, a:visited#main-logo, a:hover#main-logo, a:active#main-logo{
 	font-weight: bold;
 }
 
-/***************************************/
-/* --- company information section --- */
+.subscription-expired-modal .modal-body {
+    text-align: center;
+}
+
+.subscription-expired-modal .message {
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.subscription-expired-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+}
+
+.subscription-expired-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.subscription-expired-whatsapp .fa-whatsapp {
+    font-size: 18px;
+}
 
 /***************************************/
 #company-info {	

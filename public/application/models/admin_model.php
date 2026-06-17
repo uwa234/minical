@@ -489,6 +489,61 @@ class Admin_model extends CI_Model {
 	}
 
 	/**
+	 * Most recent SaaS subscription payments across all tenants (platform dashboard).
+	 *
+	 * @param int $limit
+	 * @return array<int, array<string, mixed>>
+	 */
+	function get_recent_saas_subscription_payments($limit = 10)
+	{
+		$limit = max(1, min(50, (int) $limit));
+		$where = $this->_saas_subscription_charge_where();
+
+		$sql = "
+			SELECT
+				cc.company_charge_id,
+				cc.company_id,
+				CASE
+					WHEN c.company_id IS NULL THEN 'Unknown property'
+					WHEN c.is_deleted = 1 THEN CONCAT(COALESCE(NULLIF(TRIM(c.name), ''), 'Property'), ' (deleted)')
+					ELSE COALESCE(NULLIF(TRIM(c.name), ''), CONCAT('Property #', cc.company_id))
+				END AS property_name,
+				cc.amount,
+				cc.date AS paid_date,
+				cc.description AS reference,
+				(
+					SELECT COUNT(*)
+					FROM company_charge AS prior
+					WHERE prior.company_id = cc.company_id
+						AND prior.is_deleted = 0
+						AND (prior.charge_type = 'subscription' OR prior.description LIKE 'saas\\_%')
+						AND prior.date < cc.date
+				) AS prior_payment_count
+			FROM company_charge AS cc
+			LEFT JOIN company AS c ON c.company_id = cc.company_id
+			WHERE {$where}
+			ORDER BY cc.date DESC, cc.company_charge_id DESC
+			LIMIT {$limit}
+		";
+
+		$query = $this->db->query($sql);
+
+		if ($this->db->_error_message()) {
+			show_error($this->db->_error_message());
+		}
+
+		$rows = $query->result_array();
+		foreach ($rows as &$row) {
+			$row['payment_type'] = classify_saas_subscription_payment_type(
+				isset($row['prior_payment_count']) ? $row['prior_payment_count'] : 0
+			);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
 	 * Total SaaS subscription revenue in a date range.
 	 *
 	 * @param string $from_date Y-m-d

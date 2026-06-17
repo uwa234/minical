@@ -46,9 +46,10 @@ class Dashboard extends MY_Controller
             $this->session->set_userdata(array('currency_symbol' => $currency_symbol));
         }
 
-        $trial_context = build_trial_subscription_context($this->company_data);
-        $paystack_configured = trim((string) minical_env('PAYSTACK_SAAS_SECRET_KEY', '')) !== ''
-            || trim((string) minical_env('PAYSTACK_SECRET_KEY', '')) !== '';
+        $trial_context = ($this->company_subscription_state === 'trialing')
+            ? build_trial_subscription_context($this->company_data)
+            : null;
+        $paystack_configured = saas_paystack_configured();
 
         $js_files = array(
             base_url() . 'js/moment.min.js',

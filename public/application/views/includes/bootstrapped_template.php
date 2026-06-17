@@ -357,25 +357,40 @@ data-keyboard="false" style="z-index: 9999;"
 <div class="modal fade" id="dialog-update-billing" data-backdrop="static" 
    data-keyboard="false" 
    >
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content subscription-expired-modal">
       <div class="modal-header">
         <h4 class="modal-title">
             <?php echo l('Subscription Notice', true); ?>
-            <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button> -->
         </h4>        
       </div>
       <div class="modal-body">
-          <?php echo l('Dear customer', true); ?>, 
         <p class="message"></p>
+        <div class="subscription-expired-actions">
+          <button type="button" class="btn btn-primary js-subscription-pay-now" style="display: none;">
+            Pay Now
+          </button>
+          <a class="btn btn-success subscription-expired-whatsapp" href="<?php echo htmlspecialchars(platform_admin_whatsapp_url('Hi, I need help renewing my subscription.'), ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" title="Chat on WhatsApp">
+            <i class="fa fa-whatsapp"></i> WhatsApp Support
+          </a>
+        </div>
       </div>
-      <?php if (user_can_manage_billing($this->user_id, $this->company_id, $this->session->userdata('user_role'), $this->session->userdata('permissions'))): ?>
-      <div class="modal-footer">
-        <a class="btn btn-success" href="<?php echo base_url(); ?>account_settings/subscription"><?php echo l('Update payment details', true); ?></a>
-      </div>
-      <?php endif; ?>
-      
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->
 </div><!-- /.modal -->
+<?php
+if (!empty($this->trial_lockout_active) && !empty($this->company_data)) {
+    $lockout_popup = build_subscription_lockout_popup_data(
+        $this->company_data,
+        isset($this->user_id) ? (int) $this->user_id : 0,
+        $this->session->userdata('user_role'),
+        $this->session->userdata('permissions')
+    );
+    if ($lockout_popup) {
+        echo '<script type="application/json" id="subscription-lockout-data">'
+            . json_encode($lockout_popup, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
+            . '</script>';
+    }
+}
+?>
 </html>

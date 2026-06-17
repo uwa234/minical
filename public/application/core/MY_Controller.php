@@ -429,7 +429,7 @@ class MY_Controller extends CI_Controller {
                     exit;
                 }
 
-                redirect('/account_settings/subscription');
+                redirect('/dashboard/');
                 exit;
             }
 

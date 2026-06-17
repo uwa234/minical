@@ -127,4 +127,34 @@ class SubscriptionRenewalTest extends TestCase
         $this->assertNull(company_billing_lockout_reason($company));
         putenv('IS_HOSTED_PROD_SERVICE');
     }
+
+    public function testUnpaidStatusTriggersLockoutReason()
+    {
+        putenv('IS_HOSTED_PROD_SERVICE=1');
+        $company = array(
+            'subscription_state' => 'unpaid',
+            'expiration_date' => gmdate('Y-m-d', strtotime('-5 days')),
+        );
+
+        $this->assertSame('unpaid', company_billing_lockout_reason($company));
+        putenv('IS_HOSTED_PROD_SERVICE');
+    }
+
+    public function testTrialEndedStatusTriggersLockoutReason()
+    {
+        putenv('IS_HOSTED_PROD_SERVICE=1');
+        $company = array(
+            'subscription_state' => 'trial_ended',
+        );
+
+        $this->assertSame('trial_ended', company_billing_lockout_reason($company));
+        putenv('IS_HOSTED_PROD_SERVICE');
+    }
+
+    public function testPlatformAdminWhatsappUrl()
+    {
+        $url = platform_admin_whatsapp_url('Hello');
+        $this->assertStringContainsString('2348158037123', $url);
+        $this->assertStringContainsString('text=Hello', $url);
+    }
 }

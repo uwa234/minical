@@ -4,6 +4,12 @@ $format_amount = function ($amount) {
     return format_saas_price_amount($amount);
 };
 $lifetime_total = isset($subscription_revenue_lifetime['total_revenue']) ? (float) $subscription_revenue_lifetime['total_revenue'] : 0;
+$lifetime_payment_count = isset($subscription_revenue_lifetime['payment_count']) ? (int) $subscription_revenue_lifetime['payment_count'] : 0;
+$month_revenue_total = isset($month_revenue_summary['total_revenue']) ? (float) $month_revenue_summary['total_revenue'] : 0;
+$month_payment_count = isset($month_revenue_summary['payment_count']) ? (int) $month_revenue_summary['payment_count'] : 0;
+$recent_subscription_payments = isset($recent_subscription_payments) && is_array($recent_subscription_payments)
+    ? $recent_subscription_payments
+    : array();
 $mrr = isset($mrr_estimate) ? (float) $mrr_estimate : 0;
 $arr = isset($arr_estimate) ? (float) $arr_estimate : ($mrr * 12);
 $month_metrics = isset($month_saas_metrics) && is_array($month_saas_metrics) ? $month_saas_metrics : array();
@@ -52,7 +58,20 @@ $webhooks_configured = !empty($comm_summary['webhooks_configured']);
     <div class="pa-stat-card pa-stat-card--warning">
         <div class="pa-stat-label">Lifetime revenue</div>
         <div class="pa-stat-value pa-stat-value-sm"><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($lifetime_total); ?></div>
-        <div class="pa-stat-sub">Cash collected · all time</div>
+        <div class="pa-stat-sub">
+            Cash collected · all time
+            <?php if ($lifetime_payment_count > 0) { ?>
+                · <?php echo (int) $lifetime_payment_count; ?> payment<?php echo $lifetime_payment_count === 1 ? '' : 's'; ?>
+            <?php } ?>
+        </div>
+    </div>
+    <div class="pa-stat-card pa-stat-card--success">
+        <div class="pa-stat-label">Revenue this month</div>
+        <div class="pa-stat-value pa-stat-value-sm"><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount($month_revenue_total); ?></div>
+        <div class="pa-stat-sub">
+            <?php echo (int) $month_payment_count; ?> payment<?php echo $month_payment_count === 1 ? '' : 's'; ?>
+            · <?php echo htmlspecialchars(date('F Y'), ENT_QUOTES, 'UTF-8'); ?>
+        </div>
     </div>
     <div class="pa-stat-card pa-stat-card--accent">
         <div class="pa-stat-label">MRR</div>
@@ -80,6 +99,57 @@ $webhooks_configured = !empty($comm_summary['webhooks_configured']);
             <?php echo $debtor_count; ?> propert<?php echo $debtor_count === 1 ? 'y' : 'ies'; ?> requiring payment
             · <a href="<?php echo base_url('admin/debtors'); ?>">View list</a>
         </div>
+    </div>
+</div>
+
+<div class="pa-card" style="margin-bottom: 24px;">
+    <div class="pa-card-header pa-page-header-row">
+        <div>
+            <h2>Recent subscription payments</h2>
+            <p style="margin: 8px 0 0; font-size: 13px; color: var(--pa-muted, #64748b);">Latest renewals and new subscriptions collected via Paystack.</p>
+        </div>
+        <a class="pa-btn pa-btn-secondary pa-btn-sm" href="<?php echo base_url('admin/revenue'); ?>">
+            View full revenue report
+        </a>
+    </div>
+    <div class="pa-card-body pa-table-wrap">
+        <table class="pa-table">
+            <thead>
+                <tr>
+                    <th>Paid date</th>
+                    <th>Property</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Reference</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($recent_subscription_payments)) { ?>
+                    <tr>
+                        <td colspan="5" class="pa-empty" style="padding: 32px;">No subscription payments recorded yet</td>
+                    </tr>
+                <?php } else {
+                    foreach ($recent_subscription_payments as $payment) { ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars((string) $payment['paid_date'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td>
+                                <a href="<?php echo base_url('admin/property_detail/' . (int) $payment['company_id']); ?>">
+                                    <strong><?php echo htmlspecialchars((string) $payment['property_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                                </a>
+                                <span style="display: block; font-size: 12px; color: var(--pa-muted, #64748b);">ID <?php echo (int) $payment['company_id']; ?></span>
+                            </td>
+                            <td>
+                                <span class="pa-badge pa-badge-<?php echo ((string) $payment['payment_type'] === 'Renewal') ? 'active' : 'trialing'; ?>">
+                                    <?php echo htmlspecialchars((string) $payment['payment_type'], ENT_QUOTES, 'UTF-8'); ?>
+                                </span>
+                            </td>
+                            <td><strong><?php echo htmlspecialchars($currency_symbol, ENT_QUOTES, 'UTF-8'); ?><?php echo $format_amount((float) $payment['amount']); ?></strong></td>
+                            <td style="font-size: 12px; word-break: break-all;"><?php echo htmlspecialchars((string) $payment['reference'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        </tr>
+                    <?php }
+                } ?>
+            </tbody>
+        </table>
     </div>
 </div>
 

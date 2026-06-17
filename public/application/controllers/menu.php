@@ -96,19 +96,21 @@ class Menu extends MY_Controller
 	 	else 
 		{
             if (company_requires_trial_lockout($company, $this->user_id, $this->user_email)) {
-                if (user_can_manage_billing(
+                if (!user_can_manage_billing(
                     $this->user_id,
                     $this->company_id,
                     $this->session->userdata('user_role'),
                     $this->session->userdata('permissions')
                 )) {
-                    redirect('/account_settings/subscription');
-                } else {
+                    $lockout_reason = company_billing_lockout_reason($company);
+                    $lockout_msgs = billing_lockout_messages($lockout_reason, true);
                     $this->session->set_flashdata(
                         'flash_warning_message',
-                        'Your trial has ended. Please ask your account owner to renew the subscription.'
+                        $lockout_msgs['employee']
                     );
                     redirect('/auth/forbidden');
+                } else {
+                    redirect('/dashboard/');
                 }
                 return;
             }
