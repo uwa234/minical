@@ -676,7 +676,7 @@
     max-height: min(78vh, 920px);
 }
 
-.booking-calendar-shell--scrollable .fc-datagrid-body .fc-scroller,
+.booking-calendar-shell--scrollable .fc-resource-area .fc-scroller,
 .booking-calendar-shell--scrollable .fc-time-area .fc-scroller,
 .booking-calendar-shell--scrollable .fc-body .fc-scroller {
     max-height: min(78vh, 920px);
@@ -684,15 +684,32 @@
     overflow-x: auto !important;
 }
 
-.booking-calendar-shell--scrollable .fc-datagrid-body tr,
+/* FC v4 uses .fc-resource-area (not .fc-datagrid-body). Row heights must match
+   on both sides or booking bars drift relative to room labels. */
+.booking-calendar-shell--scrollable .fc-resource-area.fc-widget-content tr,
 .booking-calendar-shell--scrollable .fc-time-area .fc-rows tr {
     height: 40px !important;
 }
 
 .booking-calendar-shell--scrollable .fc-resource-area.fc-widget-content td {
-    padding-top: 4px !important;
-    padding-bottom: 4px !important;
+    height: 40px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     font-size: 0.75rem;
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+
+.booking-calendar-shell--scrollable .fc-resource-area .fc-cell-content {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 40px;
+    box-sizing: border-box;
+}
+
+.booking-calendar-shell--scrollable .fc-time-area .fc-rows td > div {
+    height: 40px !important;
+    box-sizing: border-box;
 }
 
 .booking-calendar-shell--scrollable .fc-event-container .fc-event {
