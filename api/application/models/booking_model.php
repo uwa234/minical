@@ -560,6 +560,99 @@ class Booking_model extends CI_Model {
 		$result = $q->result_array();		
 		return $result;
     }
+
+    /**
+     * Find currently in-house bookings for a room number (POS room charge lookup).
+     *
+     * @param int    $company_id
+     * @param string $room_name
+     * @param string $selling_date Y-m-d
+     * @return array
+     */
+    function get_inhouse_by_room_name($company_id, $room_name, $selling_date = null)
+    {
+        return $this->get_inhouse_guests($company_id, array(
+            'room_name' => $room_name,
+            'selling_date' => $selling_date,
+        ));
+    }
+
+    /**
+     * List currently in-house guests for a property (POS "post to room" picker).
+     *
+     * Optional filters:
+     * - room_name: exact room match
+     * - search: partial match on room_name or customer_name
+     * - selling_date: hotel selling date (defaults to company selling date)
+     *
+     * @param int   $company_id
+     * @param array $filters
+     * @return array
+     */
+    function get_inhouse_guests($company_id, $filters = array())
+    {
+        $company_id = (int) $company_id;
+        $selling_date = isset($filters['selling_date']) ? $filters['selling_date'] : null;
+        if ($selling_date === null || $selling_date === '' || $selling_date === false) {
+            $selling_date = $this->get_selling_date($company_id);
+        }
+        if (!$selling_date) {
+            $selling_date = date('Y-m-d');
+        }
+
+        $extra_where = '';
+        if (!empty($filters['room_name'])) {
+            $extra_where .= ' AND r.room_name = ' . $this->db->escape(trim($filters['room_name']));
+        }
+        if (!empty($filters['search'])) {
+            $term = $this->db->escape_like_str(trim($filters['search']));
+            $extra_where .= " AND (
+                r.room_name LIKE '%" . $term . "%' ESCAPE '!'
+                OR c.customer_name LIKE '%" . $term . "%' ESCAPE '!'
+            )";
+        }
+
+        $sql = "
+            SELECT
+                b.booking_id,
+                b.balance,
+                b.state,
+                b.booking_customer_id AS customer_id,
+                c.customer_name,
+                r.room_id,
+                r.room_name,
+                brh.check_in_date,
+                brh.check_out_date
+            FROM booking AS b
+            INNER JOIN booking_block AS brh ON brh.booking_room_history_id = (
+                SELECT bb.booking_room_history_id
+                FROM booking_block AS bb
+                WHERE bb.booking_id = b.booking_id
+                ORDER BY bb.check_in_date DESC
+                LIMIT 1
+            )
+            INNER JOIN room AS r ON r.room_id = brh.room_id
+            LEFT JOIN customer AS c ON c.customer_id = b.booking_customer_id
+            WHERE
+                b.company_id = " . $this->db->escape($company_id) . "
+                AND b.is_deleted != '1'
+                AND b.state = '" . INHOUSE . "'
+                AND r.is_deleted != '1'
+                AND DATE(brh.check_in_date) <= " . $this->db->escape($selling_date) . "
+                AND DATE(brh.check_out_date) > " . $this->db->escape($selling_date) . "
+                " . $extra_where . "
+            ORDER BY
+                CAST(r.room_name AS UNSIGNED),
+                r.room_name ASC,
+                c.customer_name ASC
+        ";
+
+        $q = $this->db->query($sql);
+        if ($this->db->_error_message()) {
+            show_error($this->db->_error_message());
+        }
+        return $q->result_array();
+    }
     
     function update_booking($data, $booking_id = null)
     {

@@ -121,6 +121,18 @@ class Charge_type_model extends CI_Model {
         	return $query->result_array();
         }        
     }
+
+    function get_charge_types($company_id)
+    {
+        $this->db->where('company_id', (int) $company_id);
+        $this->db->where('is_deleted', '0');
+        $this->db->order_by('name', 'ASC');
+        $query = $this->db->get('charge_type');
+        if ($query->num_rows() > 0) {
+            return $query->result_array();
+        }
+        return array();
+    }
 }
 
 /* End of file - rate_model.php */

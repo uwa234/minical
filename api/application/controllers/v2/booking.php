@@ -1307,27 +1307,221 @@ class Booking extends MY_Controller
         $this->response($charges, 200);
     }
 
+    /**
+     * POS / external: find in-house guests by room number (room.room_name).
+     *
+     * POST body: company_id, room_name, optional selling_date (Y-m-d)
+     */
+    public function get_inhouse_by_room_post()
+    {
+        $company_id = $this->post('company_id');
+        $room_name = $this->post('room_name');
+        $selling_date = $this->post('selling_date');
+
+        if (!$company_id) {
+            $this->response(array('status' => false, 'error' => 'Company ID is missing.'), 200);
+        }
+        if ($room_name === null || trim($room_name) === '') {
+            $this->response(array('status' => false, 'error' => 'Room name is missing.'), 200);
+        }
+
+        $guests = $this->Booking_model->get_inhouse_by_room_name($company_id, $room_name, $selling_date);
+        $this->response(array(
+            'status' => true,
+            'room_name' => trim($room_name),
+            'data' => $guests ? $guests : array(),
+        ), 200);
+    }
+
+    /**
+     * POS "post to room": list all currently in-house guests for this property.
+     *
+     * POST body: company_id, optional search, optional room_name, optional selling_date
+     */
+    public function get_inhouse_guests_post()
+    {
+        $company_id = $this->post('company_id');
+        if (!$company_id) {
+            $this->response(array('status' => false, 'error' => 'Company ID is missing.'), 200);
+        }
+
+        $guests = $this->Booking_model->get_inhouse_guests($company_id, array(
+            'selling_date' => $this->post('selling_date'),
+            'room_name' => $this->post('room_name'),
+            'search' => $this->post('search'),
+        ));
+
+        $this->response(array(
+            'status' => true,
+            'company_id' => (int) $company_id,
+            'count' => $guests ? count($guests) : 0,
+            'data' => $guests ? $guests : array(),
+        ), 200);
+    }
+
+    /**
+     * List charge types for a company (needed to configure POS F&B charge_type_id).
+     */
+    public function get_charge_types_post()
+    {
+        $company_id = $this->post('company_id');
+        if (!$company_id) {
+            $this->response(array('status' => false, 'error' => 'Company ID is missing.'), 200);
+        }
+        $types = $this->Charge_type_model->get_charge_types($company_id);
+        $this->response(array('status' => true, 'data' => $types), 200);
+    }
+
     public function add_booking_charges_post()
     {       
         $charges = $this->post('charges');
         $company_id = $this->post('company_id');
 
-        if(empty($charges)) {
+        if (!$company_id) {
+            $this->response(array('status' => false, 'error' => 'Company ID is missing.'), 200);
+        }
+        if (empty($charges)) {
             $this->response(array('status' => false, 'error' => 'Charge object is missing.'), 200);
         }
-
-        $charge_data = array();
-        foreach($charges as $key => $charge){
-            $charge_data[$key]['selling_date'] = date('Y-m-d', strtotime($charge['selling_date']));
-            $charge_data[$key]['booking_id'] = $charge['booking_id'];
-            $charge_data[$key]['description'] = $charge['description'];
-            $charge_data[$key]['amount'] = $charge['amount'];
-            $charge_data[$key]['charge_type_id'] = $charge['charge_type_id'];
+        if (!is_array($charges)) {
+            $charges = json_decode($charges, true);
+        }
+        if (empty($charges) || !is_array($charges)) {
+            $this->response(array('status' => false, 'error' => 'Charge object is invalid.'), 200);
         }
 
-        $this->Charge_model->insert_charges($charge_data);
-            
-        $this->response(array('status' => 'success'), 200);
+        $this->load->helper('timezone');
+        $date = convert_to_UTC_time(new DateTime(date('Y-m-d H:i:s')));
+        $date_time = $date->format('Y-m-d H:i:s');
+        $default_selling_date = $this->Company_model->get_selling_date($company_id);
+        if (!$default_selling_date) {
+            $default_selling_date = date('Y-m-d');
+        }
+
+        $inserted_ids = array();
+        $booking_ids_to_update = array();
+        $idempotent = false;
+
+        foreach ($charges as $charge) {
+            if (empty($charge['booking_id']) || !isset($charge['amount']) || empty($charge['charge_type_id'])) {
+                $this->response(array(
+                    'status' => false,
+                    'error' => 'Each charge requires booking_id, amount, and charge_type_id.',
+                ), 200);
+            }
+
+            $external_reference = isset($charge['external_reference'])
+                ? trim((string) $charge['external_reference'])
+                : '';
+            if (strlen($external_reference) > 191) {
+                $external_reference = substr($external_reference, 0, 191);
+            }
+
+            // Idempotent replay: same POS payment key → return existing charge, do not insert again.
+            if ($external_reference !== '') {
+                $existing = $this->Charge_model->get_charge_by_external_reference($external_reference);
+                if ($existing) {
+                    if ((int) $existing['booking_id'] !== (int) $charge['booking_id']) {
+                        $this->response(array(
+                            'status' => false,
+                            'error' => 'external_reference already used on a different booking.',
+                        ), 200);
+                    }
+                    $inserted_ids[] = (int) $existing['charge_id'];
+                    $idempotent = true;
+                    continue;
+                }
+            }
+
+            $booking_id = (int) $charge['booking_id'];
+            $booking = $this->Booking_model->get_booking($booking_id);
+            if (!$booking || (int) $booking['company_id'] !== (int) $company_id) {
+                $this->response(array(
+                    'status' => false,
+                    'error' => 'Booking ' . $booking_id . ' not found for this company.',
+                ), 200);
+            }
+            if ((string) $booking['state'] !== (string) INHOUSE) {
+                $this->response(array(
+                    'status' => false,
+                    'error' => 'Booking ' . $booking_id . ' is not in-house.',
+                ), 200);
+            }
+
+            $selling_date = !empty($charge['selling_date'])
+                ? date('Y-m-d', strtotime($charge['selling_date']))
+                : $default_selling_date;
+
+            $charge_type = $this->Charge_type_model->get_charge_type_by_id($charge['charge_type_id']);
+            if (!$charge_type || (isset($charge_type['company_id']) && (int) $charge_type['company_id'] !== (int) $company_id)) {
+                $this->response(array(
+                    'status' => false,
+                    'error' => 'Invalid charge_type_id: ' . $charge['charge_type_id'],
+                ), 200);
+            }
+
+            $row = array(
+                'date_time' => $date_time,
+                'selling_date' => $selling_date,
+                'description' => isset($charge['description']) ? trim($charge['description']) : 'Restaurant charge',
+                'customer_id' => isset($charge['customer_id'])
+                    ? (int) $charge['customer_id']
+                    : (int) $booking['booking_customer_id'],
+                'charge_type_id' => (int) $charge['charge_type_id'],
+                'amount' => (float) $charge['amount'],
+                'booking_id' => $booking_id,
+                'user_id' => isset($charge['user_id']) ? (int) $charge['user_id'] : 0,
+                'pay_period' => isset($charge['pay_period']) ? $charge['pay_period'] : DAILY,
+                'is_night_audit_charge' => 0,
+            );
+            if ($external_reference !== '') {
+                $row['external_reference'] = $external_reference;
+            }
+
+            $charge_id = $this->Charge_model->insert_charge($row);
+
+            // Race-safe: unique index may reject a concurrent insert with the same key.
+            if (!$charge_id && $external_reference !== '') {
+                $existing = $this->Charge_model->get_charge_by_external_reference($external_reference);
+                if ($existing) {
+                    $inserted_ids[] = (int) $existing['charge_id'];
+                    $idempotent = true;
+                    continue;
+                }
+            }
+
+            if (!$charge_id) {
+                // Duplicate key can surface as DB error before insert_id; re-check key.
+                if ($external_reference !== '') {
+                    $existing = $this->Charge_model->get_charge_by_external_reference($external_reference);
+                    if ($existing) {
+                        $inserted_ids[] = (int) $existing['charge_id'];
+                        $idempotent = true;
+                        continue;
+                    }
+                }
+                $this->response(array(
+                    'status' => false,
+                    'error' => 'Failed to insert charge.',
+                ), 200);
+            }
+
+            $folio_id = isset($charge['folio_id']) ? (int) $charge['folio_id'] : 0;
+            $this->Charge_model->insert_charge_folio($charge_id, $folio_id);
+
+            $inserted_ids[] = $charge_id;
+            $booking_ids_to_update[$booking_id] = true;
+        }
+
+        foreach (array_keys($booking_ids_to_update) as $booking_id) {
+            $this->Booking_model->update_booking_balance($booking_id);
+        }
+
+        $this->response(array(
+            'status' => 'success',
+            'charge_ids' => $inserted_ids,
+            'idempotent' => $idempotent,
+        ), 200);
     }
 
     public function get_booking_payments_post()

@@ -71,4 +71,63 @@ class Charge_model extends CI_Model {
 			return show_error($this->db->_error_message());
 		}
     }
+
+    function has_external_reference_column()
+    {
+        return $this->db->field_exists('external_reference', 'charge');
+    }
+
+    /**
+     * Find a non-deleted charge by external_reference (POS idempotency key).
+     */
+    function get_charge_by_external_reference($external_reference)
+    {
+        if (!$external_reference || !$this->has_external_reference_column()) {
+            return null;
+        }
+        $this->db->where('external_reference', $external_reference);
+        $this->db->where('is_deleted', '0');
+        $this->db->limit(1);
+        $query = $this->db->get('charge');
+        if ($query->num_rows() > 0) {
+            return $query->row_array();
+        }
+        return null;
+    }
+
+    function insert_charge($data)
+    {
+        if (isset($data['external_reference']) && !$this->has_external_reference_column()) {
+            unset($data['external_reference']);
+        }
+        if (isset($data['description']) && is_string($data['description']) && strlen($data['description']) > 125) {
+            $data['description'] = substr($data['description'], 0, 125);
+        }
+
+        $db_debug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+        $this->db->insert('charge', $data);
+        $error = $this->db->_error_message();
+        $insert_id = $this->db->insert_id();
+        $this->db->db_debug = $db_debug;
+
+        if ($error) {
+            // Duplicate external_reference — caller may resolve via get_charge_by_external_reference.
+            if (stripos($error, 'Duplicate') !== false || stripos($error, 'uniq_charge_external_reference') !== false) {
+                return false;
+            }
+            show_error($error);
+        }
+        return $insert_id;
+    }
+
+    function insert_charge_folio($charge_id, $folio_id = 0)
+    {
+        $data = array('charge_id' => $charge_id, 'folio_id' => $folio_id);
+        $this->db->insert('charge_folio', $data);
+        if ($this->db->_error_message()) {
+            show_error($this->db->_error_message());
+        }
+        return $this->db->insert_id();
+    }
 }
