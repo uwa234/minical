@@ -2,6 +2,11 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-31
+
+### Security
+- nginx: the web root is the project directory, so `.git`, `.env*`, database dumps, archives, logs, internal directories (`docker`, `vendor`, `tests`, `public/application`, `public/system`, `api/application`, ...) and root config files are now denied. Static images, CSS, JS and fonts under `public/application` (extension logos) are still served.
+
 ## [0.1.0] - 2026-10-31
 
 Security hardening release. Requires `ENCRYPTION_KEY` in `.env` (see `.env.example`); setting it logs all users out once.
