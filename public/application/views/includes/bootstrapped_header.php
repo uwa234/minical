@@ -65,6 +65,7 @@ $whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userda
 	<link rel="stylesheet" type="text/css" href="<?php echo $path; ?>" />
 	<?php endforeach; ?>
 	<?php endif; ?>
+	<link rel="stylesheet" type="text/css" href="<?php echo base_url() . auto_version('css/veurion/veurion-skin.css'); ?>" />
 
     <?php 
 	echo "<script>

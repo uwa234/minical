@@ -2,6 +2,14 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-10-31
+
+### Added
+- App-wide Veurion skin (`css/veurion/veurion-skin.css`), loaded last on every staff page via the `vx-skin` body class: DM Sans, brand gradient page-header tiles, buttons, inputs and selects, cards and panels, tables, tabs, modals, dropdowns, alerts, labels, pagination, datepicker and the active sidebar item. The login page, platform admin and public booking engine keep their own styling; the booking calendar grid keeps its status colours.
+
+### Fixed
+- Untranslated keys such as `outstanding_balances` showed on the Accounting pages: the customer pages now load the dashboard language file, and `l()` checks language-file lines before falling back to the key.
+
 ## [0.6.0] - 2026-10-31
 
 ### Added

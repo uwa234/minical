@@ -25,6 +25,8 @@ foreach ($auth_shell_paths as $auth_path) {
 $body_classes = 'theme-' . (isset($this->company_ui_theme) ? $this->company_ui_theme : 0);
 if ($is_auth_login) {
     $body_classes .= ' auth-login-page';
+} else {
+    $body_classes .= ' vx-skin';
 }
 ?>
 <body class="<?php echo $body_classes; ?>">

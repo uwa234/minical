@@ -9,6 +9,10 @@ class Customer extends MY_Controller {
     {
         parent::__construct();
         
+        $language = $this->session->userdata('language');
+        $language = ($language && is_file(APPPATH . 'language/' . $language . '/dashboard_lang.php')) ? $language : 'english';
+        $this->lang->load('dashboard', $language);
+
         $this->load->library('encrypt');
         $this->load->library('form_validation');
         $this->load->library('PaymentGateway');

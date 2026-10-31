@@ -1,0 +1,205 @@
+/*
+ * Veurion skin — restyles the existing miniCal / Bootstrap 3 markup app-wide.
+ * Loaded last on every page; everything is scoped to body.vx-skin.
+ * Colours and shapes only: layout of complex screens (booking calendar) is left alone.
+ */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap");
+
+body.vx-skin {
+    --vx-bg: #f5f6fb;
+    --vx-surface: #ffffff;
+    --vx-surface-2: #f8f9fd;
+    --vx-ink: #0c1222;
+    --vx-ink-2: #374151;
+    --vx-muted: #64708a;
+    --vx-soft: #94a0b8;
+    --vx-border: #e6e8f0;
+    --vx-border-strong: #d5d9e5;
+    --vx-brand: #4f46e5;
+    --vx-brand-hover: #4338ca;
+    --vx-brand-soft: #eef0ff;
+    --vx-gradient: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%);
+    --vx-success: #059669;
+    --vx-danger: #dc2626;
+    --vx-warning: #d97706;
+    --vx-info: #0284c7;
+    --vx-shadow: 0 1px 2px rgba(12, 18, 34, 0.04), 0 8px 24px rgba(12, 18, 34, 0.06);
+    --vx-shadow-lg: 0 18px 50px rgba(79, 70, 229, 0.16);
+    --vx-font: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    font-family: var(--vx-font);
+    color: var(--vx-ink);
+    background: var(--vx-bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+body.vx-skin .app-main, body.vx-skin .app-main__outer, body.vx-skin .app-main__inner { background: var(--vx-bg); }
+body.vx-skin h1, body.vx-skin h2, body.vx-skin h3, body.vx-skin h4, body.vx-skin h5, body.vx-skin h6,
+body.vx-skin .btn, body.vx-skin .form-control, body.vx-skin .table, body.vx-skin .modal, body.vx-skin .dropdown-menu,
+body.vx-skin .popover, body.vx-skin .tooltip, body.vx-skin input, body.vx-skin select, body.vx-skin textarea, body.vx-skin button {
+    font-family: var(--vx-font);
+}
+/* Plain links only: classed anchors are often styled as buttons with their own colours. */
+body.vx-skin .app-main__inner a:not([class]) { color: var(--vx-brand); }
+body.vx-skin .app-main__inner a:not([class]):hover, body.vx-skin .app-main__inner a:not([class]):focus { color: var(--vx-brand-hover); }
+body.vx-skin a.btn-primary, body.vx-skin a.btn-success, body.vx-skin a.btn-info, body.vx-skin a.btn-warning, body.vx-skin a.btn-danger { color: #fff; }
+
+/* ---------- Page headers (ArchitectUI app-page-title and mc-page-header) ---------- */
+body.vx-skin .app-page-title { background: transparent; padding: 8px 0 22px; margin: 0 0 4px; border: 0; }
+body.vx-skin .app-page-title .page-title-wrapper { align-items: center; }
+body.vx-skin .app-page-title .page-title-heading { font-size: 26px; font-weight: 700; color: var(--vx-ink); letter-spacing: -0.01em; display: flex; align-items: center; }
+body.vx-skin .app-page-title .page-title-heading > div:not(.page-title-icon) { font-size: 26px; font-weight: 700; line-height: 1.2; }
+body.vx-skin .app-page-title .page-title-subheading { font-size: 14px; font-weight: 400; color: var(--vx-muted); opacity: 1; margin-top: 4px; }
+body.vx-skin .app-page-title .page-title-icon,
+body.vx-skin .mc-page-icon,
+body.vx-skin .accounting-header-icon,
+body.vx-skin .rooms-header-icon,
+body.vx-skin .extensions-header-icon,
+body.vx-skin .rp-header-icon,
+body.vx-skin .er-header-icon {
+    width: 52px; height: 52px; min-width: 52px; padding: 0; margin: 0 16px 0 0; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--vx-gradient); box-shadow: var(--vx-shadow-lg); border: 0;
+}
+body.vx-skin .app-page-title .page-title-icon i,
+body.vx-skin .mc-page-icon i,
+body.vx-skin .accounting-header-icon i,
+body.vx-skin .rooms-header-icon i,
+body.vx-skin .extensions-header-icon i,
+body.vx-skin .rp-header-icon i,
+body.vx-skin .er-header-icon i { color: #fff !important; font-size: 22px; opacity: 1; }
+body.vx-skin .accounting-header-icon--warning { background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); box-shadow: 0 18px 40px rgba(234, 88, 12, .22); }
+body.vx-skin .mc-page-title { font-size: 26px; font-weight: 700; color: var(--vx-ink); letter-spacing: -0.01em; }
+body.vx-skin .mc-page-subtitle { color: var(--vx-muted); font-size: 14px; }
+
+/* ---------- Cards & panels ---------- */
+body.vx-skin .card, body.vx-skin .main-card, body.vx-skin .mc-card, body.vx-skin .panel {
+    background: var(--vx-surface); border: 1px solid var(--vx-border); border-radius: 18px; box-shadow: var(--vx-shadow);
+}
+body.vx-skin .card.main-card { overflow: visible; }
+body.vx-skin .card-header, body.vx-skin .panel-heading {
+    background: var(--vx-surface); border-bottom: 1px solid var(--vx-border); color: var(--vx-ink);
+    font-weight: 700; text-transform: none; font-size: 15px; border-radius: 18px 18px 0 0;
+}
+body.vx-skin .panel-default > .panel-heading { background: var(--vx-surface-2); color: var(--vx-ink); }
+body.vx-skin .card-title { color: var(--vx-ink); font-weight: 700; text-transform: none; font-size: 15px; letter-spacing: 0; }
+body.vx-skin .card-footer, body.vx-skin .panel-footer { background: var(--vx-surface-2); border-top: 1px solid var(--vx-border); border-radius: 0 0 18px 18px; }
+body.vx-skin .well { background: var(--vx-surface-2); border: 1px solid var(--vx-border); border-radius: 14px; box-shadow: none; }
+
+/* ---------- Buttons ---------- */
+body.vx-skin .btn {
+    border-radius: 10px; font-weight: 600; letter-spacing: 0; text-transform: none; box-shadow: none;
+    transition: background .15s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease;
+}
+body.vx-skin .btn:focus, body.vx-skin .btn:active:focus { outline: none; box-shadow: 0 0 0 4px rgba(79, 70, 229, .18); }
+body.vx-skin .btn-primary { background: var(--vx-gradient); border-color: transparent; color: #fff; box-shadow: 0 6px 16px rgba(79, 70, 229, .25); }
+body.vx-skin .btn-primary:hover, body.vx-skin .btn-primary:focus, body.vx-skin .btn-primary:active, body.vx-skin .btn-primary.active {
+    background: linear-gradient(135deg, #6d28d9 0%, #4338ca 50%, #1d4ed8 100%); border-color: transparent; color: #fff; box-shadow: 0 8px 22px rgba(79, 70, 229, .35);
+}
+body.vx-skin .btn-success { background: #059669; border-color: #059669; color: #fff; }
+body.vx-skin .btn-success:hover, body.vx-skin .btn-success:focus, body.vx-skin .btn-success:active { background: #047857; border-color: #047857; color: #fff; }
+body.vx-skin .btn-info { background: #0284c7; border-color: #0284c7; color: #fff; }
+body.vx-skin .btn-info:hover, body.vx-skin .btn-info:focus { background: #0369a1; border-color: #0369a1; color: #fff; }
+body.vx-skin .btn-warning { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+body.vx-skin .btn-warning:hover, body.vx-skin .btn-warning:focus { background: #d97706; border-color: #d97706; color: #fff; }
+body.vx-skin .btn-danger { background: #dc2626; border-color: #dc2626; color: #fff; }
+body.vx-skin .btn-danger:hover, body.vx-skin .btn-danger:focus { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+body.vx-skin .btn-default, body.vx-skin .btn-light, body.vx-skin .btn-secondary {
+    background: #fff; border: 1px solid var(--vx-border-strong); color: var(--vx-ink-2); box-shadow: 0 1px 2px rgba(12, 18, 34, .05);
+}
+body.vx-skin .btn-default:hover, body.vx-skin .btn-light:hover, body.vx-skin .btn-secondary:hover,
+body.vx-skin .btn-default:focus, body.vx-skin .btn-default.active, body.vx-skin .open > .dropdown-toggle.btn-default {
+    background: #fff; border-color: var(--vx-brand); color: var(--vx-brand);
+}
+body.vx-skin .btn-link { color: var(--vx-brand); font-weight: 600; }
+
+/* ---------- Forms ---------- */
+body.vx-skin .form-control {
+    border-radius: 10px; border: 1px solid var(--vx-border-strong); color: var(--vx-ink); box-shadow: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+body.vx-skin .form-control:focus { border-color: var(--vx-brand); box-shadow: 0 0 0 4px rgba(79, 70, 229, .14); outline: none; }
+body.vx-skin .form-control[disabled], body.vx-skin .form-control[readonly] { background: var(--vx-surface-2); color: var(--vx-muted); }
+body.vx-skin .form-control::placeholder { color: var(--vx-soft); }
+body.vx-skin label, body.vx-skin .control-label { color: var(--vx-ink-2); font-weight: 600; }
+body.vx-skin .input-group-addon { background: var(--vx-surface-2); border-color: var(--vx-border-strong); color: var(--vx-muted); }
+body.vx-skin .input-group .form-control:first-child, body.vx-skin .input-group-addon:first-child { border-radius: 10px 0 0 10px; }
+body.vx-skin .input-group .form-control:last-child, body.vx-skin .input-group-addon:last-child, body.vx-skin .input-group-btn:last-child > .btn { border-radius: 0 10px 10px 0; }
+body.vx-skin .help-block { color: var(--vx-soft); }
+body.vx-skin input[type="checkbox"], body.vx-skin input[type="radio"] { accent-color: var(--vx-brand); }
+body.vx-skin .app-main__inner select:not(.form-control):not([multiple]):not(.vx-select) {
+    height: 32px; padding: 0 8px; border: 1px solid var(--vx-border-strong); border-radius: 8px; background-color: #fff; color: var(--vx-ink);
+}
+body.vx-skin .app-main__inner select:not(.form-control):not([multiple]):not(.vx-select):focus { border-color: var(--vx-brand); outline: none; box-shadow: 0 0 0 3px rgba(79, 70, 229, .14); }
+
+/* ---------- Tables ---------- */
+body.vx-skin .table > thead > tr > th {
+    background: var(--vx-surface-2); color: var(--vx-muted); font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--vx-border); border-top: 0;
+}
+body.vx-skin .table > tbody > tr > td, body.vx-skin .table > tbody > tr > th, body.vx-skin .table > tfoot > tr > td {
+    border-top: 1px solid var(--vx-border); color: var(--vx-ink-2); vertical-align: middle;
+}
+body.vx-skin .table-striped > tbody > tr:nth-of-type(odd) { background: #fafbfe; }
+body.vx-skin .table-hover > tbody > tr:hover, body.vx-skin .table > tbody > tr:hover { background: #f5f6ff; }
+body.vx-skin .table-bordered, body.vx-skin .table-bordered > thead > tr > th, body.vx-skin .table-bordered > tbody > tr > td { border-color: var(--vx-border); }
+
+/* ---------- Tabs & pills ---------- */
+body.vx-skin .nav-tabs { border-bottom: 1px solid var(--vx-border); }
+body.vx-skin .nav-tabs > li > a { border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--vx-muted); font-weight: 600; margin-right: 6px; }
+body.vx-skin .nav-tabs > li > a:hover { background: transparent; color: var(--vx-brand); border-bottom-color: var(--vx-border-strong); }
+body.vx-skin .nav-tabs > li.active > a, body.vx-skin .nav-tabs > li.active > a:hover, body.vx-skin .nav-tabs > li.active > a:focus {
+    border: 0; border-bottom: 2px solid var(--vx-brand); color: var(--vx-brand); background: transparent;
+}
+body.vx-skin .nav-pills > li > a { border-radius: 999px; color: var(--vx-muted); font-weight: 600; }
+body.vx-skin .nav-pills > li.active > a, body.vx-skin .nav-pills > li.active > a:hover { background: var(--vx-brand); color: #fff; }
+
+/* ---------- Modals, dropdowns, popovers ---------- */
+body.vx-skin .modal-content { border: 0; border-radius: 20px; box-shadow: 0 30px 80px rgba(12, 18, 34, .25); overflow: hidden; }
+body.vx-skin .modal-header { border-bottom: 1px solid var(--vx-border); padding: 16px 22px; }
+body.vx-skin .modal-header .modal-title, body.vx-skin .modal-title { font-weight: 700; color: var(--vx-ink); }
+body.vx-skin .modal-footer { border-top: 1px solid var(--vx-border); background: var(--vx-surface-2); padding: 14px 22px; }
+body.vx-skin .modal-backdrop.in { opacity: .45; background: #0c1222; }
+body.vx-skin .dropdown-menu { border: 1px solid var(--vx-border); border-radius: 12px; box-shadow: 0 16px 40px rgba(12, 18, 34, .14); padding: 6px; }
+body.vx-skin .dropdown-menu > li > a { border-radius: 8px; padding: 8px 12px; color: var(--vx-ink-2); }
+body.vx-skin .dropdown-menu > li > a:hover, body.vx-skin .dropdown-menu > li > a:focus { background: var(--vx-brand-soft); color: var(--vx-brand); }
+body.vx-skin .popover { border: 1px solid var(--vx-border); border-radius: 12px; box-shadow: 0 16px 40px rgba(12, 18, 34, .14); }
+
+/* ---------- Alerts, labels, badges ---------- */
+body.vx-skin .alert { border: 0; border-radius: 12px; font-weight: 500; }
+body.vx-skin .alert-success { background: #e7f7f0; color: #065f46; }
+body.vx-skin .alert-info { background: #e6f3fb; color: #075985; }
+body.vx-skin .alert-warning { background: #fdf3e2; color: #92400e; }
+body.vx-skin .alert-danger { background: #fdecec; color: #991b1b; }
+body.vx-skin .label { border-radius: 999px; padding: .3em .75em; font-weight: 600; font-size: 11.5px; letter-spacing: 0; }
+body.vx-skin .label-default { background: #eef1f6; color: var(--vx-ink-2); }
+body.vx-skin .label-primary { background: var(--vx-brand-soft); color: #3730a3; }
+body.vx-skin .label-success { background: #e7f7f0; color: #047857; }
+body.vx-skin .label-info { background: #e6f3fb; color: #0369a1; }
+body.vx-skin .label-warning { background: #fdf3e2; color: #b45309; }
+body.vx-skin .label-danger { background: #fdecec; color: #b91c1c; }
+body.vx-skin .badge { border-radius: 999px; background: var(--vx-brand-soft); color: #3730a3; font-weight: 600; }
+
+/* ---------- Pagination ---------- */
+body.vx-skin .pagination > li > a, body.vx-skin .pagination > li > span { border-color: var(--vx-border); color: var(--vx-ink-2); margin: 0 2px; border-radius: 8px !important; }
+body.vx-skin .pagination > .active > a, body.vx-skin .pagination > .active > span { background: var(--vx-brand); border-color: var(--vx-brand); color: #fff; }
+
+/* ---------- Sidebar accent ---------- */
+body.vx-skin .app-sidebar .vertical-nav-menu li a.mm-active,
+body.vx-skin .app-sidebar .vertical-nav-menu > li.mm-active > a {
+    background: var(--vx-gradient); color: #fff; box-shadow: 0 8px 20px rgba(79, 70, 229, .35);
+}
+
+/* ---------- Dashboard tiles ---------- */
+body.vx-skin .dashboard-metric-card, body.vx-skin .dashboard-analytics-stat {
+    border-radius: 18px; box-shadow: var(--vx-shadow);
+}
+body.vx-skin .dashboard-metric-label, body.vx-skin .dashboard-analytics-stat-label { color: var(--vx-muted); font-weight: 600; letter-spacing: .04em; }
+body.vx-skin .dashboard-metric-value, body.vx-skin .dashboard-analytics-stat-value { color: var(--vx-ink); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* ---------- jQuery UI datepicker ---------- */
+body.vx-skin .ui-datepicker { border: 1px solid var(--vx-border); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 18, 34, .14); padding: 8px; font-family: var(--vx-font); }
+body.vx-skin .ui-datepicker .ui-datepicker-header { background: transparent; border: 0; font-weight: 700; }
+body.vx-skin .ui-datepicker .ui-state-default { border: 0; background: transparent; border-radius: 8px; text-align: center; }
+body.vx-skin .ui-datepicker .ui-state-hover { background: var(--vx-brand-soft); color: var(--vx-brand); }
+body.vx-skin .ui-datepicker .ui-state-active, body.vx-skin .ui-datepicker .ui-state-highlight { background: var(--vx-brand); color: #fff; }

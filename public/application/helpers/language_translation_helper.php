@@ -209,7 +209,7 @@ if ( ! function_exists('get_languages'))
                 else
                 {
                     //$line = '<span alt="'.$phrase_key.'" title="'.$phrase_key.'">'.(($CI->lang->line($phrase_key))?$CI->lang->line($phrase_key):$phrase_key).'</span>';
-                    $line = ucwords(str_replace('_', ' ', $phrase_key));
+                    $line = $CI->lang->line($phrase_key) ? $CI->lang->line($phrase_key) : ucwords(str_replace('_', ' ', $phrase_key));
                 }
                 return $line;
             }

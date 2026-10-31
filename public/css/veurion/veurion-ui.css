@@ -190,6 +190,8 @@
 }
 .vx-app .vx-textarea { height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; }
 .vx-app .vx-input:focus, .vx-app .vx-select:focus, .vx-app .vx-textarea:focus { outline: none; border-color: var(--vx-brand); box-shadow: 0 0 0 4px rgba(79, 70, 229, .14); }
+.vx-app input[type="number"]::-webkit-inner-spin-button, .vx-app input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.vx-app input[type="number"] { -moz-appearance: textfield; }
 .vx-input-money { position: relative; }
 .vx-input-money > span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--vx-soft); font-weight: 600; font-size: 13px; pointer-events: none; }
 .vx-app .vx-input-money > .vx-input { padding-left: 44px; text-align: right; font-variant-numeric: tabular-nums; }
