@@ -751,6 +751,7 @@ class Customer extends MY_Controller {
                 $customer = $this->Customer_model->get_customer_by_name($name, $this->company_id);
                 if ($customer)
                 {
+                    $customer['credit_warning'] = $this->_corporate_credit_warning($customer);
                     echo json_encode($customer);
                     return;
                 }
@@ -758,6 +759,25 @@ class Customer extends MY_Controller {
         }
         
         echo json_encode(false);
+    }
+
+    private function _corporate_credit_warning($customer)
+    {
+        if (empty($customer['is_corporate_account']) || !isset($customer['credit_limit']) || $customer['credit_limit'] === null) {
+            return '';
+        }
+        $this->load->model('Corporate_account_model');
+        $balance = $this->Corporate_account_model->get_account_balance($this->company_id, $customer['customer_id']);
+        if ($balance <= (float) $customer['credit_limit']) {
+            return '';
+        }
+        $symbol = $this->session->userdata('currency_symbol') ? $this->session->userdata('currency_symbol') : '';
+        return htmlspecialchars(sprintf(
+            l('%s is over its credit limit: balance %s, limit %s. Collect payment before extending more credit.', true),
+            $customer['customer_name'],
+            $symbol . number_format($balance, 2),
+            $symbol . number_format((float) $customer['credit_limit'], 2)
+        ), ENT_QUOTES, 'UTF-8');
     }
     
     // validation

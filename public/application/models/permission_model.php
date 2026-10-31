@@ -302,7 +302,7 @@ class Permission_model extends CI_Model {
                         )
                     )
                 ) ||
-                ($permission == 'access_to_customers' && $controller_name == 'customer') ||
+                ($permission == 'access_to_customers' && in_array($controller_name, array('customer', 'corporate_account'), true)) ||
                 ($permission == 'access_to_rooms' && $controller_name == 'room' && $function_name != 'date_manager') ||
                 ($permission == 'can_view_reports' &&
                     (

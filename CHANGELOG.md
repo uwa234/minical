@@ -2,6 +2,16 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-10-31
+
+Run migrations after deploying (`php public/index.php migrate`).
+
+### Added
+- Corporate (city ledger) accounts (Accounting → Corporate accounts, migration 034). Mark a customer as a corporate account with a credit limit and payment terms; bookings where they are the paying customer are billed to the account.
+- Accounts list with balance, credit limit, available credit, overdue amount and an over-limit flag.
+- Printable statement of account per company: balance due, ageing (0–30, 31–60, 61–90, 90+ days since check-out), open bookings and recent payments.
+- The booking screen warns when the chosen paying customer is over its credit limit.
+
 ## [0.3.0] - 2026-10-31
 
 Run migrations after deploying (`php public/index.php migrate`).

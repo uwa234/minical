@@ -6298,8 +6298,11 @@ var bookingModalInvoker = function ($) {
                         dataType: "json",
                         success: function (existing_customer) {
 
-                            if (existing_customer && existing_customer.customer_notes) {
-                                $(".blacklist_customer").html(existing_customer && existing_customer.customer_notes ? existing_customer.customer_notes : '');
+                            var customer_warnings = existing_customer
+                                ? [existing_customer.customer_notes, existing_customer.credit_warning].filter(Boolean)
+                                : [];
+                            if (customer_warnings.length) {
+                                $(".blacklist_customer").html(customer_warnings.join('<br>'));
                                 $(".blacklist_customer").removeClass('hidden');
                             } else {
                                 $(".blacklist_customer").addClass('hidden');
