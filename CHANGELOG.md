@@ -2,6 +2,14 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-10-31
+
+Run migrations after deploying (`php public/index.php migrate`).
+
+### Added
+- Cashier shifts (Reports → Cashier shifts, migration 033). Staff open a shift with an opening float; the page shows the payments they recorded per payment type, and at close they enter what they counted for each type. The shift report shows expected, counted and the difference, and can be printed.
+- Shift history for owners, admins and users with "view reports", filterable by date and cashier, with the total difference for the period.
+
 ## [0.2.0] - 2026-10-31
 
 Nigerian hotel essentials. Run migrations after deploying (`php public/index.php migrate`).

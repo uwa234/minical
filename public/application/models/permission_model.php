@@ -203,6 +203,9 @@ class Permission_model extends CI_Model {
                 ||
                 $controller_name === "dashboard"
                 ||
+                // every staff member runs their own shift; history and other shifts are checked in the controller
+                $controller_name === "cashier_shift"
+                ||
                 ($controller_name === "settings" &&
                     (
                         $function_name == "show_booking_list"
