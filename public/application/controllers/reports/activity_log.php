@@ -27,6 +27,7 @@ class Activity_log extends MY_Controller {
         $this->load->model('Company_model');
         $this->load->model('Permission_model');
         $this->load->helper('timezone');
+        $this->load->helper('veurion_ui');
     }
 
     function index()
@@ -57,7 +58,7 @@ class Activity_log extends MY_Controller {
         }
 
         $this->load->model('Cashier_shift_model');
-        $data = array(
+        $data = array_merge(vx_page_assets('reports'), array(
             'events' => $events,
             'summary' => $this->_summary($events),
             'truncated' => count($events) >= $limit,
@@ -67,9 +68,8 @@ class Activity_log extends MY_Controller {
             'category' => $category,
             'user_id' => $user_id,
             'currency_symbol' => $this->session->userdata('currency_symbol') ?: '₦',
-            'selected_menu' => 'reports',
             'main_content' => 'reports/activity_log/index',
-        );
+        ));
         $this->load->view('includes/bootstrapped_template', $data);
     }
 

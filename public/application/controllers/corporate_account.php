@@ -10,6 +10,7 @@ class Corporate_account extends MY_Controller {
         parent::__construct();
         $this->load->model('Corporate_account_model');
         $this->load->model('Company_model');
+        $this->load->helper('veurion_ui');
     }
 
     function index()
@@ -137,9 +138,8 @@ class Corporate_account extends MY_Controller {
 
     private function _base_data()
     {
-        return array(
+        return array_merge(vx_page_assets('customer'), array(
             'currency_symbol' => $this->session->userdata('currency_symbol') ? $this->session->userdata('currency_symbol') : '₦',
-            'selected_menu' => 'customer',
-        );
+        ));
     }
 }

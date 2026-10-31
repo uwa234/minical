@@ -2,6 +2,16 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-31
+
+### Added
+- Veurion UI theme (`css/veurion/veurion-ui.css`, `views/veurion/header.php`, `helpers/veurion_ui_helper.php`): DM Sans, brand gradient, page header, KPI tiles, cards, tables, badges, avatars, form fields, credit meters, ageing tiles, empty states and print styles. Scoped to `.vx-app`, so existing pages are unchanged.
+- Cashier shifts, shift reports, shift history, corporate accounts, statements and the activity log use the new theme, with summary tiles, live variance while counting, credit usage bars and action icons.
+
+### Fixed
+- These pages now show the app sidebar and navigation (`menu_on` was not set).
+- Currency codes stored as the symbol (e.g. `NGN`) are shown as the real sign (₦).
+
 ## [0.5.0] - 2026-10-31
 
 Run migrations after deploying (`php public/index.php migrate`).

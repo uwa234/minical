@@ -12,6 +12,7 @@ class Cashier_shift extends MY_Controller {
         $this->load->model('Company_model');
         $this->load->model('Permission_model');
         $this->load->helper('timezone');
+        $this->load->helper('veurion_ui');
     }
 
     function index()
@@ -211,10 +212,9 @@ class Cashier_shift extends MY_Controller {
 
     private function _base_data()
     {
-        return array(
+        return array_merge(vx_page_assets('reports'), array(
             'currency_symbol' => $this->session->userdata('currency_symbol') ? $this->session->userdata('currency_symbol') : '₦',
             'is_manager' => $this->_is_manager(),
-            'selected_menu' => 'reports',
-        );
+        ));
     }
 }

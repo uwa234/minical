@@ -1,64 +1,149 @@
 <?php
-$e = function ($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); };
-$money = function ($value) use ($currency_symbol, $e) { $value = (float) $value; return ($value < 0 ? "-" : "") . $e($currency_symbol) . number_format(abs($value), 2); };
+$sym = $currency_symbol;
 $actions = $is_manager
-    ? '<a class="btn btn-default" href="' . base_url() . 'reports/cashier_shift/history"><i class="fa fa-history"></i> ' . l('All shifts', true) . '</a>'
+    ? '<a class="vx-btn vx-btn-secondary" href="' . base_url() . 'reports/cashier_shift/history"><i class="fa fa-history"></i> ' . l('All shifts', true) . '</a>'
     : '';
 ?>
-<div class="mc-page cashier-shift-page">
-    <?php $this->load->view('includes/mc_page_header', array(
+<div class="vx-app">
+    <?php $this->load->view('veurion/header', array(
+        'eyebrow' => l('Front desk', true),
         'title' => l('Cashier shift', true),
-        'subtitle' => l('Open your shift with the cash in your drawer, then count each payment type when you close.', true),
+        'subtitle' => $shift
+            ? l('Your shift is open. Count what you have for each payment type, then close the shift.', true)
+            : l('Start your shift with the cash in your drawer. Payments you record are added up for you.', true),
         'icon' => 'fa-money',
         'actions_html' => $actions,
     )); ?>
 
-    <div class="main-card mb-3 card mc-card">
-        <div class="card-body">
-        <?php if (!$shift) : ?>
-            <form method="post" action="<?php echo base_url(); ?>reports/cashier_shift/open" class="form-inline">
-                <div class="form-group">
-                    <label for="opening_float"><?php echo l('Opening float (cash in drawer)', true); ?></label>
-                    <input type="number" step="0.01" min="0" class="form-control" id="opening_float" name="opening_float" value="0" required />
+<?php if (!$shift) : ?>
+    <div class="vx-card">
+        <div class="vx-start">
+            <div class="vx-start-art">
+                <h2><?php echo l('Ready to take payments?', true); ?></h2>
+                <p><?php echo l('Opening a shift keeps your takings separate from everyone else\'s, so the count at the end is quick and fair.', true); ?></p>
+                <ul class="vx-start-steps">
+                    <li><b>1</b><?php echo l('Count the cash in your drawer and enter it below', true); ?></li>
+                    <li><b>2</b><?php echo l('Record payments as usual during your shift', true); ?></li>
+                    <li><b>3</b><?php echo l('At the end, count each payment type and close', true); ?></li>
+                </ul>
+            </div>
+            <form class="vx-start-form" method="post" action="<?php echo base_url(); ?>reports/cashier_shift/open">
+                <div class="vx-field">
+                    <label class="vx-label" for="opening_float"><?php echo l('Opening float', true); ?></label>
+                    <div class="vx-input-money">
+                        <span><?php echo vx_e(vx_symbol($sym)); ?></span>
+                        <input type="number" step="0.01" min="0" class="vx-input" id="opening_float" name="opening_float" value="0" required autofocus />
+                    </div>
+                    <p class="vx-help"><?php echo l('The cash already in the drawer before your first payment.', true); ?></p>
                 </div>
-                <button type="submit" class="btn btn-success"><i class="fa fa-play"></i> <?php echo l('Open shift', true); ?></button>
+                <button type="submit" class="vx-btn vx-btn-primary vx-btn-lg"><i class="fa fa-play"></i> <?php echo l('Open my shift', true); ?></button>
             </form>
-        <?php else : ?>
-            <p><?php echo l('Shift opened', true); ?>: <strong><?php echo $e($opened_at_local); ?></strong>
-               &nbsp;·&nbsp; <?php echo l('Opening float', true); ?>: <strong><?php echo $money($shift['opening_float']); ?></strong></p>
+        </div>
+    </div>
+<?php else :
+    $payments_total = 0; $expected_total = 0; $payment_count = 0;
+    foreach ($rows as $row) { $payments_total += $row['payments']; $expected_total += $row['expected']; $payment_count += $row['payment_count']; }
+    $hours = max(0, (time() - strtotime($shift['opened_at'] . ' UTC')) / 3600);
+    $duration = $hours < 1 ? round($hours * 60) . ' ' . l('min', true) : floor($hours) . 'h ' . round(($hours - floor($hours)) * 60) . 'm';
+?>
+    <div class="vx-kpis">
+        <div class="vx-kpi"><div class="vx-kpi-label"><i class="fa fa-clock-o"></i><?php echo l('Shift opened', true); ?></div><div class="vx-kpi-value" style="font-size:18px"><?php echo vx_e($opened_at_local); ?></div><div class="vx-kpi-hint"><?php echo l('Open for', true) . ' ' . vx_e($duration); ?></div></div>
+        <div class="vx-kpi"><div class="vx-kpi-label"><i class="fa fa-inbox"></i><?php echo l('Opening float', true); ?></div><div class="vx-kpi-value"><?php echo vx_money($shift['opening_float'], $sym); ?></div><div class="vx-kpi-hint"><?php echo l('Counted under cash', true); ?></div></div>
+        <div class="vx-kpi"><div class="vx-kpi-label"><i class="fa fa-credit-card"></i><?php echo l('Payments taken', true); ?></div><div class="vx-kpi-value"><?php echo vx_money($payments_total, $sym); ?></div><div class="vx-kpi-hint"><?php echo (int) $payment_count . ' ' . l('payments', true); ?></div></div>
+        <div class="vx-kpi is-brand"><div class="vx-kpi-label"><i class="fa fa-calculator"></i><?php echo l('Expected in hand', true); ?></div><div class="vx-kpi-value"><?php echo vx_money($expected_total, $sym); ?></div><div class="vx-kpi-hint"><?php echo l('Float plus payments', true); ?></div></div>
+    </div>
 
-            <form method="post" action="<?php echo base_url(); ?>reports/cashier_shift/close"
-                  onsubmit="return confirm('<?php echo $e(l('Close this shift? You cannot edit the counts afterwards.', true)); ?>');">
-                <table class="table table-striped">
+    <form method="post" action="<?php echo base_url(); ?>reports/cashier_shift/close" id="vx-close-shift"
+          onsubmit="return confirm('<?php echo vx_e(l('Close this shift? Counts cannot be changed afterwards.', true)); ?>');">
+        <div class="vx-card">
+            <div class="vx-card-header">
+                <div><div class="vx-card-title"><i class="fa fa-list-ol"></i><?php echo l('Count and close', true); ?></div>
+                <div class="vx-card-subtitle"><?php echo l('Enter what you actually have: cash in the drawer, the POS terminal settlement slip, and transfers you can see in the bank app.', true); ?></div></div>
+            </div>
+            <div class="vx-table-wrap">
+                <table class="vx-table">
                     <thead>
                         <tr>
                             <th><?php echo l('Payment type', true); ?></th>
-                            <th class="text-right"><?php echo l('Payments taken', true); ?></th>
-                            <th class="text-right"><?php echo l('Expected in hand', true); ?></th>
-                            <th class="text-right" style="width:200px"><?php echo l('Counted', true); ?></th>
+                            <th class="is-right"><?php echo l('Payments', true); ?></th>
+                            <th class="is-right"><?php echo l('Expected', true); ?></th>
+                            <th class="is-right" style="width:220px"><?php echo l('Counted', true); ?></th>
+                            <th class="is-right" style="width:150px"><?php echo l('Difference', true); ?></th>
                         </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($rows as $row) : ?>
-                        <tr>
-                            <td><?php echo $e($row['payment_type']); ?>
-                                <?php if ($row['opening_float'] > 0) : ?><small class="text-muted">(<?php echo l('includes float', true); ?>)</small><?php endif; ?></td>
-                            <td class="text-right"><?php echo $money($row['payments']); ?> <small class="text-muted">× <?php echo (int) $row['payment_count']; ?></small></td>
-                            <td class="text-right"><?php echo $money($row['expected']); ?></td>
-                            <td class="text-right">
-                                <input type="number" step="0.01" class="form-control text-right" name="counted[<?php echo (int) $row['payment_type_id']; ?>]" placeholder="0.00" />
+                    <?php $extra_rows = 0; foreach ($rows as $row) :
+                        $is_extra = $row['expected'] == 0 && $row['payment_count'] == 0 && stripos($row['payment_type'], 'cash') === false;
+                        if ($is_extra) { $extra_rows++; }
+                    ?>
+                        <tr data-expected="<?php echo vx_e($row['expected']); ?>" class="<?php echo $is_extra ? 'vx-row-extra' : ''; ?>">
+                            <td><div class="vx-cell-title"><?php echo vx_e($row['payment_type']); ?></div>
+                                <?php if ($row['opening_float'] > 0) : ?><div class="vx-cell-sub"><?php echo l('Includes float of', true) . ' ' . vx_money($row['opening_float'], $sym); ?></div><?php endif; ?></td>
+                            <td class="is-right vx-num"><?php echo vx_money($row['payments'], $sym); ?><div class="vx-cell-sub"><?php echo (int) $row['payment_count']; ?> × </div></td>
+                            <td class="is-right vx-num vx-strong"><?php echo vx_money($row['expected'], $sym); ?></td>
+                            <td class="is-right">
+                                <div class="vx-input-money"><span><?php echo vx_e(vx_symbol($sym)); ?></span>
+                                <input type="number" step="0.01" class="vx-input js-counted" name="counted[<?php echo (int) $row['payment_type_id']; ?>]" placeholder="0.00" /></div>
                             </td>
+                            <td class="is-right vx-num js-diff"><span class="vx-soft">—</span></td>
                         </tr>
                     <?php endforeach; ?>
+                    <?php if ($extra_rows) : ?>
+                        <tr class="vx-row-toggle"><td colspan="5">
+                            <button type="button" class="vx-btn vx-btn-ghost vx-btn-sm" onclick="this.closest('table').classList.add('vx-show-extra'); this.closest('tr').remove();">
+                                <i class="fa fa-plus"></i> <?php echo sprintf(l('Show %d more payment types', true), $extra_rows); ?>
+                            </button>
+                        </td></tr>
+                    <?php endif; ?>
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td><?php echo l('Total', true); ?></td>
+                            <td class="is-right vx-num"><?php echo vx_money($payments_total, $sym); ?></td>
+                            <td class="is-right vx-num"><?php echo vx_money($expected_total, $sym); ?></td>
+                            <td class="is-right vx-num" id="vx-counted-total">—</td>
+                            <td class="is-right vx-num" id="vx-diff-total">—</td>
+                        </tr>
+                    </tfoot>
                 </table>
-                <div class="form-group">
-                    <label for="notes"><?php echo l('Notes (explain any difference)', true); ?></label>
-                    <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+            </div>
+            <div class="vx-card-body">
+                <div class="vx-field" style="margin:0">
+                    <label class="vx-label" for="notes"><?php echo l('Notes', true); ?></label>
+                    <textarea class="vx-textarea" id="notes" name="notes" placeholder="<?php echo vx_e(l('Explain any difference, e.g. change given from personal cash', true)); ?>"></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fa fa-lock"></i> <?php echo l('Close shift', true); ?></button>
-            </form>
-        <?php endif; ?>
+            </div>
+            <div class="vx-card-footer">
+                <span class="vx-muted"><i class="fa fa-lock"></i> <?php echo l('Closing locks the counts and produces a printable shift report.', true); ?></span>
+                <button type="submit" class="vx-btn vx-btn-primary vx-btn-lg"><i class="fa fa-check"></i> <?php echo l('Close shift', true); ?></button>
+            </div>
         </div>
-    </div>
+    </form>
+
+    <script>
+    (function () {
+        var symbol = <?php echo json_encode(vx_symbol($sym)); ?>;
+        function fmt(v) {
+            var s = Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return (v < 0 ? '−' : (v > 0 ? '+' : '')) + symbol + s;
+        }
+        function tone(v) { v = Math.round(v * 100) / 100; return v === 0 ? 'vx-pos' : (v < 0 ? 'vx-neg' : 'vx-warn'); }
+        function recalc() {
+            var counted = 0, diff = 0, any = false;
+            document.querySelectorAll('#vx-close-shift tbody tr[data-expected]').forEach(function (tr) {
+                var input = tr.querySelector('.js-counted'), cell = tr.querySelector('.js-diff');
+                if (input.value === '') { cell.innerHTML = '<span class="vx-soft">—</span>'; return; }
+                any = true;
+                var c = parseFloat(input.value) || 0, d = c - parseFloat(tr.getAttribute('data-expected'));
+                counted += c; diff += d;
+                cell.innerHTML = '<span class="vx-strong ' + tone(d) + '">' + fmt(d) + '</span>';
+            });
+            document.getElementById('vx-counted-total').textContent = any ? fmt(counted).replace('+', '') : '—';
+            var total = document.getElementById('vx-diff-total');
+            total.innerHTML = any ? '<span class="' + tone(diff) + '">' + fmt(diff) + '</span>' : '—';
+        }
+        document.querySelectorAll('#vx-close-shift .js-counted').forEach(function (i) { i.addEventListener('input', recalc); });
+    })();
+    </script>
+<?php endif; ?>
 </div>
