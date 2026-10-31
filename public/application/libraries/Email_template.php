@@ -151,7 +151,7 @@ class Email_template {
 
             $sent = $this->ci->email->send();
 
-            if (!$sent && isset($_GET['dev_mode'])) {
+            if (!$sent && minical_dev_mode()) {
                 echo $this->ci->email->print_debugger();
             }
 
@@ -164,7 +164,7 @@ class Email_template {
                 echo " (no PDF attachment — see application/logs/invoice_pdf.log)";
             }
 
-            if(isset($_GET['dev_mode']) && $sent) {
+            if(minical_dev_mode() && $sent) {
                 echo $this->ci->email->print_debugger();
             }
 
@@ -627,7 +627,7 @@ class Email_template {
 
         $this->reset_language($company['default_language']);
 
-        if(isset($_GET['dev_mode'])) {
+        if(minical_dev_mode()) {
             echo $this->ci->email->print_debugger();
         }
 
@@ -1469,7 +1469,7 @@ class Email_template {
 
         $this->reset_language($company['default_language']);
 
-        if(isset($_GET['dev_mode'])) {
+        if(minical_dev_mode()) {
             echo $this->ci->email->print_debugger();
         }
 
@@ -1584,7 +1584,7 @@ class Email_template {
 
         $this->reset_language($company['default_language']);
 
-        if(isset($_GET['dev_mode'])) {
+        if(minical_dev_mode()) {
             echo $this->ci->email->print_debugger();
         }
 

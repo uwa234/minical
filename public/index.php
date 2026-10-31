@@ -38,7 +38,7 @@ $ENVIRONMENT = $ENVIRONMENT ? $ENVIRONMENT : 'production';
 
 define('ENVIRONMENT', $ENVIRONMENT);
 
-if(isset($_GET['dev_mode']) && $_GET['dev_mode'] == getenv('DEVMODE_PASS')){ // for debugging only
+if(minical_dev_mode()){ // for debugging only
     define('ENVIRONMENT', 'development');
 }
 

@@ -625,7 +625,7 @@ class PaymentGateway
                 "customer" => $customer_token
             )
         );
-        if (isset($_GET['dev_mode'])) {
+        if (minical_dev_mode()) {
             print_r($charge);
         }
 

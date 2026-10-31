@@ -13,3 +13,11 @@ composer.phar
 /public/application/extensions/*
 !/public/application/extensions/channex-integration
 !/public/application/extensions/channex-integration/**
+# Local secrets, dumps and runtime files
+.env.*
+!.env.example
+*.sql.gz
+.DS_Store
+public/application/logs/log-*.php
+public/pages/application/logs/log-*.php
+api/application/logs/log-*.php

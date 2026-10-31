@@ -411,7 +411,7 @@ class Availability_model extends CI_Model {
 
 		$query = $this->db->query($sql);
 
-		if (isset($_GET['dev_mode'])) {
+		if (minical_dev_mode()) {
             echo $this->db->last_query();
         }
 
@@ -451,7 +451,7 @@ class Availability_model extends CI_Model {
         
 		$date_ranged_array = array();
 
-        if (isset($_GET['dev_mode'])) {
+        if (minical_dev_mode()) {
             print_r($grouped_by_room_type);
         }
 

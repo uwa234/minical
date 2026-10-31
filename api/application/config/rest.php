@@ -106,7 +106,7 @@ $config['auth_source'] = 'ldap';
 |	array('admin' => '1234')
 |
 */
-$config['rest_valid_logins'] = array('admin' => '1234');
+$config['rest_valid_logins'] = array();
 
 /*
 |--------------------------------------------------------------------------

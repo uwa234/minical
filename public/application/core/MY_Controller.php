@@ -29,7 +29,7 @@ class MY_Controller extends CI_Controller {
         $this->ci =& get_instance();
         
         $this->profiler_is_on = false;
-        if(isset($_GET['dev_mode']) && $_GET['dev_mode'] == getenv('DEVMODE_PASS')){
+        if(minical_dev_mode()){
             $this->ci->output->enable_profiler(TRUE);
             $this->profiler_is_on = true;
         }

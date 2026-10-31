@@ -785,13 +785,28 @@ class Booking_model extends CI_Model {
                 LEFT JOIN 
                     key_x_company as kxc ON kxc.key_id = k.id
                 WHERE 
-                    k.key = '$key' AND
-                    kxc.company_id = '$company_id' ";
+                    k.key = ? AND
+                    kxc.company_id = ? ";
         
-        $query = $this->db->query($sql);
+        $query = $this->db->query($sql, array((string) $key, (int) $company_id));
         $result = $query->result_array();
         
         return count($result) > 0 ? $result : NULL;
+    }
+
+    function get_api_key_company_ids($key)
+    {
+        $sql = "SELECT DISTINCT kxc.company_id
+                FROM `key` as k
+                JOIN key_x_company as kxc ON kxc.key_id = k.id
+                WHERE k.key = ?";
+
+        $query = $this->db->query($sql, array((string) $key));
+        $ids = array();
+        foreach ($query->result_array() as $row) {
+            $ids[] = (int) $row['company_id'];
+        }
+        return $ids;
     }
 
     function get_bookings($filters, $company_id = 0, $group_by1 = NULL, $include_room_no_assigned = false, $include_customer_all_details = false)

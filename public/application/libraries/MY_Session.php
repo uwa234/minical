@@ -96,12 +96,106 @@ class MY_Session extends CI_Session
        // https://github.com/EllisLab/CodeIgniter/issues/154
        // http://codeigniter.com/forums/viewthread/102456/P15
        if ( !($this->CI->input->is_ajax_request()) ) {
-           parent::sess_update();
+           $this->_rotate_session();
        }
 
         if ($db_debug) {
             $this->CI->db->debug_on();
         }
+    }
+
+    /**
+     * CI_Session::sess_update() with a CSPRNG session ID.
+     */
+    private function _rotate_session()
+    {
+        if (($this->userdata['last_activity'] + $this->sess_time_to_update) >= $this->now)
+        {
+            return;
+        }
+
+        $old_sessid = $this->userdata['session_id'];
+        $new_sessid = bin2hex(random_bytes(16));
+
+        $this->userdata['session_id'] = $new_sessid;
+        $this->userdata['last_activity'] = $this->now;
+
+        $cookie_data = NULL;
+
+        if ($this->sess_use_database === TRUE)
+        {
+            $cookie_data = array();
+            foreach (array('session_id','ip_address','user_agent','last_activity') as $val)
+            {
+                $cookie_data[$val] = $this->userdata[$val];
+            }
+
+            $this->CI->db->query($this->CI->db->update_string($this->sess_table_name, array('last_activity' => $this->now, 'session_id' => $new_sessid), array('session_id' => $old_sessid)));
+        }
+
+        $this->_set_cookie($cookie_data);
+    }
+
+    function sess_destroy()
+    {
+        if ($this->sess_use_database === TRUE && isset($this->userdata['session_id']))
+        {
+            $this->CI->db->where('session_id', $this->userdata['session_id']);
+            $this->CI->db->delete($this->sess_table_name);
+        }
+
+        setcookie(
+            $this->sess_cookie_name,
+            '',
+            ($this->now - 31500000),
+            $this->cookie_path,
+            $this->cookie_domain,
+            $this->cookie_secure,
+            TRUE
+        );
+
+        $this->userdata = array();
+    }
+
+    /**
+     * CI_Session::_set_cookie() plus an HMAC signature and the HttpOnly flag.
+     */
+    function _set_cookie($cookie_data = NULL)
+    {
+        if (is_null($cookie_data))
+        {
+            $cookie_data = $this->userdata;
+        }
+
+        $cookie_data = $this->_serialize($cookie_data);
+
+        if ($this->sess_encrypt_cookie == TRUE)
+        {
+            $cookie_data = $this->CI->encrypt->encode($cookie_data);
+        }
+
+        // Signed so tampered values are rejected before decryption and unserialize().
+        $cookie_data .= $this->_cookie_signature($cookie_data);
+
+        $expire = ($this->sess_expire_on_close === TRUE) ? 0 : $this->sess_expiration + time();
+
+        setcookie(
+            $this->sess_cookie_name,
+            $cookie_data,
+            $expire,
+            $this->cookie_path,
+            $this->cookie_domain,
+            $this->cookie_secure,
+            TRUE
+        );
+    }
+
+    /**
+     * HMAC-SHA256 (64 hex chars) appended to the session cookie.
+     */
+    function _cookie_signature($cookie_data)
+    {
+        return hash_hmac('sha256', $cookie_data, $this->encryption_key);
     }
 
     /**
@@ -112,17 +206,8 @@ class MY_Session extends CI_Session
      */
     function sess_create()
     {
-        $sessid = '';
-        while (strlen($sessid) < 32)
-        {
-            $sessid .= mt_rand(0, mt_getrandmax());
-        }
-
-        // To make the session ID even more secure we'll combine it with the user's IP
-        $sessid .= $this->CI->input->ip_address();
-
         $this->userdata = array(
-            'session_id'	=> md5(uniqid($sessid, TRUE)),
+            'session_id'	=> bin2hex(random_bytes(16)),
             'ip_address'	=> $this->CI->input->ip_address(),
             'user_agent'	=> substr($this->CI->input->user_agent(), 0, 120),
             'last_activity'	=> $this->now,
@@ -167,28 +252,33 @@ class MY_Session extends CI_Session
             return FALSE;
         }
 
+        $signature = substr($session, -64);
+        $session = substr($session, 0, -64);
+        if (strlen($signature) !== 64 || !hash_equals($this->_cookie_signature($session), $signature))
+        {
+            log_message('debug', 'Session cookie signature mismatch.');
+            $this->sess_destroy();
+            return FALSE;
+        }
+
         // Decrypt the cookie data
         if ($this->sess_encrypt_cookie == TRUE)
         {
             $session = $this->CI->encrypt->decode($session);
         }
-        else
-        {
-            // encryption was not used, so we need to check the md5 hash
-            $hash	 = substr($session, strlen($session)-32); // get last 32 chars
-            $session = substr($session, 0, strlen($session)-32);
 
-            // Does the md5 hash match?  This is to prevent manipulation of session data in userspace
-            if ($hash !==  md5($session.$this->encryption_key))
+        // Unserialize the session array; the cookie holds only scalars.
+        $session = @unserialize(strip_slashes($session), array('allowed_classes' => false));
+        if (is_array($session))
+        {
+            foreach ($session as $key => $val)
             {
-                log_message('error', 'The session cookie data did not match what was expected. This could be a possible hacking attempt.');
-                $this->sess_destroy();
-                return FALSE;
+                if (is_string($val))
+                {
+                    $session[$key] = str_replace('{{slash}}', '\\', $val);
+                }
             }
         }
-
-        // Unserialize the session array
-        $session = $this->_unserialize($session);
 
         // Is the session data we unserialized an array with the correct format?
         if ( ! is_array($session) OR ! isset($session['session_id']) OR ! isset($session['ip_address']) OR ! isset($session['user_agent']) OR ! isset($session['last_activity']))

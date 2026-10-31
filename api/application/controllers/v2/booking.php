@@ -1533,6 +1533,8 @@ class Booking extends MY_Controller
             $this->response(array('status' => false, 'error' => 'Booking ID is missing.'), 200);
         }
 
+        $this->assert_booking_belongs_to_company($booking_id, $company_id);
+
         $payments = $this->Payment_model->get_payments($booking_id, false);
 
         if(empty($payments)) {
@@ -2526,7 +2528,7 @@ class Booking extends MY_Controller
 
         $booking_data = $this->Booking_model->get_company_by_booking($booking_id);
 
-        if(!$booking_data) {
+        if(!$booking_data || (int) $booking_data['company_id'] !== (int) $company_id) {
             $this->response(array('status' => false, 'error' => 'Booking ID is Invalid.'), 200);
         }
 

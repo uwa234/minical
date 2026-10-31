@@ -114,6 +114,11 @@ function platform_admin_decrypt_secret($ciphertext)
     $cipher = substr($raw, 16);
     $plain = openssl_decrypt($cipher, 'AES-256-CBC', hash('sha256', $key, true), OPENSSL_RAW_DATA, $iv);
 
+    $legacy_key = $CI->config->item('encryption_key_legacy');
+    if ($plain === false && $legacy_key && $legacy_key !== $key) {
+        $plain = openssl_decrypt($cipher, 'AES-256-CBC', hash('sha256', $legacy_key, true), OPENSSL_RAW_DATA, $iv);
+    }
+
     return $plain !== false ? $plain : '';
 }
 

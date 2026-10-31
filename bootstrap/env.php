@@ -39,3 +39,16 @@ function minical_env(string $key, $default = '')
 
     return $value !== false ? $value : $default;
 }
+
+/**
+ * True only when ?dev_mode= matches a configured DEVMODE_PASS of 16+ characters.
+ */
+function minical_dev_mode(): bool
+{
+    $pass = getenv('DEVMODE_PASS');
+    if (!is_string($pass) || strlen($pass) < 16 || !isset($_GET['dev_mode'])) {
+        return false;
+    }
+
+    return hash_equals($pass, (string) $_GET['dev_mode']);
+}

@@ -54,9 +54,9 @@ class Company_model extends CI_Model {
                 LEFT JOIN 
                     company as c ON c.company_id = kxc.company_id
                 WHERE 
-                    k.key = '$api_key'";
+                    k.key = ?";
         
-        $query = $this->db->query($sql);
+        $query = $this->db->query($sql, array((string) $api_key));
         
         if ($query->num_rows >= 1)
 		{
@@ -160,15 +160,16 @@ class Company_model extends CI_Model {
 
     function get_company_api_permission($company_id, $key = null)
     {
-        $is_key_avail = $key ? "k.key = '$key' AND" : '';
+        $is_key_avail = $key ? "k.key = ? AND" : '';
+        $bindings = $key ? array((string) $key, (int) $company_id) : array((int) $company_id);
 
         $sql = "SELECT  k.*, kxc.* FROM  `key` as k
                 LEFT JOIN key_x_company as kxc ON kxc.key_id = k.id
                 WHERE 
                     $is_key_avail 
-                    kxc.company_id = '$company_id' ";
+                    kxc.company_id = ? ";
 
-        $query = $this->db->query($sql);
+        $query = $this->db->query($sql, $bindings);
         $result = $query->result_array();
 
         return count($result) > 0 ? $result : NULL;

@@ -283,7 +283,13 @@ $config['cache_path'] = '';
 | MUST set an encryption key.  See the user guide for info.
 |
 */
-$config['encryption_key'] = '1nnGr1d3ncryption';
+// miniCal's published default key. Only used to decrypt data stored before
+// ENCRYPTION_KEY was configured; never used to encrypt new data or sessions.
+$config['encryption_key_legacy'] = '1nnGr1d3ncryption';
+$config['encryption_key'] = getenv('ENCRYPTION_KEY') ?: $config['encryption_key_legacy'];
+if ($config['encryption_key'] === $config['encryption_key_legacy'] && $ENVIRONMENT === 'production') {
+    error_log('SECURITY: ENCRYPTION_KEY is not set; sessions are signed with the public miniCal default key.');
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -304,14 +310,14 @@ $config['encryption_key'] = '1nnGr1d3ncryption';
 |
 http://codeigniter.com/forums/viewthread/102456/#523991
 */
-$config['sess_expiration']		= 345600;
+$config['sess_expiration']		= 43200;
 $config['sess_expire_on_close']	= FALSE;
 $config['sess_encrypt_cookie']	= TRUE;
 $config['sess_use_database']	= !(isset($_GET['MIGRATION_REQUEST']) && $_GET['MIGRATION_REQUEST']);
 $config['sess_table_name'] = 'sessions';
 $config['sess_match_ip']		= FALSE;
 $config['sess_match_useragent']	= FALSE;
-$config['sess_time_to_update']	= 79200;
+$config['sess_time_to_update']	= 3600;
 
 switch ($_SERVER['HTTP_HOST'])
 {
@@ -337,7 +343,8 @@ $config['cookie_prefix']	= "";
 $config['cookie_domain']	= "";
 $config['cookie_path']		= "/";
 // $config['cookie_path']		= '/; SameSite=None; Secure';
-$config['cookie_secure']	= FALSE;
+$config['cookie_secure']	= ($protocol === 'https://');
+$config['cookie_httponly']	= TRUE;
 
 /*
 |--------------------------------------------------------------------------
@@ -362,10 +369,43 @@ $config['global_xss_filtering'] = TRUE;
 | 'csrf_cookie_name' = The cookie name
 | 'csrf_expire' = The number in seconds the token should expire.
 */
-$config['csrf_protection'] = FALSE;
+// Enforced by application/core/MY_Security.php via Origin/Referer checks.
+$config['csrf_protection'] = TRUE;
 $config['csrf_token_name'] = 'csrf_test_name';
 $config['csrf_cookie_name'] = 'csrf_cookie_name';
 $config['csrf_expire'] = 7200;
+
+// Routes that legitimately receive cross-site browser POSTs (payment gateway
+// returns, the embeddable booking engine) or third-party callbacks.
+$config['csrf_exclude_routes'] = array(
+    'cron',
+    'online_reservation',
+    'online_booking_engine',
+    'booking_engine',
+    'room/get_rooms_available_AJAX',
+    'language_translation/get_translated_phrase',
+    'account_settings/paystack_webhook',
+    'account_settings/paystack_callback',
+    'whatsapp_booking/webhook',
+    'whatsapp_booking/paystack_callback',
+    'whatsapp_booking/paystack_webhook',
+    'channel_manager',
+    'channex_bookings/channex_get_bookings',
+    'channels/ical_export',
+    'subscription/get_subscription_status',
+    'subscription/get_subscription_update_cancelled',
+    'nexio_integration/forward_encrypt_card',
+    'pci_booking',
+    'cardknox_controller/save_customer_cardknox_card',
+    'nestpay_integration',
+    'restaurant_pos/checkin_guest_details_post',
+    'restaurant_pos/room_transfer_push',
+    'restaurant_pos/invoice_item_transfer_push',
+    'customer/post_add_customer_callback',
+    'customer/get_cc_cvc_encrypted',
+    'customer/detokenize_unused_token',
+    'customer/delete_unused_token',
+);
 
 /*
 |--------------------------------------------------------------------------

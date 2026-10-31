@@ -102,7 +102,7 @@ class Room_type_model extends CI_Model {
             );
 
             $api_url = $this->config->item('api_url').'/v1/inventory/availability?'.$query;
-            if(isset($_GET['dev_mode']) && $_GET['dev_mode'] === getenv('DEVMODE_PASS')){
+            if(minical_dev_mode()){
                 echo $api_url;
             }
 

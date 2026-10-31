@@ -797,12 +797,12 @@ class Customer extends MY_Controller {
 
     function get_customer_info_in_JSON($customer_id)
     {
+        $this->permission->check_access_to_customer_id($this->user_id, $customer_id);
 
         $customer_info = $this->Customer_model->get_customer_info($customer_id);
         $this->load->library('encrypt');
-        $encrypted_cc_number        = $customer_info['cc_number'];
-        $decrypted_cc_number        = $this->encrypt->decode($encrypted_cc_number);
-        $customer_info['cc_number'] = $decrypted_cc_number;
+        $decrypted_cc_number        = $customer_info['cc_number'] ? $this->encrypt->decode($customer_info['cc_number']) : '';
+        $customer_info['cc_number'] = $decrypted_cc_number ? 'XXXX XXXX XXXX '.substr($decrypted_cc_number, -4) : '';
         $json                       = json_encode($customer_info);
 
         echo $json;
