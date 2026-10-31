@@ -453,7 +453,7 @@ class Accounting extends MY_Controller
         if ($this->form_validation->run() == TRUE)
 		{
 			//update room type
-			if ($this->Tax_model->update_tax_type($tax_type_id, $data))
+			if ($this->Tax_model->update_tax_type($tax_type_id, $data, $this->company_id))
 			{
 				$value = 'Save Successful';
 				$this->_create_accounting_log("Update Tax Type ( [ID {$tax_type_id}])");

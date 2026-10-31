@@ -1041,8 +1041,10 @@ class Auth extends MY_Controller
      */
     private function _create_company($data, $subscription_type = "BASIC", $region = "NA", $created_by = null, $subscription_state_override = null, $trial_days = null)
     {
-        $time_zone    = 'America/New_York';
+        $time_zone    = getenv('DEFAULT_COMPANY_TIMEZONE') ?: 'Africa/Lagos';
         $this->load->model('Whitelabel_partner_model');
+        $this->load->model('Currency_model');
+        $default_currency_id = $this->Currency_model->get_currency_id_by_code(getenv('DEFAULT_COMPANY_CURRENCY') ?: 'NGN');
         // create company in minical database
         $company_data = array(
             'name'                     => $data['name'],
@@ -1051,8 +1053,8 @@ class Auth extends MY_Controller
             'number_of_rooms'          => isset($data['number_of_rooms'])?$data['number_of_rooms']:'1',
             'email'                    => isset($data['email'])?$data['email']:'',
             'time_zone'                => $time_zone,
-            'default_currency_id'      => '151', // USD
-            'country'                  => isset($data['country'])?$data['country']:'',
+            'default_currency_id'      => $default_currency_id ? $default_currency_id : '151', // 151 = USD
+            'country'                  => !empty($data['country']) ? $data['country'] : (getenv('DEFAULT_COMPANY_COUNTRY') ?: 'Nigeria'),
             'logo_image_group_id'      => $this->Image_model->create_image_group(LOGO_IMAGE_TYPE_ID),
             'slideshow_image_group_id' => $this->Image_model->create_image_group(SLIDE_IMAGE_TYPE_ID),
             'gallery_image_group_id'   => $this->Image_model->create_image_group(GALLERY_IMAGE_TYPE_ID),
@@ -1273,17 +1275,12 @@ class Auth extends MY_Controller
         $tip_charge_type_id = $this->Charge_type_model->create_charge_type($company_id, 'Gratuity');
 
 
-        //TO DO: SETUP ERROR CHECKING FOR FAIL CREATION
-        //setup default payment types
         $this->load->model('Payment_model');
-        $this->Payment_model->create_payment_type($company_id, 'AMEX');
-        $this->Payment_model->create_payment_type($company_id, 'Mastercard');
-        $this->Payment_model->create_payment_type($company_id, 'Visa');
-        $this->Payment_model->create_payment_type($company_id, 'Debit');
-        $this->Payment_model->create_payment_type($company_id, 'Cash');
-        $this->Payment_model->create_payment_type($company_id, 'Gift Card');
-        $this->Payment_model->create_payment_type($company_id, 'Cheque');
-        $this->Payment_model->create_payment_type($company_id, 'PayPal', 1);
+        if ($this->_is_nigerian_company($company_id)) {
+            $this->_seed_nigerian_defaults($company_id, $room_charge_id);
+        } else {
+            $this->_seed_default_payment_types($company_id);
+        }
 
 
         $active_extensions = $this->Extension_model->get_active_extensions($this->company_id);
@@ -1364,6 +1361,60 @@ class Auth extends MY_Controller
                 {
                     show_error($this->db->_error_message());
                 }
+            }
+        }
+    }
+
+    private function _is_nigerian_company($company_id)
+    {
+        $company = $this->db->select('default_currency_id, country')
+            ->where('company_id', $company_id)
+            ->get('company')
+            ->row_array();
+        if (!$company) {
+            return false;
+        }
+        $this->load->model('Currency_model');
+        $currency_id = $this->Currency_model->get_currency_id_by_code('NGN');
+        return ($currency_id && (int) $company['default_currency_id'] === (int) $currency_id)
+            || stripos((string) $company['country'], 'nigeria') !== false;
+    }
+
+    private function _seed_default_payment_types($company_id)
+    {
+        foreach (array('AMEX', 'Mastercard', 'Visa', 'Debit', 'Cash', 'Gift Card', 'Cheque') as $payment_type) {
+            $this->Payment_model->create_payment_type($company_id, $payment_type);
+        }
+        $this->Payment_model->create_payment_type($company_id, 'PayPal', 1);
+    }
+
+    /**
+     * Payment types and taxes Nigerian hotels use. Lagos consumption tax is created
+     * but not attached, because it only applies in Lagos State.
+     */
+    private function _seed_nigerian_defaults($company_id, $room_charge_type_id)
+    {
+        foreach (array('Cash', 'POS Terminal', 'Bank Transfer', 'Paystack', 'Cheque') as $payment_type) {
+            $this->Payment_model->create_payment_type($company_id, $payment_type);
+        }
+
+        $taxes = array(
+            array('tax_type' => 'VAT', 'tax_rate' => 7.5, 'attach_to_room_charge' => true),
+            array('tax_type' => 'Consumption Tax (Lagos)', 'tax_rate' => 5, 'attach_to_room_charge' => false),
+        );
+        foreach ($taxes as $tax) {
+            $this->db->insert('tax_type', array(
+                'company_id' => $company_id,
+                'tax_type' => $tax['tax_type'],
+                'tax_rate' => $tax['tax_rate'],
+                'is_percentage' => 1,
+                'is_tax_inclusive' => 1,
+                'is_brackets_active' => 0,
+                'is_deleted' => 0,
+            ));
+            $tax_type_id = $this->db->insert_id();
+            if ($tax['attach_to_room_charge'] && $tax_type_id && $room_charge_type_id) {
+                $this->Charge_type_model->add_charge_type_tax($room_charge_type_id, $tax_type_id);
             }
         }
     }

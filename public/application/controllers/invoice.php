@@ -715,7 +715,7 @@ class Invoice extends MY_Controller {
         }
 
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $booking_id;
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = (isset($flag) && $flag == 'add_folio') ? ADD_FOLIO : UPDATE_FOLIO;
@@ -754,7 +754,7 @@ class Invoice extends MY_Controller {
         }
 
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $booking_id;
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = ADD_FOLIO;
@@ -880,7 +880,7 @@ class Invoice extends MY_Controller {
         }
 
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $booking_id;
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = DELETE_FOLIO;
@@ -994,7 +994,7 @@ class Invoice extends MY_Controller {
                 $charge_folio_id = $this->Charge_model->insert_charge_folio($charge_id , $folio_id);
                 //invoice log 
                 $invoice_log_data = array();
-                $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+                $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
                 $invoice_log_data['booking_id'] = $booking_id;
                 $invoice_log_data['user_id'] = $user_id;
                 $invoice_log_data['action_id'] = ADD_CHARGE;
@@ -1013,7 +1013,7 @@ class Invoice extends MY_Controller {
         {
             foreach ($charge_changes as $key => $charge) {
                 $invoice_log_data = array();
-                $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+                $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
                 $invoice_log_data['booking_id'] = $booking_id;
                 $invoice_log_data['user_id'] = $user_id;
                 $invoice_log_data['action_id'] = EDIT_CHARGE;
@@ -1163,7 +1163,7 @@ class Invoice extends MY_Controller {
                     do_action('post.create.payment', $post_payment_data);
 
                     $invoice_log_data = array();
-                    $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+                    $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
                     $invoice_log_data['booking_id'] = $booking['booking_id'];
                     $invoice_log_data['user_id'] = $this->session->userdata('user_id');
                     $invoice_log_data['action_id'] = $company_data['manual_payment_capture'] ? AUTHORIZED_PAYMENT : CAPTURED_PAYMENT;
@@ -1234,7 +1234,7 @@ class Invoice extends MY_Controller {
             }
 
             $invoice_log_data = array();
-            $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+            $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
             $invoice_log_data['booking_id'] = $this->input->post('booking_id');
             $invoice_log_data['user_id'] = $this->session->userdata('user_id');
             $invoice_log_data['action_id'] = $company_data['manual_payment_capture'] ? AUTHORIZED_PAYMENT : CAPTURED_PAYMENT;
@@ -1342,7 +1342,7 @@ class Invoice extends MY_Controller {
         do_action('post.delete.charge', $charge_action_data);
             
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $booking_id;
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = DELETE_CHARGE;
@@ -1393,7 +1393,7 @@ class Invoice extends MY_Controller {
         }
 
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $payment['booking_id'];
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = $action_id;
@@ -1418,7 +1418,7 @@ class Invoice extends MY_Controller {
 
         $this->Booking_model->update_booking_balance($payment['booking_id']);        
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $payment['booking_id'];
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = DELETE_PAYMENT;
@@ -1479,7 +1479,7 @@ class Invoice extends MY_Controller {
             $update = $this->Invoice_model->update_capture_payments($payment_id, $capture_updates);
             
             $invoice_log_data = array();
-            $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+            $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
             $invoice_log_data['booking_id'] = $booking_id;
             $invoice_log_data['user_id'] = $this->session->userdata('user_id');
             $invoice_log_data['action_id'] = $company_data['manual_payment_capture'] ? AUTHORIZED_PAYMENT : CAPTURED_PAYMENT;
@@ -1520,7 +1520,7 @@ class Invoice extends MY_Controller {
     
         $this->Booking_model->update_booking_balance($payment['booking_id']);
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $payment['booking_id'];
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = VOID_PAYMENT;

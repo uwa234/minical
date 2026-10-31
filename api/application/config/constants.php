@@ -226,3 +226,9 @@ define('COMMON_CUSTOMER_TYPES',
             VIP => 'VIP'
         ))
     );
+
+/*
+| Invoice log actions (same values as public/application/config/constants.php)
+*/
+defined('ADD_CHARGE') OR define('ADD_CHARGE', '1');
+defined('DELETE_CHARGE') OR define('DELETE_CHARGE', '3');

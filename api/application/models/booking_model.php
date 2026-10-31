@@ -672,32 +672,36 @@ class Booking_model extends CI_Model {
     
     function update_booking_balance($booking_id) 
     {		
+        $booking_id = (int) $booking_id;
     	$sql = "SELECT *,
                     IFNULL(
                     (
                         SELECT
-                            ROUND(SUM((ch.amount * (1+IFNULL(percentage_total * 0.01, 0))) + IFNULL(flat_tax_total, 0)), 2) as charge_total
-                        FROM
-                            charge as ch
-                        LEFT JOIN ( 
-                            SELECT 
-                                ct.name, 
-                                ct.id, 
-                                sum(IF(tt.is_percentage = 1, tax_rate, 0)) as percentage_total, 
-                                sum(IF(tt.is_percentage = 0, tax_rate, 0)) as flat_tax_total
-                            FROM charge_type_tax_list AS cttl, charge_type as ct, tax_type AS tt
-                            WHERE 
-                                ct.id = cttl.charge_type_id AND
-                                tt.tax_type_id = cttl.tax_type_id AND 
-                                tt.is_deleted = '0' AND
-                                ct.is_deleted = '0'
-                            GROUP BY ct.id
-                        )t ON ch.charge_type_id = t.id
-                        WHERE
-                            ch.is_deleted = '0' AND
-                            ch.booking_id = b.booking_id 
-                        GROUP BY ch.booking_id
-                    ), 0	
+                            SUM(charge_amount) as charge_total
+                        FROM (
+                            SELECT
+                               (
+                                   ch.amount +
+                                   SUM(
+                                        IF(tt.is_tax_inclusive = 1,
+                                            0,
+                                            (ch.amount * IF(tt.is_percentage = 1, IF(tt.is_brackets_active, tpb.tax_rate, tt.tax_rate), 0) * 0.01) +
+                                            IF(tt.is_percentage = 0, IF(tt.is_brackets_active, tpb.tax_rate, tt.tax_rate), 0)
+                                        )
+                                    )
+                               ) as charge_amount
+                            FROM charge as ch
+                            LEFT JOIN charge_type as ct ON ch.charge_type_id = ct.id AND ct.is_deleted = '0'
+                            LEFT JOIN charge_type_tax_list AS cttl ON ct.id = cttl.charge_type_id
+                            LEFT JOIN tax_type AS tt ON tt.tax_type_id = cttl.tax_type_id AND tt.is_deleted = '0'
+                            LEFT JOIN tax_price_bracket as tpb
+                                ON tpb.tax_type_id = tt.tax_type_id AND ch.amount BETWEEN tpb.start_range AND tpb.end_range
+                            WHERE
+                                ch.is_deleted = '0' AND
+                                ch.booking_id = '$booking_id'
+                            GROUP BY ch.charge_id
+                        ) as total
+                    ), 0
                 ) as charge_total,
                 IFNULL(
                     (

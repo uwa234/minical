@@ -1072,7 +1072,7 @@ class Customer extends MY_Controller {
         }
 
         $invoice_log_data = array();
-        $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+        $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
         $invoice_log_data['booking_id'] = $data['booking_id'];
         $invoice_log_data['user_id'] = $this->session->userdata('user_id');
         $invoice_log_data['action_id'] = ADD_FOLIO;
@@ -1191,7 +1191,7 @@ class Customer extends MY_Controller {
                 do_action('post.create.payment', $post_payment_data);
 
                 $invoice_log_data = array();
-                $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+                $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
                 $invoice_log_data['booking_id'] = $booking['booking_id'];
                 $invoice_log_data['user_id'] = $this->session->userdata('user_id');
                 $invoice_log_data['action_id'] = $company_data['manual_payment_capture'] ? AUTHORIZED_PAYMENT : CAPTURED_PAYMENT;

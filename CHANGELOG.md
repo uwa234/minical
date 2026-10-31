@@ -2,6 +2,22 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-10-31
+
+Nigerian hotel essentials. Run migrations after deploying (`php public/index.php migrate`).
+
+### Fixed
+- Tax rates are stored with 4 decimals (migration 032). 7.5% VAT had been saved as 8%; existing 8% VAT on NGN / Nigerian properties is corrected to 7.5%.
+- API booking balance now matches the PMS: tax-inclusive rates and price brackets are respected, so POS room charges no longer inflate guest balances.
+- Invoice log timestamps used a 12-hour clock without AM/PM; they are now 24-hour.
+- Tax type updates are scoped to the user's own property.
+
+### Added
+- API `v2/booking/void_booking_charge`: void or partially refund a POS room charge. Same-day charges are deleted; charges from an audited day are reversed with a negative charge on the current selling date. Idempotent.
+- POS postings, voids and reversals made through the API are recorded in the invoice log.
+- New properties default to Africa/Lagos, NGN and Nigeria (`DEFAULT_COMPANY_TIMEZONE`, `DEFAULT_COMPANY_CURRENCY`, `DEFAULT_COMPANY_COUNTRY`).
+- Nigerian properties start with Cash, POS Terminal, Bank Transfer, Paystack and Cheque payment types, VAT 7.5% (inclusive) on room charges, and an unattached 5% Lagos consumption tax.
+
 ## [0.1.1] - 2026-10-31
 
 ### Security

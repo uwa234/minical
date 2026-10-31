@@ -1509,6 +1509,14 @@ class Booking extends MY_Controller
             $folio_id = isset($charge['folio_id']) ? (int) $charge['folio_id'] : 0;
             $this->Charge_model->insert_charge_folio($charge_id, $folio_id);
 
+            $this->Charge_model->insert_invoice_log(
+                $booking_id,
+                ADD_CHARGE,
+                'API charge posted: ' . $row['description'] . ($external_reference !== '' ? ' [' . $external_reference . ']' : ''),
+                $charge_id,
+                $row['amount']
+            );
+
             $inserted_ids[] = $charge_id;
             $booking_ids_to_update[$booking_id] = true;
         }
@@ -1521,6 +1529,115 @@ class Booking extends MY_Controller
             'status' => 'success',
             'charge_ids' => $inserted_ids,
             'idempotent' => $idempotent,
+        ), 200);
+    }
+
+    /**
+     * POS / external: void (or partially refund) a charge posted to a room.
+     *
+     * POST body: company_id, external_reference or charge_id, optional amount (partial refund),
+     * optional reason, optional void_reference (idempotency key, defaults to "<external_reference>:void").
+     *
+     * A charge on the current selling date is deleted. A charge from an earlier
+     * (night-audited) date, or a partial refund, is reversed with a negative charge
+     * on the current selling date so closed days stay unchanged.
+     */
+    public function void_booking_charge_post()
+    {
+        $company_id = (int) $this->post('company_id');
+        $external_reference = trim((string) $this->post('external_reference'));
+        $charge_id = (int) $this->post('charge_id');
+        $reason = trim((string) $this->post('reason'));
+        $refund_amount = $this->post('amount');
+
+        if ($external_reference === '' && !$charge_id) {
+            $this->response(array('status' => false, 'error' => 'external_reference or charge_id is required.'), 200);
+        }
+
+        $charge = $this->Charge_model->get_charge_for_void($charge_id, $external_reference !== '' ? $external_reference : null);
+        if (!$charge || (int) $charge['company_id'] !== $company_id) {
+            $this->response(array('status' => false, 'error' => 'Charge not found for this company.'), 200);
+        }
+
+        $original_amount = (float) $charge['amount'];
+        $is_partial = $refund_amount !== false && $refund_amount !== null && $refund_amount !== '';
+        $amount = $is_partial ? round((float) $refund_amount, 2) : $original_amount;
+        if ($amount <= 0 || $amount > $original_amount) {
+            $this->response(array('status' => false, 'error' => 'amount must be greater than 0 and not more than the original charge.'), 200);
+        }
+
+        $void_reference = trim((string) $this->post('void_reference'));
+        if ($void_reference === '') {
+            $base = $charge['external_reference'] ? $charge['external_reference'] : 'charge-' . $charge['charge_id'];
+            $void_reference = $base . ':void' . ($is_partial ? ':' . $amount : '');
+        }
+        $void_reference = substr($void_reference, 0, 191);
+
+        if ((int) $charge['is_deleted'] === 1) {
+            $this->response(array('status' => 'success', 'action' => 'deleted', 'charge_id' => (int) $charge['charge_id'], 'idempotent' => true), 200);
+        }
+        $existing_reversal = $this->Charge_model->get_charge_by_external_reference($void_reference);
+        if ($existing_reversal) {
+            $this->response(array(
+                'status' => 'success',
+                'action' => 'reversed',
+                'charge_id' => (int) $charge['charge_id'],
+                'reversal_charge_id' => (int) $existing_reversal['charge_id'],
+                'idempotent' => true,
+            ), 200);
+        }
+
+        if ((string) $charge['booking_state'] !== (string) INHOUSE) {
+            $this->response(array('status' => false, 'error' => 'Booking is not in-house; refund it at the front desk.'), 200);
+        }
+
+        $booking_id = (int) $charge['booking_id'];
+        $selling_date = $this->Company_model->get_selling_date($company_id);
+        if (!$selling_date) {
+            $selling_date = date('Y-m-d');
+        }
+        $label = $reason !== '' ? ' (' . $reason . ')' : '';
+
+        if (!$is_partial && $charge['selling_date'] === $selling_date) {
+            $this->Charge_model->soft_delete_charge($charge['charge_id']);
+            $this->Charge_model->insert_invoice_log($booking_id, DELETE_CHARGE, 'API charge voided: ' . $charge['description'] . $label, $charge['charge_id'], 0);
+            $this->Booking_model->update_booking_balance($booking_id);
+            $this->response(array('status' => 'success', 'action' => 'deleted', 'charge_id' => (int) $charge['charge_id'], 'idempotent' => false), 200);
+        }
+
+        $this->load->helper('timezone');
+        $date = convert_to_UTC_time(new DateTime(date('Y-m-d H:i:s')));
+        $reversal_id = $this->Charge_model->insert_charge(array(
+            'date_time' => $date->format('Y-m-d H:i:s'),
+            'selling_date' => $selling_date,
+            'description' => 'Reversal: ' . $charge['description'] . $label,
+            'customer_id' => (int) $charge['customer_id'],
+            'charge_type_id' => (int) $charge['charge_type_id'],
+            'amount' => -$amount,
+            'booking_id' => $booking_id,
+            'user_id' => 0,
+            'pay_period' => $charge['pay_period'],
+            'is_night_audit_charge' => 0,
+            'external_reference' => $void_reference,
+        ));
+        if (!$reversal_id) {
+            $existing_reversal = $this->Charge_model->get_charge_by_external_reference($void_reference);
+            if ($existing_reversal) {
+                $this->response(array('status' => 'success', 'action' => 'reversed', 'charge_id' => (int) $charge['charge_id'], 'reversal_charge_id' => (int) $existing_reversal['charge_id'], 'idempotent' => true), 200);
+            }
+            $this->response(array('status' => false, 'error' => 'Failed to post reversal.'), 200);
+        }
+
+        $this->Charge_model->insert_charge_folio($reversal_id, 0);
+        $this->Charge_model->insert_invoice_log($booking_id, ADD_CHARGE, 'API charge reversed: ' . $charge['description'] . $label . ' [' . $void_reference . ']', $reversal_id, -$amount);
+        $this->Booking_model->update_booking_balance($booking_id);
+
+        $this->response(array(
+            'status' => 'success',
+            'action' => 'reversed',
+            'charge_id' => (int) $charge['charge_id'],
+            'reversal_charge_id' => (int) $reversal_id,
+            'idempotent' => false,
         ), 200);
     }
 

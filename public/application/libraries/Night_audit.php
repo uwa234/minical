@@ -267,7 +267,7 @@ class Night_audit {
                         $folio_id = $this->ci->Folio_model->add_folio($folio);
                     }
                     $invoice_log_data = array();
-                    $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+                    $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
                     $invoice_log_data['booking_id'] = $booking_id;
                     $invoice_log_data['user_id'] = $user_id;
                     $invoice_log_data['action_id'] = ADD_FOLIO;
@@ -619,7 +619,7 @@ class Night_audit {
         //invoice log
         foreach ($charge_data as $key => $charge) {
             $invoice_log_data = array();
-            $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+            $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
             $invoice_log_data['booking_id'] = $charge['booking_id'];
             $invoice_log_data['user_id'] = $charge['user_id'];
             $invoice_log_data['action_id'] = ADD_CHARGE;

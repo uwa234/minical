@@ -1592,7 +1592,7 @@ class Booking extends MY_Controller
                 //invoice log 
                 $this->load->model('Invoice_log_model');
                 $invoice_log_data = array();
-                $invoice_log_data['date_time'] = gmdate('Y-m-d h:i:s');
+                $invoice_log_data['date_time'] = gmdate('Y-m-d H:i:s');
                 $invoice_log_data['booking_id'] = $booking_id;
                 $invoice_log_data['user_id'] = $this->user_id;
                 $invoice_log_data['action_id'] = ADD_CHARGE;

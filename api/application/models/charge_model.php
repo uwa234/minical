@@ -121,6 +121,47 @@ class Charge_model extends CI_Model {
         return $insert_id;
     }
 
+    /**
+     * Charge with its booking's company and state, including deleted charges.
+     */
+    function get_charge_for_void($charge_id = null, $external_reference = null)
+    {
+        $this->db->select('ch.*, b.company_id, b.state as booking_state');
+        $this->db->from('charge as ch');
+        $this->db->join('booking as b', 'b.booking_id = ch.booking_id');
+        if ($external_reference !== null && $external_reference !== '') {
+            if (!$this->has_external_reference_column()) {
+                return null;
+            }
+            $this->db->where('ch.external_reference', $external_reference);
+        } else {
+            $this->db->where('ch.charge_id', (int) $charge_id);
+        }
+        $this->db->limit(1);
+        $row = $this->db->get()->row_array();
+        return $row ? $row : null;
+    }
+
+    function soft_delete_charge($charge_id)
+    {
+        $this->db->where('charge_id', (int) $charge_id);
+        $this->db->update('charge', array('is_deleted' => 1));
+        return $this->db->affected_rows() > 0;
+    }
+
+    function insert_invoice_log($booking_id, $action_id, $log, $charge_id, $amount)
+    {
+        $this->db->insert('invoice_log', array(
+            'booking_id' => (int) $booking_id,
+            'date_time' => gmdate('Y-m-d H:i:s'),
+            'user_id' => 0,
+            'action_id' => $action_id,
+            'log' => $log,
+            'charge_or_payment_id' => (int) $charge_id,
+            'new_amount' => $amount,
+        ));
+    }
+
     function insert_charge_folio($charge_id, $folio_id = 0)
     {
         $data = array('charge_id' => $charge_id, 'folio_id' => $folio_id);
