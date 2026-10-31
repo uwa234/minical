@@ -2,6 +2,19 @@
 
 All notable changes to Veurion PMS are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-31
+
+Run migrations after deploying (`php public/index.php migrate`).
+
+### Added
+- Owner activity log (Reports → Activity log, migration 035) for owners, admins and users with "view reports". One place to see deleted, edited, refunded and voided charges and payments, POS voids and reversals, cancellations, no-shows, deleted bookings and rate, rate plan and paying-customer changes, by user and date, in the hotel's time zone.
+- Per-user summary of sensitive actions with the amounts of charges deleted, payments deleted or voided and refunds.
+- Filters for sensitive actions, all money movements, all booking changes or everything; CSV export and print.
+
+### Changed
+- Indexes on `invoice_log` and `booking_log` (date and booking) so history queries stay fast.
+- POS voids made through the API record the voided amount in the invoice log.
+
 ## [0.4.0] - 2026-10-31
 
 Run migrations after deploying (`php public/index.php migrate`).

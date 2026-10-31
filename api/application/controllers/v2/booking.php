@@ -1600,7 +1600,7 @@ class Booking extends MY_Controller
 
         if (!$is_partial && $charge['selling_date'] === $selling_date) {
             $this->Charge_model->soft_delete_charge($charge['charge_id']);
-            $this->Charge_model->insert_invoice_log($booking_id, DELETE_CHARGE, 'API charge voided: ' . $charge['description'] . $label, $charge['charge_id'], 0);
+            $this->Charge_model->insert_invoice_log($booking_id, DELETE_CHARGE, 'API charge voided: ' . $charge['description'] . $label, $charge['charge_id'], $original_amount);
             $this->Booking_model->update_booking_balance($booking_id);
             $this->response(array('status' => 'success', 'action' => 'deleted', 'charge_id' => (int) $charge['charge_id'], 'idempotent' => false), 200);
         }
