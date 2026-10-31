@@ -25,43 +25,126 @@ class Room_type_model extends CI_Model {
             }
         }
         
-        $query = http_build_query(
-            array(
-                'start_date'                => $start_date,
-                'ota_id'                    => $ota_id,
-                'max_adults'                => $adult_count,
-                'max_children'              => $children_count,
-                'end_date'                  => $end_date,
-                'room_types'                => array_keys($inventory),
-                'filter_can_be_sold_online' => $filter_can_be_sold_online ? true : false,
-                'get_max_availability'      => $get_max_availability,
-                'get_inventorysold'         => $get_inventorysold,
-                'get_closeout_status'       => $get_closeout_status,
-                'get_inventory'             => $get_inventory,
-                'company_id'                => $company_id,
-                'ota_key'                   => $ota_key,
-                'X-API-KEY'                 => $this->company_api_key ? $this->company_api_key : $company_access_key
-            )
+        if (empty($inventory)) {
+            return $inventory;
+        }
+
+        $api_key = $this->_resolve_company_api_key($company_id, $company_access_key);
+        $avail_array = $this->_fetch_availability_array(
+            $start_date,
+            $end_date,
+            array_keys($inventory),
+            $ota_id,
+            $filter_can_be_sold_online,
+            $adult_count,
+            $children_count,
+            $get_inventory,
+            $get_max_availability,
+            $get_inventorysold,
+            $get_closeout_status,
+            $company_id,
+            $ota_key,
+            $api_key
         );
 
-        $req = $this->call_api($this->config->item('api_url').'/v1/inventory/availability?'.$query, array(), array(), 'GET');
-
-        // $req = Requests::get($this->config->item('api_url').'/v1/inventory/availability?'.$query);
-        // if response empty aka no availability, ensure actual array is created anyway
-        if(isset($_GET['dev_mode']) && $_GET['dev_mode'] === getenv('DEVMODE_PASS')){
-            echo $this->config->item('api_url').'/v1/inventory/availability?'.$query;
-        }
-//      print_r($req);die;
-        
-        // $avail_array = $req->body ? json_decode($req->body, true) : null;
-        $avail_array = $req ? json_decode($req, true) : null;
-        $avail_array = empty($avail_array) ? array() : $avail_array;
-
         foreach ($avail_array as $room_type_id => $room_type_availability) {
+            if (!is_numeric($room_type_id)) {
+                continue;
+            }
             $inventory[$room_type_id]['availability'] = $room_type_availability;
         }
         
         return $inventory;
+    }
+
+    function _resolve_company_api_key($company_id, $company_access_key = null)
+    {
+        if ($company_access_key) {
+            return $company_access_key;
+        }
+
+        $CI =& get_instance();
+        if (!empty($CI->company_api_key)) {
+            return $CI->company_api_key;
+        }
+
+        $CI->load->model('Company_model');
+        $key_data = $CI->Company_model->get_company_api_permission($company_id);
+        if (!empty($key_data[0]['key'])) {
+            return $key_data[0]['key'];
+        }
+
+        return null;
+    }
+
+    function _fetch_availability_array($start_date, $end_date, $room_types, $ota_id, $filter_can_be_sold_online, $adult_count, $children_count, $get_inventory, $get_max_availability, $get_inventorysold, $get_closeout_status, $company_id, $ota_key, $api_key)
+    {
+        $avail_array = array();
+
+        if ($api_key) {
+            $query = http_build_query(
+                array(
+                    'start_date'                => $start_date,
+                    'ota_id'                    => $ota_id,
+                    'max_adults'                => $adult_count,
+                    'max_children'              => $children_count,
+                    'end_date'                  => $end_date,
+                    'room_types'                => $room_types,
+                    'filter_can_be_sold_online' => $filter_can_be_sold_online ? true : false,
+                    'get_max_availability'      => $get_max_availability,
+                    'get_inventorysold'         => $get_inventorysold,
+                    'get_closeout_status'       => $get_closeout_status,
+                    'get_inventory'             => $get_inventory,
+                    'company_id'                => $company_id,
+                    'ota_key'                   => $ota_key,
+                    'X-API-KEY'                 => $api_key
+                )
+            );
+
+            $api_url = $this->config->item('api_url').'/v1/inventory/availability?'.$query;
+            if(isset($_GET['dev_mode']) && $_GET['dev_mode'] === getenv('DEVMODE_PASS')){
+                echo $api_url;
+            }
+
+            $headers = array('X-API-KEY: '.$api_key);
+            $req = $this->call_api($api_url, array(), $headers, 'GET');
+            $decoded = $req ? json_decode($req, true) : null;
+            if (is_array($decoded) && !isset($decoded['status'])) {
+                return $decoded;
+            }
+
+            if (is_array($decoded) && isset($decoded['error'])) {
+                log_message('error', 'Inventory API error: '.$decoded['error']);
+            } else {
+                log_message('error', 'Inventory API returned empty or invalid response');
+            }
+        } else {
+            log_message('error', 'Inventory API skipped: no company API key for company '.$company_id);
+        }
+
+        $ext_model_path = APPPATH.'extensions/channex-integration/models/availability_model.php';
+        if (file_exists($ext_model_path)) {
+            $CI =& get_instance();
+            $CI->load->model('../extensions/channex-integration/models/availability_model', 'Inventory_availability_model');
+            return $CI->Inventory_availability_model->get_availability(
+                $start_date,
+                $end_date,
+                $room_types,
+                $ota_id,
+                $filter_can_be_sold_online,
+                $adult_count,
+                $children_count,
+                $get_inventory,
+                $get_max_availability,
+                $get_inventorysold,
+                $get_closeout_status,
+                false,
+                $company_id,
+                $ota_key
+            );
+        }
+
+        return $avail_array;
     }
 
     public function call_api($api_url, $data, $headers, $method_type = 'POST'){

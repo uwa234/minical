@@ -83,6 +83,16 @@ class Platform_admin_model extends CI_Model {
         return false;
     }
 
+    function count_active()
+    {
+        if (!$this->table_exists()) {
+            return 0;
+        }
+
+        $this->db->where('is_active', 1);
+        return (int) $this->db->count_all_results('platform_admin');
+    }
+
     function add_admin($email, $created_by_user_id = null, $role = 'admin')
     {
         if (!$this->table_exists()) {

@@ -21,9 +21,6 @@ class Rates extends MY_Controller
 		$this->load->model('Company_model');
 		$this->load->model('Employee_log_model');
         $this->load->model('Option_model');
-        $this->load->library('ckeditor');
-        $this->load->library('ckfinder');
-        $this->load->helper('ckeditor_helper');
 		
 		$this->load->library('Form_validation');
 		
@@ -83,21 +80,16 @@ class Rates extends MY_Controller
 		$data['selected_sidebar_link'] = 'Rate Plans';
 		
 		$data['css_files'] = array(
+			base_url() . auto_version('css/app-modern-page.css'),
+			base_url() . auto_version('css/rates/rate_plans.css'),
 			base_url() . auto_version('css/croppic.css'),
-			base_url() . auto_version('css/admin/select2.css')
+			base_url() . auto_version('css/admin/select2.css'),
+			'https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote.min.css'
 		);
-        /*ckeditor*/
-        
-        $this->ckeditor->basePath = base_url().'application/third_party/ckeditor/';
-        $this->ckeditor->config['language'] = 'it';
-        $this->ckeditor->config['width'] = '500px';
-        $this->ckeditor->config['height'] = '300px';            
 
-        //Add Ckfinder to Ckeditor
-        $this->ckfinder->SetupCKEditor($this->ckeditor,'../../ckfinder/'); 
-        
 		$data['js_files'] = array(
-               'https://cdn.ckeditor.com/4.9.1/full/ckeditor.js',
+				'https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote.min.js',
+				base_url() . auto_version('js/summernote-editor.js'),
 				base_url() . auto_version('js/hotel-settings/rate-plan-settings.js'),
 				base_url() . auto_version('js/croppic.js'),
 				base_url() . auto_version('js/hotel-settings/image-settings.js'),
@@ -1017,7 +1009,8 @@ class Rates extends MY_Controller
 
 		$data['selected_sidebar_link'] = 'Rate Plans';
         $data['css_files'] = array(
-            base_url() . auto_version('css/rates/rates_modal.css')
+            base_url() . auto_version('css/rates/rates_modal.css'),
+            base_url() . auto_version('css/rates/edit_rates.css')
         );
 		$data['js_files'] = array(
 				base_url() . auto_version('js/channel_manager/channel_manager.js'),

@@ -67,6 +67,14 @@
                                     <input name="password" class="form-control" type="password" placeholder="Password" autocomplete="off" value="<?php echo set_value('password'); ?>" />
                                 </div>  
                             </div>
+                            <?php if ($this->config->item('recaptcha_site_key', 'tank_auth')) { ?>
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label"></label>
+                                <div class="col-sm-9">
+                                    <div class="g-recaptcha" data-sitekey="<?php echo htmlspecialchars($this->config->item('recaptcha_site_key', 'tank_auth'), ENT_QUOTES, 'UTF-8'); ?>"></div>
+                                </div>
+                            </div>
+                            <?php } ?>
                             
                           
                             <div class="form-group">
@@ -194,24 +202,26 @@
             data: {
                     email: email,
                     password: password,
-                    accept_tnc: accept_tnc
-                    // 'g-recaptcha-response': $('#g-recaptcha-response').val()
+                    accept_tnc: accept_tnc,
+                    'g-recaptcha-response': $('#g-recaptcha-response').val() || ''
                 },
             success: function (data) {
-                if (data == 'success')
+                if (data == 'success' || data == 'loggedin')
                 {
                     window.location.href = getBaseURL() + 'booking/';
-                    
                 }
-                else if (data == 'loggedin')
+                else if (data == 'check_email')
                 {
-                    window.location.href = getBaseURL() + 'booking/';
+                    alert('Account created. Please check your email and click the verification link before signing in.');
+                    window.location.href = getBaseURL() + 'auth/login/';
                 }
                 else
                 {
                     alert(data);
                     $('.register_submit_form').attr('disabled', false).val('Next Step');
-                    // grecaptcha.reset()
+                    if (typeof grecaptcha !== 'undefined') {
+                        grecaptcha.reset();
+                    }
                 }
             },
             error: function (err) {

@@ -98,6 +98,52 @@
             });
         });
 
+        $('.trial-delete-registration-btn').on('click', function () {
+            var $btn = $(this);
+            var requestId = $btn.data('request-id');
+            var propertyName = $btn.data('property-name') || ('#' + requestId);
+            var $row = $btn.closest('tr');
+
+            if (!window.confirm('Delete trial registration for "' + propertyName + '"? This cannot be undone.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                type: 'POST',
+                url: getBaseURL() + 'admin/delete_trial_registration',
+                dataType: 'json',
+                data: { request_id: requestId },
+                success: function (response) {
+                    if (response && response.success) {
+                        $row.fadeOut(200, function () {
+                            $(this).remove();
+                            if (!$('#trial-registrations-table tbody tr').length) {
+                                $('#trial-registrations-table tbody').append(
+                                    '<tr><td colspan="9" class="text-muted">No trial registrations yet.</td></tr>'
+                                );
+                            }
+                        });
+                        return;
+                    }
+                    alert((response && response.error) ? response.error : 'Could not delete registration.');
+                    $btn.prop('disabled', false);
+                },
+                error: function (xhr) {
+                    var msg = 'Could not delete registration.';
+                    try {
+                        var body = JSON.parse(xhr.responseText);
+                        if (body && body.error) {
+                            msg = body.error;
+                        }
+                    } catch (e) {}
+                    alert(msg);
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
+
         if (window.saasOpenTrialLeadId) {
             var $leadRow = $('tr[data-request-id="' + window.saasOpenTrialLeadId + '"]');
             var $leadBtn = $leadRow.find('.trial-create-property-btn');

@@ -1553,6 +1553,40 @@ class Admin extends MY_Controller {
         $this->_json_response(array('success' => false, 'error' => 'Status could not be updated.'), 400);
     }
 
+    function delete_trial_registration()
+    {
+        $this->_require_platform_admin(true);
+
+        $id = (int) $this->input->post('request_id');
+        if ($id < 1) {
+            $this->_json_response(array('success' => false, 'error' => 'Invalid request.'), 400);
+            return;
+        }
+
+        $lead = $this->Trial_registration_request_model->get_by_id($id);
+        if (!$lead) {
+            $this->_json_response(array('success' => false, 'error' => 'Trial registration not found.'), 404);
+            return;
+        }
+
+        if (!$this->Trial_registration_request_model->delete($id)) {
+            $this->_json_response(array('success' => false, 'error' => 'Could not delete trial registration.'), 500);
+            return;
+        }
+
+        if (function_exists('platform_audit_log')) {
+            platform_audit_log('trial_registration.delete', array(
+                'actor_user_id' => $this->session->userdata('user_id'),
+                'actor_email' => $this->session->userdata('email'),
+                'target_label' => isset($lead['property_name']) ? $lead['property_name'] : ('#' . $id),
+                'details' => 'Deleted trial registration #' . $id
+                    . (isset($lead['email']) ? (' (' . $lead['email'] . ')') : ''),
+            ));
+        }
+
+        $this->_json_response(array('success' => true));
+    }
+
     function property_list()
     {
         $this->_require_platform_admin();
@@ -2260,6 +2294,12 @@ class Admin extends MY_Controller {
             if (!empty($profile)) {
                 $this->User_model->update_user_profile($user_id, $profile);
             }
+            if (empty($user->activated) || (int) $user->activated === 0) {
+                $this->User_model->update_user($user_id, array(
+                    'activated' => 1,
+                    'new_email_key' => null,
+                ));
+            }
             return $user_id;
         }
 
@@ -2269,7 +2309,7 @@ class Admin extends MY_Controller {
             'last_name' => $last_name ?: '',
             'password' => md5(uniqid(rand(), true) . microtime()),
         );
-        $created = $this->users->create_user($data, false);
+        $created = $this->users->create_user($data, true);
         if ($created && isset($created['user_id'])) {
             return (int) $created['user_id'];
         }

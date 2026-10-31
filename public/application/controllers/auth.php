@@ -193,10 +193,17 @@ class Auth extends MY_Controller
                     $this->Employee_log_model->insert_log($employee_log_data);
                 }
                 
-                $employee_permission['permissions'] = $this->Employee_log_model->get_user_permission($this->session->userdata('current_company_id'),$this->session->userdata('user_id'));
+                $permissions = $this->Employee_log_model->get_user_permission(
+                    $this->session->userdata('current_company_id'),
+                    $this->session->userdata('user_id')
+                );
+                if (!is_array($permissions)) {
+                    $permissions = array();
+                }
+                $employee_permission = array('permissions' => $permissions);
                 $this->session->set_userdata($employee_permission);
 
-                if (is_platform_admin($this->session->userdata('user_id'))) {
+                if (is_platform_admin($this->session->userdata('user_id'), $this->session->userdata('email'))) {
                     redirect('/admin/dashboard');
                 }
 
@@ -213,20 +220,21 @@ class Auth extends MY_Controller
                 } 
 
                 $admin_user_ids = $this->Whitelabel_partner_model->get_whitelabel_admin_ids($this->session->userdata('user_id'));
+                $whitelabel_admin_id = (is_array($admin_user_ids) && isset($admin_user_ids[0])) ? $admin_user_ids[0] : null;
 
                 if (
                     (
                         $this->session->userdata('user_role') == "is_admin" || 
-                        in_array("is_salesperson", $employee_permission['permissions'])
-                    ) && $admin_user_ids[0] == $this->session->userdata('user_id')
+                        in_array("is_salesperson", $permissions, true)
+                    ) && $whitelabel_admin_id && $whitelabel_admin_id == $this->session->userdata('user_id')
                 )
                 {
-                    if (is_platform_admin($this->session->userdata('user_id'))) {
+                    if (is_platform_admin($this->session->userdata('user_id'), $this->session->userdata('email'))) {
                         redirect('/admin/dashboard');
                     }
                     redirect('/admin');
                 }               
-                elseif($this->session->userdata('user_role') == "is_housekeeping" || in_array("is_housekeeping", $employee_permission['permissions']))
+                elseif($this->session->userdata('user_role') == "is_housekeeping" || in_array("is_housekeeping", $permissions, true))
                 {
 					redirect('/room');
                 }
@@ -369,6 +377,18 @@ class Auth extends MY_Controller
     function new_register_AJAX($subscription_type = "", $region = "")
     {
         //$this->ci->output->enable_profiler(TRUE);
+
+        if (!is_public_self_registration_enabled()) {
+            $this->output->set_status_header(403);
+            echo 'Public self-registration is disabled. Please request a free trial from the registration page.';
+            return;
+        }
+
+        if ($this->_registration_rate_limited('self_register', 3, 3600)) {
+            $this->output->set_status_header(429);
+            echo 'Too many registration attempts. Please try again later.';
+            return;
+        }
 		
         $lead_source = $this->input->post('source');
         
@@ -388,6 +408,11 @@ class Auth extends MY_Controller
             }                
             
             $this->_set_register_form_validation_rules();
+            $this->form_validation->set_rules(
+                'password',
+                'Password',
+                'trim|required|xss_clean|min_length['.$this->config->item('password_min_length', 'tank_auth').']|max_length['.$this->config->item('password_max_length', 'tank_auth').']'
+            );
 
             $captcha_registration = $this->config->item('captcha_registration', 'tank_auth');
             $use_recaptcha        = $this->config->item('use_recaptcha', 'tank_auth');
@@ -397,16 +422,15 @@ class Auth extends MY_Controller
             $data['captcha_registration'] = $captcha_registration;
             $data['use_recaptcha']        = $use_recaptcha;
             $data['main_content']         = 'auth/register_form';
-            
-            // $recaptcha_response_token =  $this->input->post("g-recaptcha-response");
-            // if(!empty($this->input->post("minical_homepage")) && $this->input->post("minical_homepage") == 'minical_homepage')
-            // {
-            //     $recaptcha_secret_key = $this->config->item('minical_homepage_recaptcha_secret_key', 'tank_auth');
-            // }
-            // else
-            // {
-            //     $recaptcha_secret_key = $this->config->item('recaptcha_secret_key', 'tank_auth');
-            // }
+
+            $recaptcha_response_token = $this->input->post("g-recaptcha-response");
+            $recaptcha_secret_key = $this->config->item('recaptcha_secret_key', 'tank_auth');
+            if (!empty($this->input->post("minical_homepage")) && $this->input->post("minical_homepage") == 'minical_homepage') {
+                $homepage_secret = $this->config->item('minical_homepage_recaptcha_secret_key', 'tank_auth');
+                if ($homepage_secret) {
+                    $recaptcha_secret_key = $homepage_secret;
+                }
+            }
 
             $accept_tnc =  $this->input->post("accept_tnc");
 
@@ -414,19 +438,21 @@ class Auth extends MY_Controller
                echo l("Please accept our terms and conditions.",true);
                return;
             }
-            
-            // if(!empty($this->input->post()) && $recaptcha_response_token == ""){ 
-            //    echo "Please check CAPTCHA box";
-            // }
-            // elseif(!empty($this->input->post()) && !$this->google_recaptcha_validate_token($recaptcha_secret_key, $recaptcha_response_token)){
-            //     echo "invalid CAPTCHA. Please try again!";  
-            // }
-            // input validation ok, now check if credit card is actually valid
-            //elseif($this->form_validation->run()) {   
+
+            if ($recaptcha_secret_key) {
+                if (empty($recaptcha_response_token)) {
+                    echo 'Please complete the CAPTCHA.';
+                    return;
+                }
+                if (!$this->google_recaptcha_validate_token($recaptcha_secret_key, $recaptcha_response_token)) {
+                    echo 'Invalid CAPTCHA. Please try again.';
+                    return;
+                }
+            }
+
             if($this->form_validation->run()) {   
                 $password = $this->input->post('password');
                 $email = $this->input->post('email');
-                //$email = $this->form_validation->set_value('email');
 
                 if($email==$this->test_email) {
                     /*
@@ -451,17 +477,28 @@ class Auth extends MY_Controller
                     $data['partner_id'] = 0;
                 }
 
+                // Require email verification before the account is usable
                 $user_data = $this->tank_auth->create_user(
                     '',
                     $data['email'],
+                    $password,
                     null,
                     null,
-                    null,
-                    false,
+                    true,
                     null,
                     true,
                     $data['partner_id']
-                ); // last parameter is for setting TOS agreed
+                );
+
+                if (empty($user_data) || empty($user_data['user_id'])) {
+                    $errors = $this->tank_auth->get_error_message();
+                    if (!empty($errors['email'])) {
+                        echo $this->lang->line($errors['email']);
+                    } else {
+                        echo 'Registration failed. Please try again.';
+                    }
+                    return;
+                }
 
                 $data['user_id'] = $user_data['user_id'];
                 $data['close_io'] = false; //if false then the request is from registration page, otherwise My properties page.
@@ -487,99 +524,44 @@ class Auth extends MY_Controller
 
                 $data['company_id'] = $company_id;
 
-                // if the email address is not a test account (domain != innGrid.net or SaaS domain)
-                $domain = strtolower(substr(strrchr($data['email'], "@"), 1));
+                $whitelabelinfo = $this->session->userdata('white_label_information');
+                $data['username'] = isset($user_data['username']) ? $user_data['username'] : '';
+                $data['new_email_key'] = isset($user_data['new_email_key']) ? $user_data['new_email_key'] : '';
+                $data['site_name'] = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name']
+                    ? $whitelabelinfo['name']
+                    : $this->config->item('website_name', 'tank_auth');
+                $data['activation_period'] = $this->config->item('email_activation_expire', 'tank_auth') / 3600;
+                $data['email'] = $email;
 
-                if (($domain != "inngrid.net" && $domain != "minical.io" && $domain != "veurion.com"))
-                {
-                    /*
-                     * Do not added to mailchimp,close io and don't send welcome email
-                     * if email is a test email
-                     */
-                
-                    if( $email != $this->test_email )
-                    {
-                        $this->_add_to_mailchimp($data);
-                    }
-
-                    $this->Wizard_model->create_user_x_guider($user_data['user_id']);
-
-                }
-                else
-                {
-                    // if email is test account then redirect
-                    if($email==$this->test_email)
-                    {
-                        $employee_data = $this->tank_auth->forgot_password($data['email']);
-                        $employee_data['company_name'] = $data['name'];
-                        $employee_data['site_name'] = $this->config->item('website_name', 'tank_auth');
-                        //echo 'email';
-                        //redirect('/auth/activate_employee/' . $employee_data['user_id'] . '/' . $employee_data['new_pass_key'], 'refresh');
-                    }
-
+                if (empty($data['new_email_key'])) {
+                    $data['new_email_key'] = md5(uniqid(rand(), true) . microtime());
+                    $this->User_model->update_user($user_data['user_id'], array(
+                        'new_email_key' => $data['new_email_key'],
+                        'activated' => 0,
+                    ));
                 }
 
-                $employee_data = $this->tank_auth->forgot_password($data['email']);
+                $this->_send_email('activate', $email, $data);
 
-                if (!is_null(
-                    $data = $this->tank_auth->reset_password(
-                        $user_data['user_id'],
-                        $employee_data['new_pass_key'],
-                        $password
-                    )
-                )
-                ) {
+                // Do not leave an authenticated session for unverified users
+                $this->tank_auth->logout();
 
-                    // success
+                echo 'check_email';
 
-                    //$this->_show_message($this->lang->line('auth_message_registration_completed_2').' '.anchor('/auth/login/', 'Login'));
-                    $user_data = $this->User_model->get_user_profile($user_data['user_id']);
-                    $this->tank_auth->login(
-                        $user_data['email'],
-                        $password,
-                        1,
-                        0,
-                        1
-                    );
-                    //$_SESSION['is_registration_page'] = '1';
-                    $this->session->set_userdata('is_registration_page', '1');
-                    $whitelabelinfo = $this->session->userdata('white_label_information');
-
-                        $data['new_email_key'] = '';
-                        $data['site_name']         = $whitelabelinfo && isset($whitelabelinfo['name']) && $whitelabelinfo['name'] ? $whitelabelinfo['name'] : $this->config->item('website_name', 'tank_auth');
-                        $data['activation_period'] = $this->config->item('email_activation_expire', 'tank_auth') / 3600;
-
-                        $this->_send_email('activate', $email, $data);
-
-                       // $this->_show_message(sprintf($this->lang->line('auth_message_activation_email_sent'), $data['email']));
-
-                        if(!empty($this->input->post("minical_homepage")) && $this->input->post("minical_homepage") == 'minical_homepage')
-                        {
-                            redirect('dashboard');
-                        }
-                        else
-                        {
-                            echo l('success',true);
-                        }
-
-                    //redirect('booking');
-                } else {
-                    // fail
-                    echo $this->lang->line('auth_message_new_employee_failed'); 
-//                    $this->_show_message($this->lang->line('auth_message_new_employee_failed'));
-                }
-
-                //redirect('/auth/thank_you/');
             }                
             else{
                 //print_r(validation_errors());
                 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
-                $saas_app_hosts = array('app.minical.io', 'demo.minical.io', 'app.veurion.com', 'demo.veurion.com', 'app.travelhub247.com');
+                $saas_app_hosts = saas_primary_app_hosts();
                 $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
                 if($is_hosted_prod_service || in_array($current_host, $saas_app_hosts, true)){
                     echo 'The Email field must contain a valid email address.';
                 } else {
-                    echo strip_tags(form_error('email'));
+                    $err = strip_tags(form_error('email'));
+                    if ($err === '') {
+                        $err = strip_tags(form_error('password'));
+                    }
+                    echo $err !== '' ? $err : 'Please check your registration details.';
                 }
                 
             }
@@ -728,6 +710,26 @@ class Auth extends MY_Controller
         $data['errors'] = array();
 
         if ($this->input->post('trial_register_submit')) {
+            // Honeypot: bots often fill hidden fields; humans never see this.
+            if (trim((string) $this->input->post('company_website')) !== '') {
+                $this->session->set_flashdata('trial_register_email', strtolower(trim((string) $this->input->post('email'))));
+                redirect('auth/register_success');
+                return;
+            }
+
+            if ($this->_registration_rate_limited('trial_register', 5, 3600)) {
+                $data['errors']['general'] = 'Too many trial requests from your network. Please try again later.';
+                $data['main_content'] = 'auth/trial_register_form';
+                $data['css_files'] = array(
+                    base_url() . auto_version('css/auth/login.css'),
+                );
+                if (is_hosted_prod_service() && empty($data['whitelabel_detail'])) {
+                    $data['seo'] = seo_auth_page('register');
+                }
+                $this->load->view('includes/bootstrapped_template', $data);
+                return;
+            }
+
             $this->form_validation->set_rules('property_name', 'Property name', 'trim|required|max_length[255]|xss_clean');
             $this->form_validation->set_rules('number_of_rooms', 'Number of rooms', 'trim|required|integer|greater_than[0]|less_than[10000]|xss_clean');
             $this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]|xss_clean');
@@ -736,17 +738,26 @@ class Auth extends MY_Controller
             $this->form_validation->set_rules('last_name', 'Last name', 'trim|required|max_length[100]|xss_clean');
 
             if ($this->form_validation->run()) {
+                $email = strtolower(trim($this->input->post('email')));
+
+                if ($this->Trial_registration_request_model->has_recent_by_email($email, 86400)) {
+                    // Avoid email enumeration / duplicate spam — behave like success
+                    $this->session->set_flashdata('trial_register_email', $email);
+                    redirect('auth/register_success');
+                    return;
+                }
+
                 $insert_id = $this->Trial_registration_request_model->create(array(
                     'property_name' => $this->input->post('property_name'),
                     'number_of_rooms' => $this->input->post('number_of_rooms'),
-                    'email' => strtolower(trim($this->input->post('email'))),
+                    'email' => $email,
                     'phone' => trim($this->input->post('phone')),
                     'first_name' => $this->input->post('first_name'),
                     'last_name' => $this->input->post('last_name'),
                 ));
 
                 if ($insert_id) {
-                    $this->session->set_flashdata('trial_register_email', strtolower(trim($this->input->post('email'))));
+                    $this->session->set_flashdata('trial_register_email', $email);
                     redirect('auth/register_success');
                     return;
                 }
@@ -998,7 +1009,15 @@ class Auth extends MY_Controller
         $this->load->model('tank_auth/users');
         $user = $this->users->get_user_by_email($email);
         if ($user) {
-            return (int) $user->id;
+            $user_id = (int) $user->id;
+            // Admin-trusted provisioning: ensure the owner can sign in
+            if (empty($user->activated) || (int) $user->activated === 0) {
+                $this->User_model->update_user($user_id, array(
+                    'activated' => 1,
+                    'new_email_key' => null,
+                ));
+            }
+            return $user_id;
         }
 
         $data = array(
@@ -1007,7 +1026,8 @@ class Auth extends MY_Controller
             'last_name' => $last_name ?: '',
             'password' => md5(uniqid(rand(), true) . microtime()),
         );
-        $created = $this->users->create_user($data, false);
+        // Admin-created owners are pre-verified (admin is trusted)
+        $created = $this->users->create_user($data, true);
         if ($created && isset($created['user_id'])) {
             return (int) $created['user_id'];
         }
@@ -1646,16 +1666,13 @@ class Auth extends MY_Controller
         $user_id       = $this->uri->segment(3);
         $new_email_key = $this->uri->segment(4);
 
-        // Activate user
-        if ($this->tank_auth->activate_user($user_id, $new_email_key)) {        // success
-            //$this->tank_auth->logout();
-            $this->ci->session->set_userdata("status", STATUS_ACTIVATED);
-            $this->_show_message($this->lang->line('auth_message_activation_completed'), 'success');
-
-        } else {
-            // fail
+        if (!$user_id || !$new_email_key || !$this->tank_auth->activate_user($user_id, $new_email_key)) {
             $this->_show_message($this->lang->line('auth_message_activation_failed'), 'danger');
+            return;
         }
+
+        $this->ci->session->set_userdata("status", STATUS_ACTIVATED);
+        $this->_show_message($this->lang->line('auth_message_activation_completed'), 'success');
     }
 
     /**
@@ -2465,7 +2482,18 @@ class Auth extends MY_Controller
     
     function resend_verification_email_AJAX()
     {
-        
+        if (!$this->tank_auth->is_logged_in(false) && !$this->tank_auth->is_logged_in()) {
+            $this->output->set_status_header(401);
+            echo 'Please sign in first.';
+            return;
+        }
+
+        if ($this->_registration_rate_limited('resend_verify', 3, 3600)) {
+            $this->output->set_status_header(429);
+            echo 'Too many requests. Please try again later.';
+            return;
+        }
+
         $user_id =  $this->session->userdata('user_id');
         $whitelabelinfo = $this->session->userdata('white_label_information');
         $user_profile = $this->User_model->get_user_profile($user_id);
@@ -2478,12 +2506,48 @@ class Auth extends MY_Controller
             'activation_period' => $this->config->item('email_activation_expire', 'tank_auth') / 3600
         );
         
-        $this->User_model->update_user($user_id, array('new_email_key' => $data['new_email_key']));
+        $this->User_model->update_user($user_id, array('new_email_key' => $data['new_email_key'], 'activated' => 0));
         
         $this->_send_email('activate', $data['email'], $data);
         echo l('successfully sent', true);    
    }
    
+    /**
+     * Simple IP-based rate limit for public signup endpoints.
+     * Uses the login_attempts (or login_attempt) table with a synthetic login key.
+     */
+    function _registration_rate_limited($bucket, $max_attempts = 5, $window_seconds = 3600)
+    {
+        $table = null;
+        if ($this->db->table_exists('login_attempts')) {
+            $table = 'login_attempts';
+        } elseif ($this->db->table_exists('login_attempt')) {
+            $table = 'login_attempt';
+        } else {
+            return false;
+        }
+
+        $this->load->model('tank_auth/login_attempts');
+        $ip = $this->input->ip_address();
+        $login_key = 'rate:' . $bucket;
+
+        $this->db->where('login', $login_key);
+        $this->db->where('ip_address', $ip);
+        $this->db->where('UNIX_TIMESTAMP(time) <', time() - $window_seconds);
+        $this->db->delete($table);
+
+        $this->db->where('ip_address', $ip);
+        $this->db->where('login', $login_key);
+        $count = (int) $this->db->count_all_results($table);
+
+        if ($count >= $max_attempts) {
+            return true;
+        }
+
+        $this->db->insert($table, array('ip_address' => $ip, 'login' => $login_key));
+        return false;
+    }
+
     function google_recaptcha_validate_token($secret_key, $recaptcha_token)
     {
         $data = array(

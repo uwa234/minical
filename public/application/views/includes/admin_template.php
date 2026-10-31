@@ -29,8 +29,8 @@
         
         $permissions = $this->session->userdata("permissions");
 
-        if(isset($permissions) && $permissions){
-        	$is_salesperson = in_array("is_salesperson", $permissions);
+        if (is_array($permissions) && $permissions) {
+        	$is_salesperson = in_array("is_salesperson", $permissions, true);
         } else {
         	$is_salesperson = 0;
         }

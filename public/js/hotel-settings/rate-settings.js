@@ -23,154 +23,128 @@ $.ajax({
         }
     });
     
+innGrid.formatRateValue = function(value, isDecimal) {
+	if (value === null || value === undefined || value === '') {
+		return null;
+	}
+	if (isDecimal) {
+		var parsed = parseFloat(value);
+		return parsed ? parsed.toLocaleString('en', { style: 'decimal', maximumFractionDigits: 2, minimumFractionDigits: 2 }) : null;
+	}
+	var parsedInt = parseInt(value, 10);
+	return parsedInt ? parsedInt.toLocaleString() : null;
+};
+
+innGrid.getDayOfWeekLabel = function(dayOfWeek) {
+	switch (dayOfWeek) {
+		case '0': return l("Mon", true);
+		case '1': return l("Tue", true);
+		case '2': return l("Wed", true);
+		case '3': return l("Thu", true);
+		case '4': return l("Fri", true);
+		case '5': return l("Sat", true);
+		case '6': return l("Sun", true);
+		default: return '';
+	}
+};
+
+innGrid.renderRateCellValue = function(value, suppliedValue) {
+	if (value === null || value === undefined || value === '') {
+		return '<span class="er-value er-value--empty">—</span>';
+	}
+	var html = '<span class="er-value">' + value + '</span>';
+	if (user_role === 'is_admin' && suppliedValue !== null && suppliedValue !== undefined && suppliedValue !== '' && suppliedValue != 0) {
+		html += '<span class="er-supplied">(' + suppliedValue + ')</span>';
+	}
+	return html;
+};
+
+innGrid.renderStatusBadge = function(value, openLabel, closedLabel, openClass, closedClass, oneMeansOpen) {
+	var isClosed = oneMeansOpen
+		? (value === '0' || value === 0)
+		: (value === '1' || value === 1);
+	if (isClosed) {
+		return '<span class="er-badge ' + closedClass + '">' + closedLabel + '</span>';
+	}
+	return '<span class="er-badge ' + openClass + '">' + openLabel + '</span>';
+};
+
 innGrid.loadRateDetail = function(ratePlanID, startDate, roomTypeID) {
+	$('#er-calendar-body').addClass('er-loading');
+
 	$.post(getBaseURL() + 'settings/rates/get_rates_JSON', {
 		rate_plan_id: ratePlanID,
 		start_date: startDate,
-                room_type_id: roomTypeID
-		}, function (data) {
-			// construct table
-			var i = 0;
-			var tableHTML = "";        
-            $.each(data.rates, function(index, rate)
-			{
-				if (i % 7 === 0)
-				{
-					tableHTML = tableHTML + 
-					"<tr>"+
-						"<td>"+
-							"<b>"+l('Date', true)+"</b><br/>"+
-							"<b>"+l('Day of Week', true)+"</b><br/>"+
-							l('Rate', true)+" (1 "+l('Adult', true)+")<br/>"+
-							l('Rate', true)+" (2 "+l('Adults', true)+")<br/>"+
-							l('Rate', true)+" (3 "+l('Adults', true)+")<br/>"+
-							l('Rate', true)+" (4 "+l('Adults', true)+")<br/>"+
-							l('Rate for Additional Adult', true)+"<br/>"+
-							l('Rate for Additional Child', true)+"<br/>"+
-							l('Minimum Length of Stay', true)+"<br/>"+
-							l('Maximum Length of Stay', true)+"<br/>"+
-//							"Minimum Length of Stay Arrival<br/>"+
-//							"Maximum Length of Stay Arrival<br/>"+
-							l('Closed to Arrival', true)+"<br/>"+
-							l('Closed to Departure', true)+"<br/>"+
-							l('Can be sold online', true)+"<br/>";
-                                        
-						tableHTML = tableHTML +"</td>";
-                                        
-					
+		room_type_id: roomTypeID
+	}, function (data) {
+		var rates = data.rates || [];
+		var tableHTML = '<thead><tr><th class="er-th-metric">' + l('Metric', true) + '</th>';
+
+		$.each(rates, function(index, rate) {
+			var dayOfWeek = innGrid.getDayOfWeekLabel(rate.day_of_week);
+			var isWeekend = rate.day_of_week === '5' || rate.day_of_week === '6';
+			var dateParts = rate.date ? rate.date.split('-') : [];
+			var shortDate = dateParts.length === 3 ? dateParts[1] + '/' + dateParts[2] : rate.date;
+
+			tableHTML += '<th class="' + (isWeekend ? 'er-th-weekend' : '') + '">' +
+				'<span class="er-date-num">' + shortDate + '</span>' +
+				'<span class="er-date-dow">' + dayOfWeek + '</span>' +
+				'</th>';
+		});
+
+		tableHTML += '</tr></thead><tbody>';
+
+		var metrics = [
+			{ key: 'adult_1_rate', suppliedKey: 'supplied_adult_1_rate', label: l('Rate', true) + ' (1 ' + l('Adult', true) + ')', section: true },
+			{ key: 'adult_2_rate', suppliedKey: 'supplied_adult_2_rate', label: l('Rate', true) + ' (2 ' + l('Adults', true) + ')' },
+			{ key: 'adult_3_rate', suppliedKey: 'supplied_adult_3_rate', label: l('Rate', true) + ' (3 ' + l('Adults', true) + ')' },
+			{ key: 'adult_4_rate', suppliedKey: 'supplied_adult_4_rate', label: l('Rate', true) + ' (4 ' + l('Adults', true) + ')' },
+			{ key: 'additional_adult_rate', label: l('Rate for Additional Adult', true) },
+			{ key: 'additional_child_rate', label: l('Rate for Additional Child', true) },
+			{ key: 'minimum_length_of_stay', label: l('Minimum Length of Stay', true), section: true },
+			{ key: 'maximum_length_of_stay', label: l('Maximum Length of Stay', true) },
+			{ key: 'closed_to_arrival', label: l('Closed to Arrival', true), type: 'arrival', section: true },
+			{ key: 'closed_to_departure', label: l('Closed to Departure', true), type: 'departure' },
+			{ key: 'can_be_sold_online', label: l('Can be sold online', true), type: 'online', section: true }
+		];
+
+		$.each(metrics, function(metricIndex, metric) {
+			var rowClass = metric.section ? 'er-row-section' : '';
+			tableHTML += '<tr' + (rowClass ? ' class="' + rowClass + '"' : '') + '><td class="er-td-metric">' + metric.label + '</td>';
+
+			$.each(rates, function(index, rate) {
+				var cellHTML = '';
+
+				if (metric.type === 'arrival' || metric.type === 'departure') {
+					cellHTML = innGrid.renderStatusBadge(rate[metric.key], l('Open', true), l('Closed', true), 'er-badge--open', 'er-badge--closed');
+				} else if (metric.type === 'online') {
+					cellHTML = innGrid.renderStatusBadge(rate[metric.key], l('Yes', true), l('No', true), 'er-badge--yes', 'er-badge--no', true);
+				} else if (metric.key.indexOf('rate') > -1) {
+					var formatted = innGrid.formatRateValue(rate[metric.key], show_decimal);
+					var suppliedFormatted = metric.suppliedKey ? innGrid.formatRateValue(rate[metric.suppliedKey], show_decimal) : null;
+					cellHTML = innGrid.renderRateCellValue(formatted, suppliedFormatted);
+				} else {
+					var losValue = rate[metric.key];
+					cellHTML = (losValue !== null && losValue !== undefined && losValue !== '')
+						? '<span class="er-value">' + losValue + '</span>'
+						: '<span class="er-value er-value--empty">—</span>';
 				}
 
-				var dayOfWeek = '';
-				switch (rate.day_of_week)
-				{
-					case '0': dayOfWeek = l("Mon", true); break;
-					case '1': dayOfWeek = l("Tue", true); break;
-					case '2': dayOfWeek = l("Wed", true); break;
-					case '3': dayOfWeek = l("Thu", true); break;
-					case '4': dayOfWeek = l("Fri", true); break;
-					case '5': dayOfWeek = l("Sat", true); break;
-					case '6': dayOfWeek = l("Sun", true); break;
-				}
-                
-                if(show_decimal)
-                {
-                    var adult_rate_1 = ((parseFloat(rate.adult_1_rate)) ? ((parseFloat(rate.adult_1_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var adult_rate_2 = ((parseFloat(rate.adult_2_rate)) ? ((parseFloat(rate.adult_2_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var adult_rate_3 = ((parseFloat(rate.adult_3_rate)) ? ((parseFloat(rate.adult_3_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var adult_rate_4 = ((parseFloat(rate.adult_4_rate)) ? ((parseFloat(rate.adult_4_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    
-                    var supplied_adult_rate_1 = ((parseFloat(rate.supplied_adult_1_rate)) ? ((parseFloat(rate.supplied_adult_1_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var supplied_adult_rate_2 = ((parseFloat(rate.supplied_adult_2_rate)) ? ((parseFloat(rate.supplied_adult_2_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var supplied_adult_rate_3 = ((parseFloat(rate.supplied_adult_3_rate)) ? ((parseFloat(rate.supplied_adult_3_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var supplied_adult_rate_4 = ((parseFloat(rate.supplied_adult_4_rate)) ? ((parseFloat(rate.supplied_adult_4_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    
-                    var adult_additional = ((parseFloat(rate.additional_adult_rate)) ? ((parseFloat(rate.additional_adult_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                    var adult_child = ((parseFloat(rate.additional_child_rate)) ? ((parseFloat(rate.additional_child_rate)).toLocaleString('en',{ style: 'decimal', maximumFractionDigits : 2, minimumFractionDigits : 2 })) : null);
-                }
-                else
-                {
-                    var adult_rate_1 = ((parseInt(rate.adult_1_rate)) ? ((parseInt(rate.adult_1_rate)).toLocaleString()) : null);
-                    var adult_rate_2 = ((parseInt(rate.adult_2_rate)) ? ((parseInt(rate.adult_2_rate)).toLocaleString()) : null);
-                    var adult_rate_3 = ((parseInt(rate.adult_3_rate)) ? ((parseInt(rate.adult_3_rate)).toLocaleString()) : null);
-                    var adult_rate_4 = ((parseInt(rate.adult_4_rate)) ? ((parseInt(rate.adult_4_rate)).toLocaleString()) : null);
-                    
-                    var supplied_adult_rate_1 = ((parseInt(rate.supplied_adult_1_rate)) ? ((parseInt(rate.supplied_adult_1_rate)).toLocaleString()) : null);
-                    var supplied_adult_rate_2 = ((parseInt(rate.supplied_adult_2_rate)) ? ((parseInt(rate.supplied_adult_2_rate)).toLocaleString()) : null);
-                    var supplied_adult_rate_3 = ((parseInt(rate.supplied_adult_3_rate)) ? ((parseInt(rate.supplied_adult_3_rate)).toLocaleString()) : null);
-                    var supplied_adult_rate_4 = ((parseInt(rate.supplied_adult_4_rate)) ? ((parseInt(rate.supplied_adult_4_rate)).toLocaleString()) : null);
-                    
-                    var adult_additional = ((parseInt(rate.additional_adult_rate)) ? ((parseInt(rate.additional_adult_rate)).toLocaleString()) : null);
-                    var adult_child = ((parseInt(rate.additional_child_rate)) ? ((parseInt(rate.additional_child_rate)).toLocaleString()) : null);
-                }
+				tableHTML += '<td>' + cellHTML + '</td>';
+			});
 
-				tableHTML = tableHTML + 
-							"<td>"+
-								"<b>"+rate.date+"</b><br/>"+
-								"<b>"+dayOfWeek+"</b><br/>"+"";
-                tableHTML = tableHTML + adult_rate_1 +"";
-                if(user_role=='is_admin' && rate.supplied_adult_1_rate!=null && rate.supplied_adult_1_rate != 0){
-                    tableHTML = tableHTML + 
-                        " ("+ supplied_adult_rate_1 +") <br/>";
-                }else{
-                    tableHTML = tableHTML + "<br>";
-                }
-                tableHTML = tableHTML + adult_rate_2 +"";
-                if(user_role=='is_admin' && rate.supplied_adult_2_rate!=null && rate.supplied_adult_2_rate != 0){
-                    tableHTML = tableHTML + 
-                        " ("+ supplied_adult_rate_2 +") <br/>";
-                }else{
-                    tableHTML = tableHTML + "<br>";
-                }
-                tableHTML = tableHTML + adult_rate_3 +"";                
-                if(user_role=='is_admin' && rate.supplied_adult_3_rate!=null && rate.supplied_adult_3_rate != 0){
-                    tableHTML = tableHTML + 
-                        " ("+ supplied_adult_rate_3 +") <br/>";
-                }else{
-                    tableHTML = tableHTML + "<br>";
-                }
-                tableHTML = tableHTML + adult_rate_4 +"";
-                if(user_role=='is_admin' && rate.supplied_adult_4_rate!=null && rate.supplied_adult_4_rate != 0){
-                    tableHTML = tableHTML + 
-                        " ("+ supplied_adult_rate_4 +") <br/>";
-                }else{
-                    tableHTML = tableHTML + "<br>";
-                }
+			tableHTML += '</tr>';
+		});
 
-                tableHTML = tableHTML +"";
+		tableHTML += '</tbody>';
 
-                tableHTML = tableHTML + adult_additional +"";
-                tableHTML = tableHTML +"<br/>" +"";
+		$("#rate-detail-table").html(tableHTML);
 
-                tableHTML = tableHTML + adult_child +"";
-                tableHTML = tableHTML +"<br/>";
-
-                tableHTML = tableHTML + rate.minimum_length_of_stay+"";
-                tableHTML = tableHTML +"<br/>";
-
-                tableHTML = tableHTML + rate.maximum_length_of_stay+"";
-                tableHTML = tableHTML +"<br/>";
-
-//                tableHTML = tableHTML + rate.minimum_length_of_stay_arrival+"";
-//                tableHTML = tableHTML +"<br/>";
-//
-//                tableHTML = tableHTML + rate.maximum_length_of_stay_arrival+"";
-//                tableHTML = tableHTML +"<br/>";
-				tableHTML = tableHTML +	((rate.closed_to_arrival === '1')?"<span class='text-danger'>Closed</span>":"<span class='text-success'>Open</span>") +"<br/>" ;
-				tableHTML = tableHTML +	((rate.closed_to_departure === '1')?"<span class='text-danger'>Closed</span>":"<span class='text-success'>Open</span>") +"<br/>";
-				tableHTML = tableHTML +	((rate.can_be_sold_online === '1')?"<span class='text-success'>Yes</span>":"<span class='text-danger'>No</span>") +"<br/>";
-                                                 
-                tableHTML = tableHTML +"</td>";
-
-				i++;
-
-				if (i % 7 === 0)
-				{
-					tableHTML += "</tr>";
-				}
-                
-            });
-             
-			$("#rate-detail-table").html(tableHTML);
+		if (rates.length > 0) {
+			var firstDate = rates[0].date;
+			var lastDate = rates[rates.length - 1].date;
+			$('#er-date-range-label').text(firstDate + ' — ' + lastDate);
+		}
         $(".modifiable_2").each(function() {
             //alert(123);
             $(this).attr("checked", false);
@@ -194,6 +168,8 @@ innGrid.loadRateDetail = function(ratePlanID, startDate, roomTypeID) {
             {
                 $('#rates-error-msg').hide();
             }
+
+		$('#er-calendar-body').removeClass('er-loading');
 		}, 'json');
 }
 

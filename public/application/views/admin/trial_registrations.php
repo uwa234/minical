@@ -104,6 +104,12 @@
                                         Create property
                                     </button>
                                 <?php } ?>
+                                <button type="button"
+                                        class="pa-btn pa-btn-danger-soft pa-btn-sm trial-delete-registration-btn"
+                                        data-request-id="<?php echo $lead_id; ?>"
+                                        data-property-name="<?php echo htmlspecialchars($row['property_name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    Delete
+                                </button>
                             </td>
                         </tr>
                     <?php }

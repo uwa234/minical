@@ -23,7 +23,16 @@ if (!isset($_SERVER['HTTP_HOST'])) {
 
 date_default_timezone_set("America/Los_Angeles"); // temporary quick fix
 
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
+// Honor TLS terminated at the load balancer / nginx (X-Forwarded-Proto).
+// Without this, post-login redirects become http://… and land on a blank page.
+$forwarded_proto = isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
+    ? strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'])[0]))
+    : '';
+$protocol = (
+    $forwarded_proto === 'https'
+    || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (isset($_SERVER['SERVER_PORT']) && (string) $_SERVER['SERVER_PORT'] === '443')
+) ? 'https://' : 'http://';
 
 $config['server_protocol'] = $protocol;
 
@@ -31,7 +40,6 @@ $ENVIRONMENT = getenv('ENVIRONMENT');
 $ENVIRONMENT = $ENVIRONMENT ? $ENVIRONMENT : 'production';
 
 $config['app_environment'] = $ENVIRONMENT;
-$config['base_url']	= getenv('PROJECT_URL');
 $config['api_url']	= getenv('API_URL');
 
 $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
@@ -40,13 +48,27 @@ $config['is_hosted_prod_service'] = ($is_hosted_prod_service === '1' || $is_host
 $saas_primary_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io', 'app.travelhub247.com');
 $is_saas_primary_host = in_array($_SERVER['HTTP_HOST'], $saas_primary_hosts, true);
 
-if ($is_hosted_prod_service && !$is_saas_primary_host) {
-    $projectUrl = getenv('PROJECT_URL');
-    if (!empty($projectUrl)) {
-        $config['base_url'] = rtrim($projectUrl, '/') . '/';
-    } else {
-        $config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/';
+/**
+ * Build base_url from the live request (scheme + host + /public path).
+ * Prevents login redirects from using a stale/wrong PROJECT_URL.
+ */
+$minical_request_base_url = function () use ($protocol) {
+    $script_path = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', (string) $_SERVER['SCRIPT_NAME']) : '';
+    $base_path = rtrim(str_replace(basename($script_path), '', $script_path), '/');
+    if ($base_path === '' || $base_path === '/') {
+        return $protocol . $_SERVER['HTTP_HOST'] . '/';
     }
+    return $protocol . $_SERVER['HTTP_HOST'] . $base_path . '/';
+};
+
+$projectUrl = getenv('PROJECT_URL');
+if ($is_saas_primary_host || empty($projectUrl)) {
+    // Always match the host the browser is on (fixes blank screen after login).
+    $config['base_url'] = $minical_request_base_url();
+} elseif ($is_hosted_prod_service) {
+    $config['base_url'] = rtrim($projectUrl, '/') . '/';
+} else {
+    $config['base_url'] = rtrim($projectUrl, '/') . '/';
 }
 
 $config['branding_name'] = 'Veurion';

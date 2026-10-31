@@ -66,15 +66,25 @@ if ( ! function_exists('get_languages'))
         $CI->load->model('translation_model');
         $data_arr = array();
 
+        $language_id = (int) $language_id;
+        if ($language_id < 1) {
+            $language_id = 1;
+        }
+
         $language_name = $CI->session->userdata('language');
-        
-        //if($language_name == ''){
-            $language_data = $CI->translation_model->get_record_where('language', array('id' => $language_id));
+        $language_data = $CI->translation_model->get_record_where('language', array('id' => $language_id));
+        if (!empty($language_data) && isset($language_data[0]['flag']) && $language_data[0]['flag'] !== '') {
             $language_name = $language_data[0]['flag'];
-        //}
+        }
+        if ($language_name === null || $language_name === '' || $language_name === false) {
+            $language_name = 'english';
+        }
 
         $modules_path = APPPATH.'extensions/';
-        $modules = scandir($modules_path);
+        $modules = is_dir($modules_path) ? @scandir($modules_path) : array();
+        if (!is_array($modules)) {
+            $modules = array();
+        }
        
         foreach($modules as $module)
         {
@@ -91,6 +101,9 @@ if ( ! function_exists('get_languages'))
                     require($files_path);
                     if(count($lang) > 0){
                         foreach ($lang as $m => $v) {
+                            if (!is_array($v)) {
+                                continue;
+                            }
                             foreach($v as $key => $value)
                             {
                                 $data_arr[strtolower($m.'/'.$key)] = $value;
@@ -107,6 +120,9 @@ if ( ! function_exists('get_languages'))
                         require($files_path);
                         if(count($lang) > 0){
                             foreach ($lang as $m => $v) {
+                                if (!is_array($v)) {
+                                    continue;
+                                }
                                 foreach($v as $key => $value)
                                 {
                                     $data_arr[strtolower($m.'/'.$key)] = $value;

@@ -374,6 +374,9 @@
                                 $unique_submenu = array_unique($sub_menus,SORT_REGULAR);
 
                                 foreach($unique_submenu as $m_menu_one) {
+                                    if (isset($m_menu_one['link']) && $m_menu_one['link'] === 'settings/api_access') {
+                                        continue;
+                                    }
                                     $sidebar_menus = array();
                                     if(isset($m_menu_one['id']) && $m_menu_one['id']){
                                             

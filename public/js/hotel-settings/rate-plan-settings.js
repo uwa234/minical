@@ -1,10 +1,9 @@
 innGrid.populateRoomTypeList = function(roomTypeID = null)
 {
-	
 	$.getJSON(getBaseURL() + 'settings/room_inventory/get_room_types_JSON', 
         function (roomTypes) {
         	roomTypeListDiv = $("<ul/>", {
-        		class: "nav nav-pills nav-stacked",
+        		class: "rp-room-type-nav",
                 id   : 'sortable'
         	});
         	$.each(roomTypes, function(key, roomType) { 
@@ -15,11 +14,11 @@ innGrid.populateRoomTypeList = function(roomTypeID = null)
         				room_type_id 	: roomType['id'],        				
         			}).append(
         				$("<a/>", {
-        					href: '#'+roomType['id'],
-        					text: roomType['name']+" ("+roomType['rate_plan_count']+")",
-                            style: "padding-left: 5px;"
+        					href: '#'+roomType['id']
         				})
-                        .prepend($('<span/>', {class: "grippy", style: "margin-right: 10px;"}))
+                        .append($('<span/>', {class: "grippy", "aria-hidden": "true"}))
+                        .append($('<span/>', {class: "rp-room-type-label", text: roomType['name']}))
+                        .append($('<span/>', {class: "rp-room-type-count", text: roomType['rate_plan_count']}))
         			)
         		);
         	});
@@ -70,9 +69,7 @@ innGrid.populateRatePlans = function(roomTypeID)
                 setTimeout(function(){ 
                     $( 'textarea').each( function() { 
                         $(this).attr('id','rateDesc_'+rate_count);
-                        CKEDITOR.replace( $(this).attr('id'),{
-                           customConfig: '/application/third_party/ckeditor/config.js'
-                        } );
+                        initSummernote($(this).attr('id'));
                         rate_count++;
                     });
                }, 3000);  
@@ -106,7 +103,7 @@ innGrid.updateRatePlan = function(ratePlan) {
 	
 	var ratePlanID = ratePlan.attr('id');
 	var descrip_id = 'rateDesc_'+ratePlanID;
-	var description = CKEDITOR.instances[descrip_id].getData();
+	var description = getRichTextDescription(descrip_id, ratePlan);
 	var ratePlanName = ratePlan.find('[name="rate-plan-name"]').val();
 	var roomTypeID = ratePlan.find('[name="room-type-id"]').val();
 	var currencyID = ratePlan.find('[name="currency-id"]').val();
@@ -149,7 +146,7 @@ innGrid.updateRatePlan = function(ratePlan) {
 
 innGrid.addRatePlan = function(ratePlan) {
 	var descrip_id = 'rateDesc_new_plan';
-	var description = CKEDITOR.instances[descrip_id].getData();
+	var description = getRichTextDescription(descrip_id, ratePlan);
 	var ratePlanName = ratePlan.find('[name="rate-plan-name"]').val();
 	var roomTypeID = ratePlan.find('[name="room-type-id"]').val();
 	var currencyID = ratePlan.find('[name="currency-id"]').val();
@@ -237,9 +234,7 @@ $(function() {
 				});
 				$("#new-rate-plan .modal-body").find('textarea').each(function () {
 					$(this).attr('id', 'rateDesc_new_plan');
-					CKEDITOR.replace($(this).attr('id'), {
-						customConfig: '/application/third_party/ckeditor/config.js'
-					});
+					initSummernote('rateDesc_new_plan');
 				});
 			}, 100);
 
@@ -305,9 +300,7 @@ $(function() {
 				
 				$("#edit-rate-plan .modal-body").find('textarea').each(function () {
 					$(this).attr('id', 'rateDesc_'+rate_plan_id);
-					CKEDITOR.replace($(this).attr('id'), {
-						customConfig: '/application/third_party/ckeditor/config.js'
-					});
+					initSummernote('rateDesc_'+rate_plan_id);
 				});
 			}, 100);	});
 		});
@@ -400,9 +393,7 @@ function sortRoomTypes(){
 
 setTimeout(function(){ 
     $( 'textarea').each( function() { 
-    CKEDITOR.replace( $(this).attr('id'),{
-        customConfig: '/application/third_party/ckeditor/config.js'
-    } );
+    initSummernote($(this).attr('id'));
 });
 }, 4000);
 

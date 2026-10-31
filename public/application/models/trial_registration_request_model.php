@@ -138,6 +138,17 @@ class Trial_registration_request_model extends CI_Model {
         return (int) $this->db->count_all_results('trial_registration_request');
     }
 
+    function has_recent_by_email($email, $within_seconds = 86400)
+    {
+        if (!$this->table_exists() || $email === '') {
+            return false;
+        }
+
+        $this->db->where('email', strtolower(trim($email)));
+        $this->db->where('created_at >=', date('Y-m-d H:i:s', time() - (int) $within_seconds));
+        return $this->db->count_all_results('trial_registration_request') > 0;
+    }
+
     function update_status($id, $status)
     {
         if (!$this->table_exists()) {
@@ -151,6 +162,22 @@ class Trial_registration_request_model extends CI_Model {
 
         $this->db->where('trial_registration_request_id', (int) $id);
         $this->db->update('trial_registration_request', array('status' => $status));
+        return $this->db->affected_rows() > 0;
+    }
+
+    function delete($id)
+    {
+        if (!$this->table_exists()) {
+            return false;
+        }
+
+        $id = (int) $id;
+        if ($id < 1) {
+            return false;
+        }
+
+        $this->db->where('trial_registration_request_id', $id);
+        $this->db->delete('trial_registration_request');
         return $this->db->affected_rows() > 0;
     }
 }

@@ -1,4 +1,4 @@
-<div class="panel panel-default new-rate-plan-modal rate-plan-div new-panel" id="<?php echo $rate_plan_id; ?>">
+<div class="panel panel-default new-rate-plan-modal rate-plan-div new-panel rp-form" id="<?php echo $rate_plan_id; ?>">
 	<div class="panel-body form-horizontal">
 		<div class="alert alert-success hidden updated-message" role="alert"><?php echo l('Updated', true); ?>!</div>
 		<div class="alert alert-danger hidden error-message" role="alert">
@@ -166,15 +166,3 @@
 		
 	</div>
 </div>
-<style type="text/css">
-    .select2-drop.select2-drop-active {
-        z-index: 2147483647 !important;
-    }
-    .rate-plan-div.new-panel {
-        border: 0;
-        box-shadow: unset;
-    }
-    #image_edit_modal, #croppicModal {
-        z-index: 99999999;
-    }
-</style>

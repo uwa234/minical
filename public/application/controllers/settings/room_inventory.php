@@ -24,9 +24,6 @@ class Room_inventory extends MY_Controller {
         $this->load->model('Employee_log_model');
         $this->load->model('Charge_type_model');
         $this->load->library('Form_validation');
-        $this->load->library('ckeditor');
-        $this->load->library('ckfinder');
-        $this->load->helper('ckeditor_helper');
 
         $view_data['menu_on'] = true;
         $view_data['selected_menu'] = 'Settings';
@@ -235,25 +232,13 @@ class Room_inventory extends MY_Controller {
         }
 
         $view_data['css_files'] = array(
-            base_url() . auto_version('css/croppic.css')
+            base_url() . auto_version('css/croppic.css'),
+            'https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote.min.css'
         );
-        /*ckeditor*/
-        
-        $this->ckeditor->basePath = base_url().'application/third_party/ckeditor/';
-        // $this->ckeditor->config['toolbar'] = array(
-        //         array( 'Source', '-', 'Bold', 'Italic', 'Underline', '-','Cut','Copy','Paste','PasteText','PasteFromWord','-','Undo','Redo','-','NumberedList','BulletedList' )
-        //                );
-        $this->ckeditor->config['language'] = 'en';
-        //$this->ckeditor->config['width'] = '730px';
-        //$this->ckeditor->config['height'] = '300px';             
 
-        //Add Ckfinder to Ckeditor
-        $this->ckfinder->SetupCKEditor($this->ckeditor,'../../ckfinder/'); 
-        //load view
-       // $data['js_files']   = array(base_url().auto_version('/ckeditor/ckeditor.js'));
-        
         $view_data['js_files'] = array(
-            'https://cdn.ckeditor.com/4.9.1/full/ckeditor.js',
+            'https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote.min.js',
+            base_url() . auto_version('js/summernote-editor.js'),
             base_url() . auto_version('js/hotel-settings/room-type-settings.js'),
             base_url() . auto_version('js/croppic.js'),
             base_url() . auto_version('js/hotel-settings/image-settings.js'),

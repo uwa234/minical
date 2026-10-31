@@ -20,15 +20,22 @@ $whitelabel_detail = veurion_normalize_whitelabel_partner($this->session->userda
 	
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
 	<!-- <title><?php echo (isset($whitelabel_detail) && isset($whitelabel_detail['name'])) ? ucfirst($whitelabel_detail['name']) : $this->config->item('branding_name'); ?> - Hotel software made by hotelier</title> -->
-    <title><?php
+	<title><?php
+        $safe_html = function ($text) {
+            $text = (string) $text;
+            if ($text !== '' && !mb_check_encoding($text, 'UTF-8')) {
+                $text = @mb_convert_encoding($text, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+            }
+            return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        };
         if (!empty($seo['title'])) {
-            echo htmlspecialchars($seo['title'], ENT_QUOTES, 'UTF-8');
+            echo $safe_html($seo['title']);
         } elseif (isset($this->company_name) && $this->company_name) {
-            echo htmlspecialchars(ucfirst($this->company_name), ENT_QUOTES, 'UTF-8');
-        } elseif (isset($whitelabel_detail['name']) && $whitelabel_detail['name']) {
-            echo htmlspecialchars(ucfirst(veurion_display_brand_name($whitelabel_detail['name'])), ENT_QUOTES, 'UTF-8');
+            echo $safe_html(ucfirst($this->company_name));
+        } elseif (is_array($whitelabel_detail) && !empty($whitelabel_detail['name'])) {
+            echo $safe_html(ucfirst(veurion_display_brand_name($whitelabel_detail['name'])));
         } else {
-            echo htmlspecialchars($this->config->item('branding_name') ?: 'Veurion', ENT_QUOTES, 'UTF-8');
+            echo $safe_html($this->config->item('branding_name') ?: 'Veurion');
         }
     ?></title>
     <?php if (!empty($seo)) { $this->load->view('includes/seo_head', array('seo' => $seo)); } ?>

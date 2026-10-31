@@ -22,6 +22,20 @@ class Login_attempts extends CI_Model
 	}
 
 	/**
+	 * Whether the login_attempts table exists (cached per request).
+	 *
+	 * @return bool
+	 */
+	private function table_ready()
+	{
+		static $ready = null;
+		if ($ready === null) {
+			$ready = $this->db->table_exists($this->table_name);
+		}
+		return $ready;
+	}
+
+	/**
 	 * Get number of attempts to login occured from given IP-address or login
 	 *
 	 * @param	string
@@ -30,6 +44,10 @@ class Login_attempts extends CI_Model
 	 */
 	function get_attempts_num($ip_address, $login)
 	{
+		if (!$this->table_ready()) {
+			return 0;
+		}
+
 		$this->db->select('1', FALSE);
 		$this->db->where('ip_address', $ip_address);
 		if (strlen($login) > 0) $this->db->or_where('login', $login);
@@ -47,6 +65,9 @@ class Login_attempts extends CI_Model
 	 */
 	function increase_attempt($ip_address, $login)
 	{
+		if (!$this->table_ready()) {
+			return;
+		}
 		$this->db->insert($this->table_name, array('ip_address' => $ip_address, 'login' => $login));
 	}
 
@@ -61,6 +82,10 @@ class Login_attempts extends CI_Model
 	 */
 	function clear_attempts($ip_address, $login, $expire_period = 86400)
 	{
+		if (!$this->table_ready()) {
+			return;
+		}
+
 		$this->db->where(array('ip_address' => $ip_address, 'login' => $login));
 
 		// Purge obsolete login attempts

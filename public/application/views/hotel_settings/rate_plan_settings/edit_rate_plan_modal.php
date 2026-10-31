@@ -1,4 +1,4 @@
-<div class="panel panel-default rate-plan-div" id="<?php echo $rate_plan['rate_plan_id']; ?>">
+<div class="panel panel-default rate-plan-div rp-form" id="<?php echo $rate_plan['rate_plan_id']; ?>">
 			<div class="panel-body form-horizontal">
 				
 				<div class="alert alert-success hidden updated-message" role="alert"><?php echo l('Updated', true); ?>!</div>

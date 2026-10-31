@@ -94,74 +94,120 @@ class Tank_auth
 						//check company is not deleted
 
 						$company = $this->ci->Company_model->get_company($company_id);
-						if(isset($company['is_deleted']) && $company['is_deleted'])
-						{
-							$user_session_data = array(
-									'user_id'	=> $user->id,
-									'email'	=> $user->email,
-									'status'	=> ($user->activated == 1) ? STATUS_ACTIVATED : STATUS_NOT_ACTIVATED,
-									'user_role' => $user_role,
-									'language' => $user_profile['language'],
-	                                'language_id' => $user_profile['language_id'],
-	                                'created' => $user->created,
-	                                'first_name' => $user_profile['first_name'],
-	                                'last_name' => $user_profile['last_name']
-							);
+						$is_platform_operator = function_exists('is_platform_admin')
+							&& is_platform_admin($user->id, $user->email);
 
-							$this->ci->session->set_userdata($user_session_data);
-							redirect('/auth/forbidden');
+						if (isset($company['is_deleted']) && $company['is_deleted'])
+						{
+							// Prefer another active property instead of trapping the user on forbidden
+							$fallback_company_id = null;
+							$companies = $this->ci->Company_model->get_companies($user->id);
+							if (is_array($companies)) {
+								foreach ($companies as $candidate) {
+									$candidate_id = isset($candidate['company_id']) ? (int) $candidate['company_id'] : 0;
+									if ($candidate_id < 1 || $candidate_id === (int) $company_id) {
+										continue;
+									}
+									$candidate_company = $this->ci->Company_model->get_company($candidate_id);
+									if ($candidate_company && empty($candidate_company['is_deleted'])) {
+										$fallback_company_id = $candidate_id;
+										$company = $candidate_company;
+										break;
+									}
+								}
+							}
+
+							if ($fallback_company_id) {
+								$company_id = $fallback_company_id;
+								$this->ci->User_model->update_user_profile($user->id, array(
+									'current_company_id' => $company_id,
+								));
+							} elseif ($is_platform_operator) {
+								// Platform admins can continue without a hotel property context
+								$company_id = null;
+								$company = array('property_type' => null);
+							} else {
+								$user_session_data = array(
+										'user_id'	=> $user->id,
+										'email'	=> $user->email,
+										'status'	=> ($user->activated == 1) ? STATUS_ACTIVATED : STATUS_NOT_ACTIVATED,
+										'language' => $user_profile['language'],
+		                                'language_id' => $user_profile['language_id'],
+		                                'created' => $user->created,
+		                                'first_name' => $user_profile['first_name'],
+		                                'last_name' => $user_profile['last_name']
+								);
+
+								$this->ci->session->set_userdata($user_session_data);
+								redirect('/auth/forbidden');
+							}
 						}
 						//Check if user belongs to the company
-						if(is_null($user_role = $this->ci->User_model->get_user_role($user->id, $company_id)))
+						$user_role = null;
+						if ($company_id) {
+							$user_role = $this->ci->User_model->get_user_role($user->id, $company_id);
+						}
+						if ($company_id && is_null($user_role) && !$is_platform_operator)
 						{							
 							$this->increase_login_attempt($login);
 							$this->error = array('login' => 'auth_incorrect_login');
+							return FALSE;
+						}
+						if ($is_platform_operator && is_null($user_role)) {
+							$user_role = 'is_admin';
 						}
 						
-						$current_selling_date = $this->ci->Company_model->get_selling_date($company_id);
+						$current_selling_date = $company_id ? $this->ci->Company_model->get_selling_date($company_id) : null;
 						
 						
-						$is_paying_customer = $this->ci->Company_model->has_tag($company_id, "PAYING_CUSTOMER");
-						
-						$user_session_data = array(
-								'user_id'	=> $user->id,
-								'email'	=> $user->email,
-								'status'	=> ($user->activated == 1) ? STATUS_ACTIVATED : STATUS_NOT_ACTIVATED,
+						$is_paying_customer = $company_id ? $this->ci->Company_model->has_tag($company_id, "PAYING_CUSTOMER") : false;
+
+						if ($user->activated == 0)
+						{ // fail - email not verified; keep a limited session for resend/send_again only
+							$this->ci->session->set_userdata(array(
+								'user_id' => $user->id,
+								'email' => $user->email,
+								'status' => STATUS_NOT_ACTIVATED,
 								'current_company_id' => $company_id,
-								'property_type' => $company['property_type'],
-								'is_paying_customer' => $is_paying_customer,
-								'user_role' => $user_role,
-								'current_selling_date' => $current_selling_date,
-								'language' => $user_profile['language'],
-                                'language_id' => $user_profile['language_id'],
-                                'created' => $user->created,
-                                'first_name' => $user_profile['first_name'],
-                                'last_name' => $user_profile['last_name']
-						);
-
-						$this->ci->session->set_userdata($user_session_data);
-                                            
-                        if(empty($this->ci->session->userdata('language_id')))
-                        {
-                            get_language_id($this->ci->session->userdata('language'));
-                        }
-                        $language_id = $this->ci->session->userdata('language_id');
-
-                        // Call function to load translation of language
-                        load_translations($language_id);
-						if (
-                                $user->activated == 0 &&
-                                ((time() - strtotime($user->created)) > (60*60*24*30))
-                        )
-						{ // fail - not activated
+								'created' => $user->created,
+								'first_name' => $user_profile['first_name'],
+								'last_name' => $user_profile['last_name'],
+							));
 							$this->error = array('not_activated' => '');
-						} 
-						else 
+						}
+						else
 						{ // success
+							$user_session_data = array(
+									'user_id'	=> $user->id,
+									'email'	=> $user->email,
+									'status'	=> STATUS_ACTIVATED,
+									'current_company_id' => $company_id,
+									'property_type' => isset($company['property_type']) ? $company['property_type'] : null,
+									'is_paying_customer' => $is_paying_customer,
+									'user_role' => $user_role,
+									'current_selling_date' => $current_selling_date,
+									'language' => $user_profile['language'],
+									'language_id' => $user_profile['language_id'],
+									'created' => $user->created,
+									'first_name' => $user_profile['first_name'],
+									'last_name' => $user_profile['last_name']
+							);
+
+							$this->ci->session->set_userdata($user_session_data);
+
+							if(empty($this->ci->session->userdata('language_id')))
+							{
+								get_language_id($this->ci->session->userdata('language'));
+							}
+							$language_id = $this->ci->session->userdata('language_id');
+
+							// Call function to load translation of language
+							load_translations($language_id);
+
 							if ($remember) {
 								$this->create_autologin($user->id);
 							}
-							
+
 							$this->clear_login_attempts($login);
 
 							$this->ci->users->update_login_info(
@@ -206,18 +252,17 @@ class Tank_auth
 	 */
 	function is_logged_in($activated = TRUE)
 	{
-		$user_activated = $this->ci->session->userdata('status');
-        $user_created = $this->ci->session->userdata('created');
-        if (
-                $this->ci->session->userdata('user_id') != '' &&
-                (
-                    ($user_activated && $user_activated == 1) ||
-                    ($user_created && ((time() - strtotime($user_created)) <= (60*60*24*30)))
-                ) // don't allow login after 30 days if not activated
-        ){
-            return TRUE;
-        }
-        return FALSE;
+		if ($this->ci->session->userdata('user_id') == '') {
+			return FALSE;
+		}
+
+		$user_status = $this->ci->session->userdata('status');
+		if ($activated) {
+			return ($user_status == STATUS_ACTIVATED);
+		}
+
+		// Explicitly asking for a not-yet-activated session (e.g. send_again)
+		return ($user_status == STATUS_NOT_ACTIVATED);
 	}
 
 	/**
@@ -272,15 +317,14 @@ class Tank_auth
 				'password'	=> $hashed_password,
 				'email'		=> $email,
 				'last_ip'	=> $this->ci->input->ip_address(),
-                'activated' => STATUS_NOT_ACTIVATED
+                'activated' => STATUS_NOT_ACTIVATED,
+				'first_name' => $first_name,
+				'last_name' => $last_name,
 			);
 			
 			if ($email_activation) {
 				$data['new_email_key'] = md5(rand().microtime());
-			} else { //load profile data into data
-				$data['first_name'] = $first_name;
-				$data['last_name'] = $last_name;
-			}			
+			}
 			$data['partner_id'] = $partner_id;
 			if (!is_null($res = $this->ci->users->create_user($data, !$email_activation))) {
                 $this->ci->session->set_userdata(array('status' => 0));
@@ -373,11 +417,7 @@ class Tank_auth
 	 */
 	function activate_user($user_id, $activation_key, $activate_by_email = TRUE)
 	{
-        
-		//$this->ci->users->purge_na($this->ci->config->item('email_activation_expire', 'tank_auth'));
-
-		//if ((strlen($user_id) > 0) AND (strlen($activation_key) > 0)) {
-        if ((strlen($user_id) > 0)) {
+		if ((strlen((string) $user_id) > 0) AND (strlen((string) $activation_key) > 0)) {
 			return $this->ci->users->activate_user($user_id, $activation_key, $activate_by_email);
 		}
 		return FALSE;

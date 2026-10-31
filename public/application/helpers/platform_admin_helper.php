@@ -6,15 +6,13 @@ if (!defined('BASEPATH')) {
 
 /**
  * Platform super admin (Veurion SaaS operator), not hotel staff or whitelabel partner admin.
+ * Legacy MiniCal inbox is intentionally excluded from auth bypasses.
  */
 function veurion_support_emails()
 {
     $emails = array(SUPER_ADMIN);
     if (defined('PLATFORM_SUPER_ADMIN')) {
         $emails[] = PLATFORM_SUPER_ADMIN;
-    }
-    if (defined('LEGACY_SUPER_ADMIN')) {
-        $emails[] = LEGACY_SUPER_ADMIN;
     }
     return array_map('strtolower', array_unique($emails));
 }
@@ -27,6 +25,12 @@ function is_veurion_support_email($email)
     return in_array(strtolower(trim($email)), veurion_support_emails(), true);
 }
 
+/**
+ * Whether the user may access platform admin.
+ * When platform_admin table exists, only active rows grant access (revocation is honored).
+ * Hard-coded support emails are a bootstrap fallback only when the table is missing
+ * or when no active platform admins remain (break-glass).
+ */
 function is_platform_admin($user_id, $email = null)
 {
     $CI =& get_instance();
@@ -34,25 +38,36 @@ function is_platform_admin($user_id, $email = null)
         $CI->load->model('Platform_admin_model');
     }
 
-    if ($CI->Platform_admin_model->table_exists()) {
-        if ($email !== null && $email !== '') {
-            if ($CI->Platform_admin_model->is_active_platform_admin_email($email)) {
-                return true;
-            }
+    $user_id = (int) $user_id;
+    $email = ($email !== null && $email !== '') ? strtolower(trim((string) $email)) : null;
+
+    if (!$email && $user_id > 0) {
+        if (!isset($CI->User_model)) {
+            $CI->load->model('User_model');
         }
-        if ((int) $user_id > 0 && $CI->Platform_admin_model->is_active_platform_admin_user($user_id, $email)) {
-            return true;
+        $user = $CI->User_model->get_user_by_id($user_id, false);
+        if ($user && !empty($user['email'])) {
+            $email = strtolower(trim((string) $user['email']));
         }
     }
 
-    if ($email !== null && $email !== '') {
-        return is_veurion_support_email($email);
+    if ($CI->Platform_admin_model->table_exists()) {
+        if ($email && $CI->Platform_admin_model->is_active_platform_admin_email($email)) {
+            return true;
+        }
+        if ($user_id > 0 && $CI->Platform_admin_model->is_active_platform_admin_user($user_id, null)) {
+            return true;
+        }
+
+        // Break-glass only if the active admin list is empty
+        if ((int) $CI->Platform_admin_model->count_active() === 0 && $email && is_veurion_support_email($email)) {
+            return true;
+        }
+
+        return false;
     }
-    if (!isset($CI->User_model)) {
-        $CI->load->model('User_model');
-    }
-    $user = $CI->User_model->get_user_by_id($user_id);
-    return $user && isset($user['email']) && is_veurion_support_email($user['email']);
+
+    return $email && is_veurion_support_email($email);
 }
 
 function platform_admin_encrypt_secret($plaintext)
@@ -119,12 +134,27 @@ function platform_audit_log($action, $data = array())
     }
 
     $actor_user_id = isset($data['actor_user_id']) ? (int) $data['actor_user_id'] : 0;
-    $actor_email = isset($data['actor_email']) ? (string) $data['actor_email'] : '';
+    $actor_email = isset($data['actor_email']) ? trim((string) $data['actor_email']) : '';
     if ($actor_user_id < 1 && $CI->session) {
         $actor_user_id = (int) $CI->session->userdata('user_id');
     }
     if ($actor_email === '' && $CI->session) {
-        $actor_email = (string) $CI->session->userdata('email');
+        $actor_email = trim((string) $CI->session->userdata('email'));
+    }
+
+    // Prefer the canonical email from the users table over a possibly corrupt session value
+    if ($actor_user_id > 0) {
+        if (!isset($CI->User_model)) {
+            $CI->load->model('User_model');
+        }
+        $user = $CI->User_model->get_user_by_id($actor_user_id, false);
+        if ($user && !empty($user['email'])) {
+            $actor_email = (string) $user['email'];
+        }
+    }
+
+    if ($actor_email !== '' && !filter_var($actor_email, FILTER_VALIDATE_EMAIL)) {
+        $actor_email = '';
     }
 
     return $CI->Platform_audit_log_model->add_entry(array(
@@ -177,6 +207,40 @@ function is_hosted_prod_service()
 {
     $flag = getenv('IS_HOSTED_PROD_SERVICE');
     return $flag === '1' || $flag === 'true' || $flag === true;
+}
+
+/**
+ * Primary SaaS app hostnames (instant self-serve signup must stay off on these).
+ *
+ * @return string[]
+ */
+function saas_primary_app_hosts()
+{
+    return array(
+        'app.veurion.com',
+        'demo.veurion.com',
+        'app.minical.io',
+        'demo.minical.io',
+        'app.travelhub247.com',
+    );
+}
+
+function is_saas_primary_host()
+{
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+    return in_array($host, saas_primary_app_hosts(), true);
+}
+
+/**
+ * Whether anonymous visitors may create a live user + property via AJAX register.
+ * Hosted SaaS uses trial-lead capture + admin provisioning only.
+ */
+function is_public_self_registration_enabled()
+{
+    if (is_hosted_prod_service() || is_saas_primary_host()) {
+        return false;
+    }
+    return true;
 }
 
 /**

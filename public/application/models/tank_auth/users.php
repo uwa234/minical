@@ -194,15 +194,17 @@ class Users extends CI_Model
 	 */
 	function activate_user($user_id, $activation_key, $activate_by_email)
 	{
+		if ($activation_key === null || $activation_key === false || $activation_key === '') {
+			return FALSE;
+		}
+
 		$this->db->select('1', FALSE);
 		$this->db->where('id', $user_id);
-        if ($activation_key!=null) {
-            if ($activate_by_email && $activation_key != null) {
-                $this->db->where('new_email_key', $activation_key);
-            } else {
-                $this->db->where('new_password_key', $activation_key);
-            }
-        }
+		if ($activate_by_email) {
+			$this->db->where('new_email_key', $activation_key);
+		} else {
+			$this->db->where('new_password_key', $activation_key);
+		}
 		$this->db->where('activated', 0);
 		$query = $this->db->get($this->table_name);
 

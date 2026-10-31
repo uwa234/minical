@@ -182,6 +182,11 @@ function auth_trial_brand_markup($brand_name, $has_logo, $logo_url) {
                     >
                 </div>
 
+                <div class="auth-login-hp" aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+                    <label for="company_website">Company website</label>
+                    <input type="text" name="company_website" id="company_website" value="" tabindex="-1" autocomplete="off">
+                </div>
+
                 <button type="submit" name="trial_register_submit" value="1" class="auth-login-submit">
                     Request free trial
                 </button>

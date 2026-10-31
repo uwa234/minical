@@ -51,7 +51,7 @@ innGrid.updateRoomType = function(roomType) {
   
     // var descrip_id = 'desc_'+count; 
  
-	var description = CKEDITOR.instances[descrip_id].getData();
+	var description = getRichTextDescription(descrip_id, roomType);
 	var roomTypeId = roomType.attr('id');
 	var roomTypeName = roomType.find('[name="room-type-name"]').val();
 	var roomTypeAcronym = roomType.find('[name="room-type-acronym"]').val();
@@ -104,7 +104,7 @@ innGrid.createRoomType = function(roomType) {
     
     var descrip_id = 'desc_new_roomtype';
  
-    var description = CKEDITOR.instances[descrip_id].getData();
+    var description = getRichTextDescription(descrip_id, roomType);
     // var roomTypeId = roomType.attr('id');
     var roomTypeName = roomType.find('[name="room-type-name"]').val();
     var roomTypeAcronym = roomType.find('[name="room-type-acronym"]').val();
@@ -186,9 +186,7 @@ $('.edit_room_type').click(function(){
 				
 				$("#room_type_model .modal-body").find('textarea').each(function () {
 					$(this).attr('id', 'desc_'+room_type_id);
-					CKEDITOR.replace($(this).attr('id'), {
-						customConfig: '/application/third_party/ckeditor/config.js'
-					});
+					initSummernote('desc_'+room_type_id);
 				});
 			}, 100);	});
           
@@ -268,9 +266,7 @@ $(function() {
             setTimeout(function(){
                 $("#addnew_room_type_model .modal-body").find('textarea').each(function () {
                         $(this).attr('id', 'desc_new_roomtype');
-                        CKEDITOR.replace($(this).attr('id'), {
-                            customConfig: '/application/third_party/ckeditor/config.js'
-                        });
+                        initSummernote('desc_new_roomtype');
                     });
             }, 300);
         });
@@ -396,9 +392,7 @@ function sortRoomTypes(){
 };
 setTimeout(function(){ 
     $( 'textarea').each( function() { 
-        CKEDITOR.replace( $(this).attr('id'),{
-            customConfig: '/application/third_party/ckeditor/config.js'
-        } );
+        initSummernote($(this).attr('id'));
     });
 }, 3000);  
 

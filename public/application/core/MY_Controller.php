@@ -60,7 +60,10 @@ class MY_Controller extends CI_Controller {
 
         $all_active_modules = array();
         $modules_path = $this->config->item('module_location'); 
-        $modules = scandir($modules_path);
+        $modules = (is_string($modules_path) && is_dir($modules_path)) ? @scandir($modules_path) : array();
+        if (!is_array($modules)) {
+            $modules = array();
+        }
 
         // $extensions = $this->session->userdata('all_active_modules');
         
@@ -98,7 +101,10 @@ class MY_Controller extends CI_Controller {
 
         $this->module_assets_files = array();
         $modules_path = $this->config->item('module_location');     
-        $modules = scandir($modules_path);
+        $modules = (is_string($modules_path) && is_dir($modules_path)) ? @scandir($modules_path) : array();
+        if (!is_array($modules)) {
+            $modules = array();
+        }
 
         if(!$this->company_id && $this->uri->segment(3) != ''){
             $company_id = $this->uri->segment(3);
@@ -312,8 +318,9 @@ class MY_Controller extends CI_Controller {
             return;
         }
 
+        // Never blank the UI on migration failure — log and continue so login still works.
         if (!$this->migration->run_auto_latest()) {
-            show_error($this->migration->error_string());
+            log_message('error', 'Migration auto_latest failed: ' . $this->migration->error_string());
         }
     }
 
@@ -322,16 +329,47 @@ class MY_Controller extends CI_Controller {
         if ($this->tank_auth->is_logged_in()) 
         {
             $this->company_id = $this->ci->session->userdata('current_company_id');
+            $this->user_id = $this->ci->session->userdata('user_id');
 
             $company = $this->ci->Company_model->get_company($this->company_id);
             $company_key_data = $this->ci->Company_model->get_company_api_permission($this->company_id);
+            $has_company = ($company && isset($company['company_id']) && $company['company_id']);
 
-            if(!$this->input->is_ajax_request() && !($company && isset($company['company_id']) && $company['company_id'])){
+            if(!$this->input->is_ajax_request() && !$has_company){
                 $controller_name = $this->ci->uri->rsegment(1);
                 if($controller_name != "properties" && $controller_name != "menu" && $controller_name != "auth" && $controller_name != "admin" && $controller_name != "marketing"){
                     $this->session->set_flashdata('flash_warning_message', 'Please select a property.');
                     redirect('/properties/my_properties');
                 }
+            }
+
+            $user = $this->User_model->get_user_by_id($this->user_id);
+            $this->user_email = ($user && isset($user['email'])) ? $user['email'] : $this->ci->session->userdata('email');
+
+            // Platform admin pages (and other no-property routes) must not read company fields.
+            if (!$has_company) {
+                $this->company_data = is_array($company) ? $company : array();
+                $this->company_name = '';
+                $this->company_subscription_level = resolve_company_subscription_level(null);
+                $this->company_subscription_state = null;
+                $this->trial_lockout_active = false;
+                $this->enable_hourly_booking = false;
+                $whitelabelinfo = $this->ci->session->userdata('white_label_information');
+                $this->vendor_currency_id = (is_array($whitelabelinfo) && isset($whitelabelinfo['currency_id']))
+                    ? $whitelabelinfo['currency_id']
+                    : null;
+                $this->is_self_hosted_domain = 0;
+                $this->first_name = ($user && isset($user['first_name'])) ? $user['first_name'] : '';
+                $this->last_name = ($user && isset($user['last_name'])) ? $user['last_name'] : '';
+
+                if (
+                    $this->controller_name === 'admin' &&
+                    is_platform_admin($this->user_id, isset($this->user_email) ? $this->user_email : null)
+                ) {
+                    return;
+                }
+
+                return;
             }
             
             $this->company_key_data = $company_key_data;
@@ -341,48 +379,44 @@ class MY_Controller extends CI_Controller {
             }
             
             $this->company_data = $company;
-            $this->company_name = $company['name'];
-            $this->company_email = $company['email'];
-            $this->company_timezone = $company['time_zone'];
+            $this->company_name = isset($company['name']) ? $company['name'] : '';
+            $this->company_email = isset($company['email']) ? $company['email'] : '';
+            $this->company_timezone = isset($company['time_zone']) ? $company['time_zone'] : '';
             $this->company_subscription_level = resolve_company_subscription_level($company);
-            $this->company_subscription_state = $company['subscription_state'];
-            $this->company_feature_limit = $company['limit_feature'];
-            $this->company_creation_date = $company['creation_date'];
+            $this->company_subscription_state = isset($company['subscription_state']) ? $company['subscription_state'] : null;
+            $this->company_feature_limit = isset($company['limit_feature']) ? $company['limit_feature'] : null;
+            $this->company_creation_date = isset($company['creation_date']) ? $company['creation_date'] : null;
             
-            $this->company_partner_id = $company['partner_id'];
-            $this->company_force_room_selection = $company['force_room_selection'];
+            $this->company_partner_id = isset($company['partner_id']) ? $company['partner_id'] : null;
+            $this->company_force_room_selection = isset($company['force_room_selection']) ? $company['force_room_selection'] : null;
 
-            $this->automatic_email_confirmation = $company['automatic_email_confirmation'];
-            $this->automatic_email_cancellation = $company['automatic_email_cancellation'];
+            $this->automatic_email_confirmation = isset($company['automatic_email_confirmation']) ? $company['automatic_email_confirmation'] : null;
+            $this->automatic_email_cancellation = isset($company['automatic_email_cancellation']) ? $company['automatic_email_cancellation'] : null;
             
             $company_partner_type_id = $this->Whitelabel_partner_model->get_partner_detail($company['partner_id']);
             $this->company_partner_type_id = isset($company_partner_type_id) && isset($company_partner_type_id['type_id']) ? $company_partner_type_id['type_id'] : 1;
             $this->company_ui_theme = isset($company['ui_theme']) ? $company['ui_theme'] : 0;
             
-            $this->selling_date = $company['selling_date'] ? $company['selling_date'] : date('Y-m-d');
-            $this->api_key = $company['api_key'];
-            $this->user_id = $this->ci->session->userdata('user_id');
-            $this->is_tokenization_enabled = $company['enable_card_tokenization'];
-            $this->is_cc_visualization_enabled = $company['is_cc_visualization_enabled'];
-            $this->is_total_balance_include_forecast = $company['is_total_balance_include_forecast'];
-            $this->is_display_tooltip = $company['is_display_tooltip'];
-            $this->avoid_dmarc_blocking = $company['avoid_dmarc_blocking'];
-            $this->allow_free_bookings = $company['allow_free_bookings'];
-            $this->company_date_format = $company['date_format'];
-            $this->default_room_singular = $company['default_room_singular'];
-            $this->default_room_plural = $company['default_room_plural'];
-            $this->default_room_type = $company['default_room_type'];
-            $this->default_checkin_time = $company['default_checkin_time'];
-            $this->default_checkout_time = $company['default_checkout_time'];
-            $this->selected_payment_gateway = $company['selected_payment_gateway'];
-            $this->booking_cancelled_with_balance = $company['booking_cancelled_with_balance'];
-            $this->restrict_cvc_not_mandatory = $company['restrict_cvc_not_mandatory'];
-            $this->restrict_edit_after_checkout = $company['restrict_edit_after_checkout'];
-            $this->restrict_checkout_with_balance = $company['restrict_checkout_with_balance'];
-            $this->calendar_days = $company['calendar_days'];
-            
-            $user = $this->User_model->get_user_by_id($this->user_id);
-            $this->user_email = $user['email'];
+            $this->selling_date = !empty($company['selling_date']) ? $company['selling_date'] : date('Y-m-d');
+            $this->api_key = isset($company['api_key']) ? $company['api_key'] : null;
+            $this->is_tokenization_enabled = isset($company['enable_card_tokenization']) ? $company['enable_card_tokenization'] : null;
+            $this->is_cc_visualization_enabled = isset($company['is_cc_visualization_enabled']) ? $company['is_cc_visualization_enabled'] : null;
+            $this->is_total_balance_include_forecast = isset($company['is_total_balance_include_forecast']) ? $company['is_total_balance_include_forecast'] : null;
+            $this->is_display_tooltip = isset($company['is_display_tooltip']) ? $company['is_display_tooltip'] : null;
+            $this->avoid_dmarc_blocking = isset($company['avoid_dmarc_blocking']) ? $company['avoid_dmarc_blocking'] : null;
+            $this->allow_free_bookings = isset($company['allow_free_bookings']) ? $company['allow_free_bookings'] : null;
+            $this->company_date_format = isset($company['date_format']) ? $company['date_format'] : null;
+            $this->default_room_singular = isset($company['default_room_singular']) ? $company['default_room_singular'] : null;
+            $this->default_room_plural = isset($company['default_room_plural']) ? $company['default_room_plural'] : null;
+            $this->default_room_type = isset($company['default_room_type']) ? $company['default_room_type'] : null;
+            $this->default_checkin_time = isset($company['default_checkin_time']) ? $company['default_checkin_time'] : null;
+            $this->default_checkout_time = isset($company['default_checkout_time']) ? $company['default_checkout_time'] : null;
+            $this->selected_payment_gateway = isset($company['selected_payment_gateway']) ? $company['selected_payment_gateway'] : null;
+            $this->booking_cancelled_with_balance = isset($company['booking_cancelled_with_balance']) ? $company['booking_cancelled_with_balance'] : null;
+            $this->restrict_cvc_not_mandatory = isset($company['restrict_cvc_not_mandatory']) ? $company['restrict_cvc_not_mandatory'] : null;
+            $this->restrict_edit_after_checkout = isset($company['restrict_edit_after_checkout']) ? $company['restrict_edit_after_checkout'] : null;
+            $this->restrict_checkout_with_balance = isset($company['restrict_checkout_with_balance']) ? $company['restrict_checkout_with_balance'] : null;
+            $this->calendar_days = isset($company['calendar_days']) ? $company['calendar_days'] : null;
 
             $this->trial_lockout_active = company_requires_trial_lockout(
                 $company,
@@ -433,18 +467,21 @@ class MY_Controller extends CI_Controller {
                 exit;
             }
 
-            $this->company_is_tos_agreed = ($user['tos_agreed_date'] >= TOS_PUBLISH_DATE);
+            $this->company_is_tos_agreed = ($user && isset($user['tos_agreed_date']) && $user['tos_agreed_date'] >= TOS_PUBLISH_DATE);
             $this->is_overview_calendar = false; // $user['is_overview_calendar'];
 
-            $this->enable_new_calendar = $company['enable_new_calendar'];
-            $this->enable_hourly_booking = $this->enable_new_calendar ? $company['enable_hourly_booking'] : false;
+            $this->enable_new_calendar = isset($company['enable_new_calendar']) ? $company['enable_new_calendar'] : null;
+            $this->enable_hourly_booking = $this->enable_new_calendar ? (!empty($company['enable_hourly_booking'])) : false;
 
-            $this->first_name = $user['first_name'];
-            $this->last_name = $user['last_name'];
+            $this->first_name = ($user && isset($user['first_name'])) ? $user['first_name'] : '';
+            $this->last_name = ($user && isset($user['last_name'])) ? $user['last_name'] : '';
 
             $whitelabelinfo = $this->ci->session->userdata('white_label_information');
+            if (!is_array($whitelabelinfo)) {
+                $whitelabelinfo = array();
+            }
 
-            $this->vendor_currency_id = $whitelabelinfo['currency_id'];
+            $this->vendor_currency_id = isset($whitelabelinfo['currency_id']) ? $whitelabelinfo['currency_id'] : null;
             $admin_user_ids = $this->Whitelabel_partner_model->get_partner_detail();
             $this->is_super_admin = (($user && isset($user['email']) && $user['email'] == SUPER_ADMIN) || ($admin_user_ids && isset($admin_user_ids['admin_user_id']) && $this->user_id == $admin_user_ids['admin_user_id']));
 
@@ -455,6 +492,9 @@ class MY_Controller extends CI_Controller {
             $this->is_partner_admin = (isset($admin_user_ids['admin_user_id']) && $this->user_id == $admin_user_ids['admin_user_id'] ) ? 1 :0;
             
             $common_booking_sources = json_decode(COMMON_BOOKING_SOURCES, true);
+            if (!is_array($common_booking_sources)) {
+                $common_booking_sources = array();
+            }
             $i = 0;
             $booking_sources = $this->Booking_source_model->get_common_booking_sources_settings($this->company_id);
             
@@ -476,7 +516,7 @@ class MY_Controller extends CI_Controller {
             $protocol = $this->config->item('server_protocol');
             $is_hosted_prod_service = getenv('IS_HOSTED_PROD_SERVICE');
             $saas_app_hosts = array('app.veurion.com', 'demo.veurion.com', 'app.minical.io', 'demo.minical.io', 'app.travelhub247.com');
-            if ((!$whitelabelinfo && $this->company_data['partner_id']) || ($whitelabelinfo && ($is_hosted_prod_service || in_array($host_name, $saas_app_hosts, true)) && isset($whitelabelinfo['id']) && $whitelabelinfo['id'] != $this->company_data['partner_id'])) {
+            if ((empty($whitelabelinfo) && $this->company_data['partner_id']) || ($whitelabelinfo && ($is_hosted_prod_service || in_array($host_name, $saas_app_hosts, true)) && isset($whitelabelinfo['id']) && $whitelabelinfo['id'] != $this->company_data['partner_id'])) {
                 $white_label_detail = $this->Whitelabel_partner_model->get_partners(array('id' => $this->company_data['partner_id']));
                 if($white_label_detail && isset($white_label_detail[0])) {
                     $this->session->set_userdata('white_label_information', veurion_normalize_whitelabel_partner($white_label_detail[0]));

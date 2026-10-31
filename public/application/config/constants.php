@@ -306,6 +306,7 @@ define('SUPER_ADMIN_USER_ID', 				'1');
 
 define('SUPER_ADMIN', 'support@veurion.com');
 define('PLATFORM_SUPER_ADMIN', 'info@veurion.com');
+// Deprecated: no longer grants platform-admin bypass. Kept for historical migration references only.
 define('LEGACY_SUPER_ADMIN', 'support@minical.io');
 
 /*
